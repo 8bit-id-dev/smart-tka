@@ -1,0 +1,630 @@
+import { useEffect, useState } from 'react';
+import { assignSiswaKeKelas, cariKelasByKode } from '../lib/kelas';
+import { adminCreateAuthUser, insforge, summarizeAuthError, type AppProfile } from '../lib/insforge';
+
+type UserRow = AppProfile;
+type ClassRow = { id: string; name: string; jenjang: string; invite_code?: string };
+type PkgRow = { id: string; title: string; mapel: string; kind: string };
+type AsgRow = { id: string; package_id: string; class_id: string; due_at: string | null };
+type CS = { class_id: string; profile_id: string };
+type CsvRow = {
+  email: string;
+  password: string;
+  nama: string;
+  role: string;
+  jenjang: string;
+  kode_kelas: string;
+};
+
+const ROLES = ['siswa', 'orang_tua', 'guru', 'admin', 'kepsek'] as const;
+
+export function Admin({ me }: { me: AppProfile }) {
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [pkgs, setPkgs] = useState<PkgRow[]>([]);
+  const [asgs, setAsgs] = useState<AsgRow[]>([]);
+  const [anggota, setAnggota] = useState<CS[]>([]);
+  const [err, setErr] = useState('');
+  const [ok, setOk] = useState('');
+
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('Siswa1234');
+  const [newName, setNewName] = useState('');
+  const [newRole, setNewRole] = useState<string>('siswa');
+  const [newJenjang, setNewJenjang] = useState('smp');
+  const [newClass, setNewClass] = useState('');
+
+  const [asgPkg, setAsgPkg] = useState('');
+  const [asgClass, setAsgClass] = useState('');
+  const [asgDue, setAsgDue] = useState('');
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [openUsers, setOpenUsers] = useState(false);
+  const [openAsg, setOpenAsg] = useState(false);
+  const [openRole, setOpenRole] = useState<Record<string, boolean>>({});
+  const [openKelas, setOpenKelas] = useState<Record<string, boolean>>({});
+
+  async function load(opts?: { keepMessages?: boolean }) {
+    if (!opts?.keepMessages) setErr('');
+    const u = await insforge.database.from('profiles').select('id, user_id, full_name, role, school_id, jenjang');
+    if (u.error && !opts?.keepMessages) setErr(u.error.message);
+    else setUsers((u.data || []) as UserRow[]);
+
+    const c = await insforge.database.from('classes').select('id, name, jenjang, invite_code');
+    if (!c.error) setClasses((c.data || []) as ClassRow[]);
+
+    const p = await insforge.database.from('packages').select('id, title, mapel, kind');
+    if (!p.error) setPkgs((p.data || []) as PkgRow[]);
+
+    const a = await insforge.database.from('assignments').select('id, package_id, class_id, due_at');
+    if (!a.error) setAsgs((a.data || []) as AsgRow[]);
+    const m = await insforge.database.from('class_students').select('class_id, profile_id');
+    if (!m.error) setAnggota((m.data || []) as CS[]);
+  }
+
+  function urutNama(a: UserRow, b: UserRow) {
+    return (a.full_name || '').localeCompare(b.full_name || '', 'id', { sensitivity: 'base' });
+  }
+
+  function barisUser(u: UserRow) {
+    return (
+      <div key={u.id} className="profil-list" style={{ borderBottom: '1px solid var(--card-border)' }}>
+        <div>
+          <dt>{u.full_name || '—'}</dt>
+          <dd className="mono">{u.user_id}</dd>
+        </div>
+        <div>
+          <dt>Peran</dt>
+          <dd>
+            <select className="sel-input" value={u.role} onChange={(e) => setRole(u.id, e.target.value)}>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </dd>
+        </div>
+        <div>
+          <dt></dt>
+          <dd>
+            <button type="button" className="btn-ghost btn" style={{ maxWidth: 160 }} onClick={() => hapusUser(u.id)}>
+              Hapus profil
+            </button>
+          </dd>
+        </div>
+      </div>
+    );
+  }
+
+  function toggleHead(label: string, count: number, open: boolean, onClick: () => void) {
+    return (
+      <button
+        type="button"
+        className="link"
+        style={{
+          display: 'flex',
+          width: '100%',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: 'none',
+          border: 0,
+          padding: 0,
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+        onClick={onClick}
+      >
+        <strong>{label}</strong>
+        <span className="type-lab">
+          {count} · {open ? '▲ tutup' : '▼ buka'}
+        </span>
+      </button>
+    );
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function createUser(e: React.FormEvent) {
+    e.preventDefault();
+    setErr('');
+    setOk('');
+    if (!newEmail.trim() || newPassword.length < 8) {
+      setErr('Isi email dan password minimal 8 karakter. Siswa tidak perlu daftar sendiri.');
+      return;
+    }
+    const created = await adminCreateAuthUser({
+      email: newEmail,
+      password: newPassword,
+      name: newName || newEmail,
+    });
+    if ('error' in created) {
+      setErr('Gagal buat akun login: ' + summarizeAuthError(created.error));
+      return;
+    }
+    const { data: prof, error } = await insforge.database
+      .from('profiles')
+      .insert({
+        user_id: created.id,
+        full_name: newName.trim() || newEmail.trim(),
+        role: newRole,
+        school_id: me.school_id,
+        jenjang: newJenjang,
+      })
+      .select('id');
+    if (error) {
+      setErr('Akun login terbuat, profil gagal: ' + error.message + ' · Auth id: ' + created.id);
+      return;
+    }
+    const pid = (prof?.[0] as { id?: string } | undefined)?.id;
+    if (newClass && pid) {
+      const add = await assignSiswaKeKelas(pid, newClass);
+      if (add.error) setErr('Profil OK, masuk kelas gagal: ' + add.error.message);
+    }
+    setOk(`Siswa siap masuk dengan ${newEmail} / password yang Anda set. Tidak perlu Daftar.`);
+    setNewEmail('');
+    setNewName('');
+    await load({ keepMessages: true });
+  }
+
+  function splitCsvLine(line: string, sep: string): string[] {
+    const out: string[] = [];
+    let cur = '';
+    let q = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (q && line[i + 1] === '"') {
+          cur += '"';
+          i += 1;
+        } else q = !q;
+      } else if (ch === sep && !q) {
+        out.push(cur.trim());
+        cur = '';
+      } else cur += ch;
+    }
+    out.push(cur.trim());
+    return out.map((x) => x.replace(/^"|"$/g, ''));
+  }
+
+  function normHead(h: string) {
+    return h
+      .toLowerCase()
+      .replace(/^\uFEFF/, '')
+      .replace(/["']/g, '')
+      .replace(/\s+/g, '_')
+      .trim();
+  }
+
+  function pickCol(head: string[], cells: string[], names: string[]) {
+    for (const n of names) {
+      const i = head.indexOf(n);
+      if (i >= 0 && cells[i]) return cells[i];
+    }
+    return '';
+  }
+
+  function parseCsv(text: string): { error: string; rows: CsvRow[] } {
+    const raw = text.replace(/^\uFEFF/, '');
+    if (raw.startsWith('PK') || raw.includes('\u0000')) {
+      return {
+        error: 'File ini Excel (.xlsx), bukan CSV. Di Excel: File → Simpan sebagai → CSV UTF-8 (Comma delimited).',
+        rows: [],
+      };
+    }
+    const lines = raw
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lines.length < 2) return { error: 'CSV kurang dari 2 baris (header + data).', rows: [] };
+    const sep = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ';' : ',';
+    const head = splitCsvLine(lines[0], sep).map(normHead);
+    const emailAliases = ['email', 'e-mail', 'mail', 'alamat_email', 'surel'];
+    const hasEmailHead = head.some((h) => emailAliases.includes(h));
+    const rows = lines.slice(1).map((line) => {
+      const c = splitCsvLine(line, sep);
+      let email = pickCol(head, c, emailAliases);
+      if (!email) {
+        const found = c.find((x) => x.includes('@'));
+        if (found) email = found;
+      }
+      let role = (pickCol(head, c, ['role', 'peran', 'jabatan']) || 'siswa').toLowerCase();
+      if (role === 'orangtua' || role === 'ortu' || role === 'wali') role = 'orang_tua';
+      if (role === 'kepala_sekolah' || role === 'kepala') role = 'kepsek';
+      if (role === 'teacher') role = 'guru';
+      if (role === 'student' || role === 'murid') role = 'siswa';
+      let jenjang = (pickCol(head, c, ['jenjang', 'tingkat']) || 'smp').toLowerCase();
+      if (jenjang.includes('sd')) jenjang = 'sd';
+      else if (jenjang.includes('smk')) jenjang = 'smk';
+      else if (jenjang.includes('sma') || jenjang.includes('ma')) jenjang = 'sma';
+      else if (jenjang.includes('smp') || jenjang.includes('mts')) jenjang = 'smp';
+      return {
+        email: email.trim(),
+        password: pickCol(head, c, ['password', 'sandi', 'kata_sandi']) || 'Siswa1234',
+        nama: pickCol(head, c, ['nama', 'name', 'nama_lengkap', 'full_name']) || '',
+        role: (['siswa', 'orang_tua', 'guru', 'admin', 'kepsek'] as string[]).includes(role) ? role : 'siswa',
+        jenjang,
+        kode_kelas: pickCol(head, c, ['kode_kelas', 'kelas', 'kode', 'invite_code', 'kodekelas']),
+      };
+    });
+    if (!hasEmailHead && !rows.some((r) => r.email.includes('@'))) {
+      return {
+        error:
+          'Kolom email tidak ketemu. Header baris 1 harus: email,password,nama,role,jenjang,kode_kelas. Header Anda: ' +
+          head.join(' | '),
+        rows: [],
+      };
+    }
+    return { error: '', rows };
+  }
+
+  async function buatSatu(row: CsvRow) {
+    const created = await adminCreateAuthUser({
+      email: row.email,
+      password: row.password || 'Siswa1234',
+      name: row.nama || row.email,
+    });
+    if ('error' in created) return `Auth ${row.email}: ${summarizeAuthError(created.error)}`;
+    const existing = await insforge.database.from('profiles').select('id').eq('user_id', created.id);
+    const already = (existing.data || []) as { id: string }[];
+    if (already[0]?.id) {
+      const pid = already[0].id;
+      if (row.kode_kelas) {
+        const cls = cariKelasByKode(classes, row.kode_kelas);
+        if (!cls) return `Kelas ${row.email}: kode_kelas "${row.kode_kelas}" tidak ketemu`;
+        const add = await assignSiswaKeKelas(pid, cls.id);
+        if (add.error) return `Kelas ${row.email}: ${add.error.message}`;
+      }
+      return null;
+    }
+    const { data: prof, error } = await insforge.database
+      .from('profiles')
+      .insert({
+        user_id: created.id,
+        full_name: row.nama || row.email,
+        role: row.role || 'siswa',
+        school_id: me.school_id,
+        jenjang: row.jenjang || 'smp',
+      })
+      .select('id');
+    if (error) return `Profil ${row.email}: ${error.message}`;
+    const pid = (prof?.[0] as { id?: string } | undefined)?.id;
+    if (row.kode_kelas && pid) {
+      const cls = cariKelasByKode(classes, row.kode_kelas);
+      if (!cls) return `Kelas ${row.email}: kode_kelas "${row.kode_kelas}" tidak ketemu`;
+      const add = await assignSiswaKeKelas(pid, cls.id);
+      if (add.error) return `Kelas ${row.email}: ${add.error.message}`;
+    }
+    return null;
+  }
+
+  async function importCsv(e: React.FormEvent) {
+    e.preventDefault();
+    if (!csvFile) {
+      setErr('Pilih file CSV dulu, lalu klik Submit import.');
+      return;
+    }
+    setErr('');
+    setOk('Mengimpor…');
+    if (/\.xlsx?$/i.test(csvFile.name) && !/\.csv$/i.test(csvFile.name)) {
+      setErr('Jangan unggah .xlsx. Di Excel: File → Simpan sebagai → CSV UTF-8, lalu import file .csv itu.');
+      setOk('');
+      return;
+    }
+    const text = await csvFile.text();
+    const parsed = parseCsv(text);
+    if (parsed.error) {
+      setErr(parsed.error);
+      setOk('');
+      return;
+    }
+    const rows = parsed.rows;
+    if (rows.length === 0) {
+      setErr('CSV kosong atau header salah. Wajib kolom email.');
+      setOk('');
+      return;
+    }
+    const gagal: string[] = [];
+    let okN = 0;
+    for (const row of rows) {
+      if (!row.email.includes('@')) {
+        gagal.push('Baris tanpa email (isi kolom email)');
+        continue;
+      }
+      if (row.password.length < 8) {
+        gagal.push(`${row.email}: password min 8 karakter`);
+        continue;
+      }
+      const fail = await buatSatu(row);
+      if (fail) gagal.push(fail);
+      else okN += 1;
+    }
+    setOk(`Import selesai: ${okN} berhasil` + (gagal.length ? `, ${gagal.length} gagal.` : '.'));
+    if (gagal.length) {
+      const counts = new Map<string, number>();
+      for (const g of gagal) {
+        const key = g.replace(/Auth [^:]+: /, 'Auth: ').replace(/\S+@\S+/g, '(email)');
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+      const ringkas = [...counts.entries()].map(([k, n]) => `${n}× ${k}`).join('\n');
+      setErr(ringkas + '\n\nContoh:\n' + gagal.slice(0, 6).join('\n'));
+    }
+    await load({ keepMessages: true });
+  }
+
+  async function setRole(id: string, role: string) {
+    setErr('');
+    const { error } = await insforge.database.from('profiles').update({ role }).eq('id', id);
+    if (error) setErr(error.message);
+    else {
+      setOk('Peran diubah.');
+      await load({ keepMessages: true });
+    }
+  }
+
+  async function hapusUser(id: string) {
+    if (!confirm('Hapus profil ini? Akun Auth tidak terhapus.')) return;
+    const { error } = await insforge.database.from('profiles').delete().eq('id', id);
+    if (error) setErr(error.message);
+    else {
+      setOk('Profil dihapus.');
+      await load({ keepMessages: true });
+    }
+  }
+
+  async function buatAssignment(e: React.FormEvent) {
+    e.preventDefault();
+    setErr('');
+    if (!asgPkg || !asgClass) {
+      setErr('Pilih paket dan kelas. Jika kosong, buat soal/paket atau kelas dulu.');
+      return;
+    }
+    const { error } = await insforge.database.from('assignments').insert({
+      package_id: asgPkg,
+      class_id: asgClass,
+      due_at: asgDue ? new Date(asgDue).toISOString() : null,
+    });
+    if (error) setErr(error.message);
+    else {
+      setOk('Assignment tersimpan.');
+      await load({ keepMessages: true });
+    }
+  }
+
+  async function hapusAsg(id: string) {
+    const { error } = await insforge.database.from('assignments').delete().eq('id', id);
+    if (error) setErr(error.message);
+    else await load();
+  }
+
+  if (!['admin', 'kepsek'].includes(me.role)) {
+    return (
+      <div className="placeholder">
+        <section className="card">
+          <h2>Admin</h2>
+          <p>Hanya admin / kepsek.</p>
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <div className="placeholder" style={{ maxWidth: 860 }}>
+      {err && (
+        <p className="auth-msg" style={{ whiteSpace: 'pre-wrap' }}>
+          {err}
+        </p>
+      )}
+      {ok && (
+        <p className="legal" style={{ color: '#2f9e6b' }}>
+          {ok}
+        </p>
+      )}
+
+      <section className="card">
+        <h2>Import Excel / CSV</h2>
+        <p className="type-lab">
+          Wajib file <b>.csv</b>. Email yang sudah di Auth akan ditautkan (bukan dibuat ulang) jika password CSV sama,
+          atau jika daftar user Auth bisa dibaca. Auto-confirm email diatur di dashboard InsForge, bukan di tombol import.
+        </p>
+        <p>
+          <a href="/contoh-import-user.csv" download>
+            Unduh contoh CSV
+          </a>
+        </p>
+        <form onSubmit={importCsv} className="auth-form">
+          <label>
+            File CSV
+            <input type="file" accept=".csv,text/csv,.txt" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} />
+          </label>
+          {csvFile && <p className="type-lab">Dipilih: {csvFile.name}</p>}
+          <button className="btn" type="submit" disabled={!csvFile}>
+            Submit import
+          </button>
+        </form>
+      </section>
+
+      <section className="card" style={{ marginTop: 16 }}>
+        <h2>Buat user (tanpa Daftar)</h2>
+        <p className="type-lab">Siswa langsung Masuk dengan email/password yang Anda isi.</p>
+        <form onSubmit={createUser} className="auth-form">
+          <label>
+            Email
+            <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required />
+          </label>
+          <label>
+            Password sementara
+            <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={8} required />
+          </label>
+          <label>
+            Nama
+            <input value={newName} onChange={(e) => setNewName(e.target.value)} />
+          </label>
+          <label>
+            Peran
+            <select className="sel-input" value={newRole} onChange={(e) => setNewRole(e.target.value)}>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Jenjang
+            <select className="sel-input" value={newJenjang} onChange={(e) => setNewJenjang(e.target.value)}>
+              <option value="sd">sd</option>
+              <option value="smp">smp</option>
+              <option value="sma">sma</option>
+              <option value="smk">smk</option>
+            </select>
+          </label>
+          <label>
+            Masukkan ke kelas (opsional)
+            <select className="sel-input" value={newClass} onChange={(e) => setNewClass(e.target.value)}>
+              <option value="">— belum —</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="btn" type="submit">
+            Buat akun + profil
+          </button>
+        </form>
+      </section>
+
+      <section className="card" style={{ marginTop: 16 }}>
+        <button
+          type="button"
+          className="link"
+          style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
+          onClick={() => setOpenUsers((v) => !v)}
+          aria-expanded={openUsers}
+        >
+          <h2 style={{ margin: 0 }}>User & peran ({users.length})</h2>
+          <span className="type-lab">{openUsers ? '▲ tutup' : '▼ buka'}</span>
+        </button>
+        {openUsers && (
+          <>
+            <p className="type-lab">Per peran (dilipat). Siswa dikelompokkan per kelas.</p>
+            {ROLES.map((role) => {
+              const grup = users.filter((u) => u.role === role).sort(urutNama);
+              const buka = !!openRole[role];
+              const label = role === 'orang_tua' ? 'Orang tua' : role.charAt(0).toUpperCase() + role.slice(1);
+              return (
+                <div key={role} style={{ marginTop: 12, border: '1px solid var(--card-border)', borderRadius: 12, padding: 12 }}>
+                  {toggleHead(label, grup.length, buka, () => setOpenRole((m) => ({ ...m, [role]: !m[role] })))}
+                  {buka && role !== 'siswa' && grup.length === 0 && <p className="type-lab">Belum ada.</p>}
+                  {buka && role !== 'siswa' && grup.map((u) => barisUser(u))}
+                  {buka && role === 'siswa' && (
+                    <>
+                      {[...classes]
+                        .sort((a, b) => a.name.localeCompare(b.name, 'id', { sensitivity: 'base' }))
+                        .map((kl) => {
+                        const ids = new Set(anggota.filter((x) => x.class_id === kl.id).map((x) => x.profile_id));
+                        const isi = grup.filter((u) => ids.has(u.id)).sort(urutNama);
+                        const bk = !!openKelas[kl.id];
+                        return (
+                          <div key={kl.id} style={{ marginTop: 10, paddingLeft: 8 }}>
+                            {toggleHead(
+                              `${kl.name}${kl.invite_code ? ` · ${kl.invite_code}` : ''}`,
+                              isi.length,
+                              bk,
+                              () => setOpenKelas((m) => ({ ...m, [kl.id]: !m[kl.id] })),
+                            )}
+                            {bk && isi.length === 0 && <p className="type-lab">Belum ada siswa di kelas ini.</p>}
+                            {bk && isi.map((u) => barisUser(u))}
+                          </div>
+                        );
+                      })}
+                      {(() => {
+                        const ada = new Set(anggota.map((x) => x.profile_id));
+                        const tanpa = grup.filter((u) => !ada.has(u.id)).sort(urutNama);
+                        const bk = !!openKelas['__tanpa'];
+                        return (
+                          <div style={{ marginTop: 10, paddingLeft: 8 }}>
+                            {toggleHead('Belum masuk kelas', tanpa.length, bk, () =>
+                              setOpenKelas((m) => ({ ...m, __tanpa: !m.__tanpa })),
+                            )}
+                            {bk && tanpa.length === 0 && <p className="type-lab">Semua siswa sudah di kelas.</p>}
+                            {bk && tanpa.map((u) => barisUser(u))}
+                          </div>
+                        );
+                      })()}
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
+      </section>
+
+      <section className="card" style={{ marginTop: 16 }}>
+        <button
+          type="button"
+          className="link"
+          style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
+          onClick={() => setOpenAsg((v) => !v)}
+          aria-expanded={openAsg}
+        >
+          <h2 style={{ margin: 0 }}>Assignment ({asgs.length})</h2>
+          <span className="type-lab">{openAsg ? '▲ tutup' : '▼ buka'}</span>
+        </button>
+        {openAsg && (
+          <>
+            <p className="type-lab">
+              Tugaskan paket ke kelas yang sudah ada. Buat kelas di menu Kelas; buat paket di menu Paket.
+            </p>
+            <form onSubmit={buatAssignment} className="auth-form">
+              <label>
+                Paket
+                <select className="sel-input" value={asgPkg} onChange={(e) => setAsgPkg(e.target.value)}>
+                  <option value="">— pilih —</option>
+                  {pkgs.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title} ({p.mapel})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Kelas
+                <select className="sel-input" value={asgClass} onChange={(e) => setAsgClass(e.target.value)}>
+                  <option value="">— pilih —</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Tenggat (opsional)
+                <input type="datetime-local" value={asgDue} onChange={(e) => setAsgDue(e.target.value)} />
+              </label>
+              <button className="btn" type="submit">
+                Simpan assignment
+              </button>
+            </form>
+            {pkgs.length === 0 && <p className="type-lab">Belum ada paket. Guru perlu merakit paket atau isi tabel packages.</p>}
+            <ul>
+              {asgs.map((a) => (
+                <li key={a.id}>
+                  paket {a.package_id.slice(0, 8)}… → kelas {a.class_id.slice(0, 8)}…{' '}
+                  <button type="button" className="link" onClick={() => hapusAsg(a.id)}>
+                    hapus
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SMART-TKA</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface": "#e2fffe",
+                        "on-secondary-container": "#6d4a00",
+                        "secondary": "#7f5700",
+                        "primary-fixed": "#a3f0ef",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#002020",
+                        "inverse-on-surface": "#cbfaf9",
+                        "on-error": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#87d4d3",
+                        "surface-bright": "#e2fffe",
+                        "on-background": "#002020",
+                        "surface-tint": "#0b6969",
+                        "on-tertiary-container": "#86f0b6",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#3f4948",
+                        "inverse-surface": "#023737",
+                        "on-primary-fixed": "#002020",
+                        "primary": "#005151",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#ffdeae",
+                        "on-secondary-fixed-variant": "#604100",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#87d4d3",
+                        "tertiary": "#005333",
+                        "outline-variant": "#bec9c8",
+                        "primary-container": "#0f6b6b",
+                        "surface-variant": "#bdebea",
+                        "surface-container-highest": "#bdebea",
+                        "surface-container-low": "#cefdfc",
+                        "on-tertiary-fixed-variant": "#005232",
+                        "secondary-container": "#feb62f",
+                        "tertiary-container": "#006e45",
+                        "secondary-fixed-dim": "#ffba3e",
+                        "surface-container": "#c8f7f6",
+                        "surface-container-high": "#c2f1f0",
+                        "tertiary-fixed-dim": "#71dba2",
+                        "surface-dim": "#b4e3e2",
+                        "on-tertiary-fixed": "#002112",
+                        "on-primary-fixed-variant": "#004f50",
+                        "outline": "#6f7979",
+                        "background": "#e2fffe",
+                        "on-primary-container": "#9be9e8",
+                        "on-error-container": "#93000a",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed": "#8ef8bd",
+                        "on-secondary-fixed": "#281900"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "gutter": "16px",
+                        "stack-sm": "8px",
+                        "section-gap": "40px",
+                        "container-padding": "24px",
+                        "stack-md": "16px",
+                        "unit": "4px"
+                    },
+                    fontFamily: {
+                        "body-md": ["Plus Jakarta Sans"],
+                        "timer-tabular": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "label-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "headline-sm": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"]
+                    },
+                    fontSize: {
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "timer-tabular": ["24px", { lineHeight: "32px", fontWeight: "700" }],
+                        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "label-lg": ["14px", { lineHeight: "20px", letterSpacing: "0.02em", fontWeight: "600" }],
+                        "display-lg": ["48px", { lineHeight: "60px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "headline-sm": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "label-md": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "700" }],
+                        "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }]
+                    }
+                }
+            }
+        };
+    </script>
+<style>
+        body {
+            background-color: #F7F4EE;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen font-body-md text-body-md text-on-surface">
+<!-- TopNavBar -->
+<nav class="bg-surface-container-lowest dark:bg-surface-container-lowest fixed top-0 left-0 w-full z-50 flex justify-between items-center px-gutter h-16 max-w-[1440px] mx-auto border-b border-outline-variant dark:border-outline-variant">
+<!-- Brand Logo -->
+<div class="flex items-center">
+<span class="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed">SMART-TKA</span>
+</div>
+<!-- Navigation Links (Desktop) -->
+<div class="hidden md:flex items-center gap-8 h-full">
+<!-- Active State on Dashboard for the empty chrome as a default starting point -->
+<a class="h-full flex items-center text-primary dark:text-primary-fixed border-b-2 border-primary dark:border-primary-fixed pb-1 text-label-lg font-label-lg" href="#">Dashboard</a>
+<a class="h-full flex items-center text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors text-label-lg font-label-lg" href="#">Latihan</a>
+<a class="h-full flex items-center text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors text-label-lg font-label-lg" href="#">Materi</a>
+<a class="h-full flex items-center text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors text-label-lg font-label-lg" href="#">Riwayat</a>
+<a class="h-full flex items-center text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors text-label-lg font-label-lg" href="#">Profil</a>
+</div>
+<!-- Trailing Actions & Avatar -->
+<div class="flex items-center gap-4">
+<button aria-label="Notifications" class="p-2 text-on-surface-variant hover:text-primary transition-colors focus:outline-none">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant bg-surface-variant cursor-pointer">
+<img alt="User Avatar" class="object-cover w-full h-full" data-alt="A clean, professional headshot avatar of a young Indonesian student in a bright, modern setting. The student appears focused and approachable, wearing simple, neat clothing suitable for a study environment. Soft, natural lighting highlights the face against a muted, out-of-focus background in light teal and white tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXSreWyoHtE5m0FayaleJ6ZA8DaTnENLp2dVt32JhOrMxNtCKFRmY7lo0YVoerkdRh2Aw41e54HQUB2vsOZhmJmrwG8hhTPbrNM153b7kqiKsJNgYEM0ax3Mrt0MkRpGDWjurHVUCfOhGc35q2AXSKn5aTaodoGwHaa3i1RrucM5Dmwajo8XC4QqjILKVEevHFf-NdF3C3O0vA1uCBsc9lCjtoI7KIOGoZlKJfzkTj2bvGPdfzibW9"/>
+</div>
+<!-- Mobile Menu Toggle (Visible only on md:hidden if we were to implement the drawer toggle) -->
+<button aria-label="Open Menu" class="md:hidden p-2 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-12 px-container-padding max-w-[1200px] mx-auto w-full flex-grow">
+<!-- The canvas is intentionally left blank for content as requested by the prompt 'empty chrome' -->
+</main>
+</body></html>

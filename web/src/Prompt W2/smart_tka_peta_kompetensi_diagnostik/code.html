@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SMART-TKA - Peta Kompetensi</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#cefdfc",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#3f4948",
+                        "inverse-surface": "#023737",
+                        "surface-bright": "#e2fffe",
+                        "on-tertiary-fixed": "#002112",
+                        "surface-container": "#c8f7f6",
+                        "on-tertiary-container": "#86f0b6",
+                        "outline-variant": "#bec9c8",
+                        "primary-container": "#0f6b6b",
+                        "on-primary-fixed": "#002020",
+                        "on-secondary-fixed-variant": "#604100",
+                        "outline": "#6f7979",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#8ef8bd",
+                        "surface-variant": "#bdebea",
+                        "on-secondary-container": "#6d4a00",
+                        "on-background": "#002020",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#281900",
+                        "on-primary": "#ffffff",
+                        "on-surface": "#002020",
+                        "primary-fixed": "#a3f0ef",
+                        "secondary-fixed-dim": "#ffba3e",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#005232",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#0b6969",
+                        "tertiary-fixed-dim": "#71dba2",
+                        "surface-container-highest": "#bdebea",
+                        "on-primary-fixed-variant": "#004f50",
+                        "tertiary-container": "#006e45",
+                        "primary-fixed-dim": "#87d4d3",
+                        "on-primary-container": "#9be9e8",
+                        "tertiary": "#005333",
+                        "surface-dim": "#b4e3e2",
+                        "secondary": "#7f5700",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#ffdeae",
+                        "inverse-primary": "#87d4d3",
+                        "background": "#e2fffe",
+                        "surface": "#e2fffe",
+                        "surface-container-high": "#c2f1f0",
+                        "primary": "#005151",
+                        "secondary-container": "#feb62f",
+                        "inverse-on-surface": "#cbfaf9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "section-gap": "40px",
+                        "container-padding": "24px",
+                        "stack-md": "16px",
+                        "stack-sm": "8px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-sm": ["Plus Jakarta Sans"],
+                        "timer-tabular": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "label-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "timer-tabular": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "60px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #F7F4EE; }
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-container-padding h-16 w-full fixed top-0 z-50 bg-surface border-b border-outline-variant dark:border-outline">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md text-primary dark:text-primary-fixed">SMART-TKA</span>
+</div>
+<nav class="hidden md:flex gap-8 h-full">
+<a class="h-full flex items-center text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-80" href="#"><span class="font-label-lg text-label-lg">Beranda</span></a>
+<a class="h-full flex items-center text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-80" href="#"><span class="font-label-lg text-label-lg">Latihan</span></a>
+<a class="h-full flex items-center text-primary font-bold border-b-2 border-primary hover:text-primary transition-colors cursor-pointer active:opacity-80" href="#"><span class="font-label-lg text-label-lg">Analisis</span></a>
+<a class="h-full flex items-center text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-80" href="#"><span class="font-label-lg text-label-lg">Profil</span></a>
+</nav>
+<div class="flex items-center gap-4 text-primary dark:text-primary-fixed">
+<button class="hover:text-primary transition-colors cursor-pointer active:opacity-80"><span class="material-symbols-outlined">help</span></button>
+<button class="hover:text-primary transition-colors cursor-pointer active:opacity-80"><span class="material-symbols-outlined">settings</span></button>
+<img class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A small circular avatar showing a student profile picture, minimalist professional style, light background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeq-ZRFWiIY-SgrY5lnFFM8xN-KUySoQCuQylOrZazJ_JJYAhhjD3_S4zPwh_YyMyGZ3gYIg2scL1Kelc-JDK7HsXWpHjSbB5nvN6-8m-0LoK5gy3k2JNkstj7FLtt5gsHdS89JhbvYfCb6WeU68elXfgJbGiZxhljvCR_XPmv2krLCNpMZNgf8DT3DA_gM0-aVmeRDikCX6WDWfsw-y8L2YpvAw1Ii-J43s1wVmICbqzPWew8rYY5"/>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-screen p-stack-md fixed left-0 top-0 border-r border-outline-variant bg-surface-container-low dark:bg-surface-container docked left-0 h-full w-64 pt-20">
+<div class="mb-section-gap flex flex-col gap-2 px-4">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="A circular avatar of a student looking focused and academic, warm light background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjOWFx5gY-Q8zj6b-Zmh5l-bwqfMBgV_pcwKAdYZh4Mdy2Bwapiy7TrNy2uX1ZV6_QjFI1c-XD8hJYU6hEI4A2J8Ik5Y2hhX__QWCHPa9WrGUk7uT9gLu-tx21_uca5ju4rLxZ7ITX_7tVyTD0lp8wszOe8Qm7dWu1lI_1iIX_RovMQpBThcEE8TNMAhU8T8ecgdQWzzVTJgYF6HwLC7Xj8hjpoc6CV_l9DUV0xs2ar5FznDZfk3Tb"/>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-primary">SMART-TKA</h2>
+<p class="font-label-md text-label-md text-on-surface-variant">Persiapan Akademik Mandiri</p>
+</div>
+</div>
+<button class="mt-4 bg-[#0F6B6B] text-white rounded-lg py-3 px-4 font-label-lg text-label-lg w-full text-center hover:bg-opacity-90 transition-opacity">Mulai Latihan Baru</button>
+</div>
+<nav class="flex flex-col gap-2 flex-grow">
+<a class="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-variant rounded-lg hover:bg-surface-variant transition-all scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-lg text-label-lg">Beranda</span>
+</a>
+<a class="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-variant rounded-lg hover:bg-surface-variant transition-all scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">edit_document</span>
+<span class="font-label-lg text-label-lg">Latihan Soal</span>
+</a>
+<a class="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-variant rounded-lg hover:bg-surface-variant transition-all scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-label-lg text-label-lg">Riwayat Ujian</span>
+</a>
+<a class="flex items-center gap-3 p-3 bg-primary-container text-on-primary-container rounded-lg font-bold hover:bg-surface-variant transition-all scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-label-lg text-label-lg">Analisis Skor</span>
+</a>
+<a class="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-variant rounded-lg hover:bg-surface-variant transition-all scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-lg text-label-lg">Profil</span>
+</a>
+</nav>
+<div class="mt-auto pt-4 border-t border-outline-variant">
+<a class="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-variant rounded-lg hover:bg-surface-variant transition-all scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-lg text-label-lg">Keluar</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="pt-20 md:ml-64 p-container-padding max-w-[1200px] mx-auto pb-24 md:pb-8">
+<header class="mb-section-gap flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+<div>
+<h1 class="font-display-lg text-display-lg text-primary mb-2">Peta Kompetensi</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Hasil ini adalah potret kemampuan saat ini, bukan hasil akhir.</p>
+</div>
+<div class="flex gap-4 w-full md:w-auto">
+<button class="flex-1 md:flex-none border border-[#E6E1D8] text-[#0F6B6B] bg-white rounded-[12px] px-6 py-4 font-label-lg text-label-lg text-center hover:bg-surface transition-colors whitespace-nowrap">Undang Orang Tua</button>
+<button class="flex-1 md:flex-none bg-[#0F6B6B] text-white rounded-[12px] px-6 py-4 font-label-lg text-label-lg text-center hover:bg-opacity-90 transition-opacity whitespace-nowrap">Mulai Latihan (15 Menit)</button>
+</div>
+</header>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Radar Chart Card -->
+<div class="lg:col-span-2 bg-white rounded-xl border border-[#E6E1D8] p-6">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-6">Analisis Subtes</h3>
+<div class="relative w-full aspect-square md:aspect-video flex justify-center items-center">
+<canvas id="radarChart"></canvas>
+</div>
+</div>
+<!-- Competency Breakdown -->
+<div class="flex flex-col gap-6">
+<div class="bg-white rounded-xl border border-[#E6E1D8] p-6">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">Penguasaan Topik</h3>
+<div class="flex flex-col gap-stack-md">
+<!-- Subject 1 -->
+<div class="flex flex-col gap-2 pb-4 border-b border-outline-variant">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md font-medium">Penalaran Umum</span>
+<span class="bg-[#DCFCE7] text-[#2F9E6B] px-3 py-1 rounded-full font-label-md text-label-md">Dikuasai</span>
+</div>
+<div class="w-full bg-[#E6E1D8] rounded-full h-2">
+<div class="bg-[#0F6B6B] h-2 rounded-full" style="width: 85%"></div>
+</div>
+</div>
+<!-- Subject 2 -->
+<div class="flex flex-col gap-2 pb-4 border-b border-outline-variant">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md font-medium">Pemahaman Bacaan</span>
+<span class="bg-[#FEF3C7] text-[#D97706] px-3 py-1 rounded-full font-label-md text-label-md">Sedang</span>
+</div>
+<div class="w-full bg-[#E6E1D8] rounded-full h-2">
+<div class="bg-[#0F6B6B] h-2 rounded-full" style="width: 55%"></div>
+</div>
+</div>
+<!-- Subject 3 -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md font-medium">Pengetahuan Kuantitatif</span>
+<span class="bg-[#FEE2E2] text-[#C2413B] px-3 py-1 rounded-full font-label-md text-label-md">Lemah</span>
+</div>
+<div class="w-full bg-[#E6E1D8] rounded-full h-2">
+<div class="bg-[#0F6B6B] h-2 rounded-full" style="width: 30%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Readiness Ring Card -->
+<div class="bg-white rounded-xl border border-[#E6E1D8] p-6 flex flex-col items-center justify-center text-center">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-6 w-full text-left">Indeks Kesiapan</h3>
+<div class="relative w-32 h-32 mb-4">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
+<path class="text-[#E6E1D8]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="100, 100" stroke-width="4"></path>
+<path class="text-[#0F6B6B]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="62, 100" stroke-width="4"></path>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="font-display-lg text-display-lg text-primary">62</span>
+</div>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant">Kesiapan latihan (bukan prediksi TKA resmi)</p>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 md:hidden bg-surface dark:bg-surface-container-highest docked full-width bottom-0 rounded-t-xl shadow-lg border-t border-outline-variant">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high active:scale-95 transition-transform p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-md text-label-md">Beranda</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high active:scale-95 transition-transform p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1">school</span>
+<span class="font-label-md text-label-md">Latihan</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 hover:bg-surface-container-high active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">insights</span>
+<span class="font-label-md text-label-md">Analisis</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high active:scale-95 transition-transform p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-md text-label-md">Profil</span>
+</a>
+</nav>
+<script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Penalaran Umum', 'Pemahaman Bacaan', 'Pengetahuan Kuantitatif', 'Penalaran Matematika', 'Literasi Bahasa'],
+                    datasets: [{
+                        label: 'Skor Latihan Saat Ini',
+                        data: [85, 55, 30, 65, 70],
+                        backgroundColor: 'rgba(15, 107, 107, 0.2)',
+                        borderColor: '#0F6B6B',
+                        pointBackgroundColor: '#0F6B6B',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#0F6B6B'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: '#E6E1D8' },
+                            grid: { color: '#E6E1D8' },
+                            pointLabels: {
+                                font: {
+                                    family: "'Plus Jakarta Sans', sans-serif",
+                                    size: 12
+                                },
+                                color: '#3f4948'
+                            },
+                            ticks: {
+                                display: false,
+                                min: 0,
+                                max: 100
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        });
+    </script>
+</body></html>

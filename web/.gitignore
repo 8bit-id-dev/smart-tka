@@ -1,0 +1,33 @@
+# Environment Variables (SANGAT PENTING)
+.env
+.env.*
+!.env.example
+web/.env
+web/.env.*
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies & Build Outputs
+node_modules/
+web/node_modules/
+dist/
+web/dist/
+dist-ssr/
+
+# Editor & OS Files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

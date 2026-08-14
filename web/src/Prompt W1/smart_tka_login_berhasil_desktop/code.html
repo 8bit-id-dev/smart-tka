@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SMART-TKA - Sukses Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-fixed-variant": "#004f50",
+                      "primary-fixed": "#a3f0ef",
+                      "on-secondary-fixed-variant": "#604100",
+                      "on-error": "#ffffff",
+                      "secondary-fixed": "#ffdeae",
+                      "background": "#e2fffe",
+                      "on-error-container": "#93000a",
+                      "primary-fixed-dim": "#87d4d3",
+                      "surface-dim": "#b4e3e2",
+                      "surface-container-highest": "#bdebea",
+                      "on-secondary-fixed": "#281900",
+                      "on-background": "#002020",
+                      "surface-container-lowest": "#ffffff",
+                      "primary": "#005151",
+                      "outline": "#6f7979",
+                      "surface-variant": "#bdebea",
+                      "on-tertiary-fixed-variant": "#005232",
+                      "on-surface-variant": "#3f4948",
+                      "on-secondary": "#ffffff",
+                      "primary-container": "#0f6b6b",
+                      "inverse-on-surface": "#cbfaf9",
+                      "error": "#ba1a1a",
+                      "on-surface": "#002020",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#005333",
+                      "surface-bright": "#e2fffe",
+                      "secondary": "#7f5700",
+                      "surface-container": "#c8f7f6",
+                      "inverse-surface": "#023737",
+                      "surface": "#e2fffe",
+                      "surface-container-low": "#cefdfc",
+                      "error-container": "#ffdad6",
+                      "on-tertiary-container": "#86f0b6",
+                      "tertiary-fixed-dim": "#71dba2",
+                      "on-primary": "#ffffff",
+                      "secondary-container": "#feb62f",
+                      "on-secondary-container": "#6d4a00",
+                      "on-tertiary-fixed": "#002112",
+                      "secondary-fixed-dim": "#ffba3e",
+                      "surface-container-high": "#c2f1f0",
+                      "tertiary-container": "#006e45",
+                      "tertiary-fixed": "#8ef8bd",
+                      "outline-variant": "#bec9c8",
+                      "surface-tint": "#0b6969",
+                      "on-primary-fixed": "#002020",
+                      "inverse-primary": "#87d4d3",
+                      "on-primary-container": "#9be9e8"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "unit": "4px",
+                      "stack-md": "16px",
+                      "section-gap": "40px",
+                      "container-padding": "24px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "timer-tabular": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "display-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-sm": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "timer-tabular": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "60px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        /* Level 0 Canvas - Custom Cream */
+        body {
+            background-color: #F7F4EE;
+        }
+        
+        .card-surface {
+            background-color: #FFFFFF;
+            border: 1px solid #E6E1D8;
+        }
+        
+        .interactive-shadow {
+            box-shadow: 0 4px 12px rgba(11, 61, 61, 0.08);
+        }
+        
+        .btn-primary {
+            background-color: #0F6B6B;
+            border-radius: 12px;
+            padding-top: 16px;
+            padding-bottom: 16px;
+            color: #ffffff;
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col items-center justify-center p-gutter md:p-container-padding">
+<!-- Success Banner -->
+<div class="fixed top-0 left-0 w-full bg-[#DCFCE7] border-b border-[#2F9E6B]/20 py-2 px-4 flex justify-center items-center gap-2 z-50 animate-[slideDown_0.3s_ease-out]">
+<span class="material-symbols-outlined text-[#2F9E6B] text-[18px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md text-[#2F9E6B]">Login berhasil. Selamat datang kembali.</span>
+</div>
+<!-- Main Content Container -->
+<main class="w-full max-w-[480px] mx-auto flex flex-col items-center">
+<!-- Logo Area -->
+<div class="mb-section-gap text-center">
+<h1 class="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">SMART-TKA</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Platform Persiapan Akademik Mandiri</p>
+</div>
+<!-- Profile Card -->
+<div class="card-surface rounded-xl w-full p-8 flex flex-col items-center text-center interactive-shadow relative overflow-hidden group">
+<!-- Avatar -->
+<div class="w-24 h-24 rounded-full bg-surface-variant flex items-center justify-center mb-stack-md relative z-10 border-4 border-surface-container-lowest">
+<span class="material-symbols-outlined text-[40px] text-primary" style="font-variation-settings: 'FILL' 1;">person</span>
+<!-- Status Dot -->
+<div class="absolute bottom-1 right-1 w-4 h-4 bg-[#2F9E6B] rounded-full border-2 border-surface-container-lowest"></div>
+</div>
+<!-- Profile Info -->
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-unit z-10">Budi Santoso</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-stack-md z-10">budi.santoso@sekolah.id</p>
+<!-- Role Chip -->
+<div class="bg-primary-container/10 px-4 py-1.5 rounded-full inline-flex items-center gap-1.5 mb-8 z-10 border border-primary-container/20">
+<span class="material-symbols-outlined text-[16px] text-primary-container" style="font-variation-settings: 'FILL' 1;">school</span>
+<span class="font-label-sm text-label-md text-primary-container font-semibold tracking-wide">Siswa SD</span>
+</div>
+<!-- Decorative background element -->
+<div class="absolute inset-0 opacity-[0.03] pointer-events-none group-hover:scale-105 transition-transform duration-700" style="background-image: radial-gradient(circle at center, #0F6B6B 2px, transparent 2px); background-size: 24px 24px;"></div>
+<!-- CTA -->
+<a class="btn-primary w-full flex items-center justify-center gap-2 font-label-lg text-label-lg z-10" href="#">
+<span>Lanjutkan ke beranda</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</a>
+</div>
+<!-- Security Note -->
+<p class="font-body-sm text-body-sm text-outline mt-stack-md text-center">
+            Sesi Anda diamankan dengan enkripsi standar industri.
+        </p>
+</main>
+<style>
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+    </style>
+</body></html>

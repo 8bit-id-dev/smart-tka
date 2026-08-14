@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SMART-TKA - Latihan Soal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#cefdfc",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#3f4948",
+                        "inverse-surface": "#023737",
+                        "surface-bright": "#e2fffe",
+                        "on-tertiary-fixed": "#002112",
+                        "surface-container": "#c8f7f6",
+                        "on-tertiary-container": "#86f0b6",
+                        "outline-variant": "#bec9c8",
+                        "primary-container": "#0f6b6b",
+                        "on-primary-fixed": "#002020",
+                        "on-secondary-fixed-variant": "#604100",
+                        "outline": "#6f7979",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#8ef8bd",
+                        "surface-variant": "#bdebea",
+                        "on-secondary-container": "#6d4a00",
+                        "on-background": "#002020",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#281900",
+                        "on-primary": "#ffffff",
+                        "on-surface": "#002020",
+                        "primary-fixed": "#a3f0ef",
+                        "secondary-fixed-dim": "#ffba3e",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#005232",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#0b6969",
+                        "tertiary-fixed-dim": "#71dba2",
+                        "surface-container-highest": "#bdebea",
+                        "on-primary-fixed-variant": "#004f50",
+                        "tertiary-container": "#006e45",
+                        "primary-fixed-dim": "#87d4d3",
+                        "on-primary-container": "#9be9e8",
+                        "tertiary": "#005333",
+                        "surface-dim": "#b4e3e2",
+                        "secondary": "#7f5700",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#ffdeae",
+                        "inverse-primary": "#87d4d3",
+                        "background": "#e2fffe",
+                        "surface": "#e2fffe",
+                        "surface-container-high": "#c2f1f0",
+                        "primary": "#005151",
+                        "secondary-container": "#feb62f",
+                        "inverse-on-surface": "#cbfaf9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "section-gap": "40px",
+                        "container-padding": "24px",
+                        "stack-md": "16px",
+                        "stack-sm": "8px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-sm": ["Plus Jakarta Sans"],
+                        "timer-tabular": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "label-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "timer-tabular": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "60px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #F7F4EE; }
+    </style>
+</head>
+<body class="font-body-md text-on-background min-h-screen">
+<!-- Top Navigation (Mobile) -->
+<header class="flex justify-between items-center px-container-padding h-16 w-full fixed top-0 z-50 bg-surface border-b border-outline-variant md:hidden">
+<div class="text-headline-md font-headline-md text-primary font-bold">SMART-TKA</div>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-primary cursor-pointer hover:opacity-80">help</span>
+<span class="material-symbols-outlined text-primary cursor-pointer hover:opacity-80">settings</span>
+</div>
+</header>
+<!-- Side Navigation (Desktop) -->
+<nav class="hidden md:flex flex-col h-screen p-stack-md fixed left-0 top-0 border-r border-outline-variant bg-surface-container-low w-64 z-50">
+<div class="mb-section-gap">
+<h1 class="font-headline-md text-headline-md text-primary font-bold">SMART-TKA</h1>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">Persiapan Akademik Mandiri</p>
+</div>
+<button class="bg-primary text-on-primary font-label-lg text-label-lg rounded-xl py-4 mb-section-gap w-full hover:bg-surface-tint transition-colors">
+            Mulai Latihan Baru
+        </button>
+<ul class="space-y-stack-sm flex-1">
+<li>
+<a class="flex items-center gap-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-all font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">home</span>
+                    Beranda
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 p-3 rounded-lg bg-primary-container text-on-primary-container font-bold font-label-lg text-label-lg shadow-sm" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">edit_document</span>
+                    Latihan Soal
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-all font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">history</span>
+                    Riwayat Ujian
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-all font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">query_stats</span>
+                    Analisis Skor
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-all font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">person</span>
+                    Profil
+                </a>
+</li>
+</ul>
+<div class="mt-auto border-t border-outline-variant pt-4">
+<a class="flex items-center gap-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-all font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">logout</span>
+                Keluar
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="md:ml-64 pt-20 md:pt-8 px-container-padding pb-24 md:pb-8 min-h-screen flex flex-col md:flex-row gap-gutter max-w-[1200px] mx-auto">
+<!-- Left Panel: Stimulus (Sticky on Desktop) -->
+<div class="w-full md:w-5/12 lg:w-1/2 md:sticky md:top-8 h-fit">
+<div class="bg-surface rounded-xl p-stack-md border border-[#E6E1D8]">
+<div class="flex justify-between items-center mb-4 border-b border-outline-variant pb-2">
+<h2 class="font-headline-sm text-headline-sm text-primary">Teks Referensi</h2>
+<span class="bg-surface-container-high text-on-surface-variant px-3 py-1 rounded-full font-label-md text-label-md">Bacaan 1 dari 3</span>
+</div>
+<div class="prose max-w-none text-on-background font-body-md text-body-md space-y-4">
+<p>Perkembangan teknologi kecerdasan buatan (AI) telah mengubah lanskap pendidikan secara signifikan. Banyak institusi kini mulai mengintegrasikan sistem tutor cerdas yang dapat beradaptasi dengan tingkat pemahaman masing-masing siswa. Sistem ini menggunakan algoritma pembelajaran mesin untuk menganalisis pola jawaban siswa dan mengidentifikasi kelemahan spesifik.</p>
+<p>Namun, implementasi teknologi ini tidak lepas dari tantangan. Kesenjangan akses infrastruktur digital antara daerah perkotaan dan pedesaan masih menjadi masalah utama. Selain itu, ada kekhawatiran mengenai privasi data siswa yang dikumpulkan oleh platform-platform ini. Para ahli pendidikan berpendapat bahwa meskipun AI dapat menjadi alat bantu yang kuat, peran guru manusia dalam memberikan dukungan emosional dan motivasi tidak dapat tergantikan.</p>
+<p>Dalam konteks persiapan ujian, platform adaptif terbukti meningkatkan efisiensi belajar dengan memfokuskan latihan pada materi yang belum dikuasai siswa, daripada mengulang konsep yang sudah dipahami.</p>
+</div>
+</div>
+</div>
+<!-- Right Panel: Questions -->
+<div class="w-full md:w-7/12 lg:w-1/2 flex flex-col gap-stack-md">
+<!-- Locked Question (Answered) -->
+<div class="bg-surface rounded-xl p-stack-md border border-[#E6E1D8] shadow-sm relative overflow-hidden opacity-90">
+<!-- Status Badge -->
+<div class="absolute top-4 right-4 flex items-center gap-1 bg-surface-container-high text-on-surface-variant px-2 py-1 rounded-full font-label-md text-label-md">
+<span class="material-symbols-outlined text-sm">lock</span> Selesai
+                </div>
+<h3 class="font-headline-sm text-headline-sm text-primary mb-4 pr-24">Soal 1</h3>
+<p class="font-body-md text-body-md mb-6">Berdasarkan teks di atas, apa tantangan utama dalam implementasi AI di bidang pendidikan?</p>
+<!-- Options (Locked state) -->
+<div class="space-y-3">
+<div class="flex items-center p-3 rounded-lg border border-[#E6E1D8] bg-surface-container-lowest opacity-60">
+<div class="w-6 h-6 rounded-full border border-outline flex items-center justify-center mr-3 font-label-md text-label-md">A</div>
+<span class="font-body-md text-body-md">Kurangnya minat siswa terhadap teknologi baru.</span>
+</div>
+<div class="flex items-center p-3 rounded-lg border-2 border-[#2F9E6B] bg-[#DCFCE7] relative">
+<div class="w-6 h-6 rounded-full bg-[#2F9E6B] text-white flex items-center justify-center mr-3 font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+<span class="font-body-md text-body-md text-[#2F9E6B] font-medium">Kesenjangan akses infrastruktur digital dan masalah privasi data.</span>
+<div class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#2F9E6B]">Jawaban Kamu Benar</div>
+</div>
+<div class="flex items-center p-3 rounded-lg border border-[#E6E1D8] bg-surface-container-lowest opacity-60">
+<div class="w-6 h-6 rounded-full border border-outline flex items-center justify-center mr-3 font-label-md text-label-md">C</div>
+<span class="font-body-md text-body-md">Biaya pengembangan sistem yang terlalu tinggi.</span>
+</div>
+</div>
+<!-- Discussion/Explanation -->
+<div class="mt-6 p-4 bg-surface-container-low rounded-lg border border-outline-variant">
+<h4 class="font-label-lg text-label-lg text-primary flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-[18px]">lightbulb</span> Pembahasan
+                    </h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                        Pada paragraf kedua, disebutkan secara eksplisit bahwa: "Kesenjangan akses infrastruktur digital antara daerah perkotaan dan pedesaan masih menjadi masalah utama. Selain itu, ada kekhawatiran mengenai privasi data siswa..." Oleh karena itu, opsi B adalah jawaban yang paling tepat sesuai dengan teks stimulus.
+                    </p>
+</div>
+</div>
+<!-- Active Question -->
+<div class="bg-surface rounded-xl p-stack-md border-2 border-primary-container shadow-md relative">
+<div class="absolute top-0 left-0 w-full h-1 bg-primary-container rounded-t-xl"></div>
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-sm text-headline-sm text-primary">Soal 2</h3>
+<div class="flex items-center gap-2 bg-surface-variant px-3 py-1 rounded-full">
+<span class="material-symbols-outlined text-primary text-sm">schedule</span>
+<span class="font-timer-tabular text-timer-tabular text-primary text-sm">01:45</span>
+</div>
+</div>
+<p class="font-body-md text-body-md mb-6 text-on-background font-medium">Manakah pernyataan berikut yang PALING SESUAI menggambarkan opini penulis mengenai peran guru di era AI?</p>
+<!-- Interactive Options -->
+<div class="space-y-3 cursor-pointer">
+<label class="flex items-start p-4 rounded-lg border border-[#E6E1D8] hover:bg-surface-container-low hover:border-outline transition-all cursor-pointer group">
+<input class="mt-1 mr-4 text-primary focus:ring-primary border-outline-variant" name="q2" type="radio"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-background">Peran guru akan sepenuhnya digantikan oleh sistem tutor cerdas yang lebih efisien.</span>
+</label>
+<label class="flex items-start p-4 rounded-lg border border-[#E6E1D8] hover:bg-surface-container-low hover:border-outline transition-all cursor-pointer group">
+<input class="mt-1 mr-4 text-primary focus:ring-primary border-outline-variant" name="q2" type="radio"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-background">Guru hanya diperlukan untuk menangani masalah administrasi pendidikan.</span>
+</label>
+<label class="flex items-start p-4 rounded-lg border border-[#E6E1D8] hover:bg-surface-container-low hover:border-outline transition-all cursor-pointer group">
+<input class="mt-1 mr-4 text-primary focus:ring-primary border-outline-variant" name="q2" type="radio"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-background">Peran guru dalam memberikan dukungan emosional dan motivasi tetap krusial dan tak tergantikan.</span>
+</label>
+<label class="flex items-start p-4 rounded-lg border border-[#E6E1D8] hover:bg-surface-container-low hover:border-outline transition-all cursor-pointer group">
+<input class="mt-1 mr-4 text-primary focus:ring-primary border-outline-variant" name="q2" type="radio"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-background">Guru harus menjadi ahli pemrograman AI agar dapat mengajar dengan efektif.</span>
+</label>
+</div>
+<div class="mt-8 flex justify-end gap-3">
+<button class="px-6 py-3 rounded-lg border border-[#E6E1D8] text-primary font-label-lg text-label-lg hover:bg-surface-container-low transition-colors">Lewati Sementara</button>
+<button class="px-6 py-3 rounded-lg bg-[#0F6B6B] text-white font-label-lg text-label-lg hover:bg-opacity-90 transition-opacity flex items-center gap-2">
+                        Simpan &amp; Lanjut <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Future/Locked Question (Preview) -->
+<div class="bg-surface rounded-xl p-stack-md border border-[#E6E1D8] opacity-50 relative pointer-events-none">
+<div class="absolute inset-0 bg-surface/40 z-10 flex items-center justify-center backdrop-blur-[1px]">
+<div class="bg-surface px-4 py-2 rounded-full shadow-sm flex items-center gap-2 text-on-surface-variant font-label-md">
+<span class="material-symbols-outlined text-sm">lock</span> Selesaikan soal sebelumnya
+                     </div>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant mb-4">Soal 3</h3>
+<div class="h-4 bg-outline-variant/30 rounded w-3/4 mb-2"></div>
+<div class="h-4 bg-outline-variant/30 rounded w-1/2 mb-6"></div>
+<div class="space-y-3">
+<div class="h-12 bg-outline-variant/20 rounded-lg"></div>
+<div class="h-12 bg-outline-variant/20 rounded-lg"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Mobile) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 md:hidden bg-surface dark:bg-surface-container-highest shadow-lg border-t border-outline-variant rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-transform active:scale-95 p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md mt-1">Beranda</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 transition-transform active:scale-95 shadow-sm" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">school</span>
+<span class="font-label-md text-label-md mt-1 font-bold">Latihan</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-transform active:scale-95 p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-md text-label-md mt-1">Analisis</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-transform active:scale-95 p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md mt-1">Profil</span>
+</a>
+</nav>
+</body></html>
