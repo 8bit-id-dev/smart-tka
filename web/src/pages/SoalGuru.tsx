@@ -16,6 +16,7 @@ type ItemRow = {
   mapel: string;
   materi?: string | null;
   jenjang: string;
+  difficulty?: number;
   stem: string;
   stimulus: string | null;
   choices: unknown;
@@ -38,6 +39,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [tipe, setTipe] = useState<Tipe>('pg');
+  const [difficulty, setDifficulty] = useState<number>(2); // 1: Mudah, 2: Sedang, 3: Sulit / HOTS
   const [mapel, setMapel] = useState('');
   const [materi, setMateri] = useState('');
   const [mapelId, setMapelId] = useState('');
@@ -59,7 +61,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   async function load() {
     const { data, error } = await insforge.database
       .from('items')
-      .select('id, item_type, mapel, materi, jenjang, stem, stimulus, choices, correct_key, rationale, status, created_at')
+      .select('id, item_type, mapel, materi, jenjang, difficulty, stem, stimulus, choices, correct_key, rationale, status, created_at')
       .eq('author_id', profile.id)
       .neq('status', 'retired')
       .order('created_at', { ascending: false });
@@ -74,6 +76,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   function resetForm() {
     setEditingId(null);
     setDrafAi(false);
+    setDifficulty(2);
     setStem('');
     setRationale('');
     setOpsi(['', '', '', '', '']);
@@ -91,6 +94,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   function mulaiEdit(item: ItemRow) {
     setEditingId(item.id);
     setJenjang(item.jenjang || profile.jenjang || 'sma');
+    setDifficulty(item.difficulty || 2);
     setMapel(item.mapel || '');
     setMateri(item.materi || '');
     const t = (item.item_type as Tipe) || 'pg';
@@ -283,6 +287,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
           jenjang,
           mapel,
           materi: materi || null,
+          difficulty,
           item_type,
           stem: stem.trim(),
           choices,
@@ -299,13 +304,13 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
         jenjang,
         mapel,
         materi: materi || null,
+        difficulty,
         item_type,
         stem: stem.trim(),
         choices,
         correct_key,
         rationale: rationale.trim(),
         status: 'published',
-        difficulty: 2,
       });
       errorObj = error;
     }
@@ -358,6 +363,18 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
               <option value="smp">smp</option>
               <option value="sma">sma</option>
               <option value="smk">smk</option>
+            </select>
+          </label>
+          <label>
+            Tingkat Kesulitan
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(Number(e.target.value))}
+              className="sel-input"
+            >
+              <option value={1}>Mudah (Tingkat Dasar)</option>
+              <option value={2}>Sedang (Tingkat Menengah)</option>
+              <option value={3}>Sulit / HOTS (High Order Thinking)</option>
             </select>
           </label>
           <KurikulumCrud
@@ -556,44 +573,56 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
         <h2>Soal Saya ({list.length})</h2>
         {list.length === 0 && <p className="type-lab">Belum ada. Simpan soal pertama di atas.</p>}
 
-        {list.map((r) => (
-          <article key={r.id} className="card" style={{ marginBottom: 12, boxShadow: 'none' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <span className="chip chip-sedang">{r.item_type}</span>{' '}
-                <strong>{r.mapel}</strong> {r.materi ? `· ${r.materi}` : ''}
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  style={{ padding: '4px 8px', fontSize: 13 }}
-                  onClick={() => mulaiEdit(r)}
-                >
-                  Sunting
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  style={{ padding: '4px 8px', fontSize: 13, color: '#dc2626' }}
-                  onClick={() => void hapusSoal(r.id)}
-                >
-                  Hapus
-                </button>
-              </div>
-            </div>
+        {list.map((r) => {
+          const diffLabel = r.difficulty === 1 ? 'Mudah' : r.difficulty === 3 ? 'Sulit (HOTS)' : 'Sedang';
+          const diffBg = r.difficulty === 1 ? '#e6f4ea' : r.difficulty === 3 ? '#fce8e6' : '#fef7e0';
+          const diffColor = r.difficulty === 1 ? '#137333' : r.difficulty === 3 ? '#c5221f' : '#b06000';
 
-            <p style={{ margin: '8px 0 4px', fontWeight: 500 }}>
-              <MathText text={r.stem} />
-            </p>
+          return (
+            <article key={r.id} className="card" style={{ marginBottom: 12, boxShadow: 'none' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span className="chip chip-sedang">{r.item_type}</span>
+                  <span
+                    className="chip"
+                    style={{ backgroundColor: diffBg, color: diffColor, fontSize: 11, fontWeight: 600 }}
+                  >
+                    {diffLabel}
+                  </span>
+                  <strong>{r.mapel}</strong> {r.materi ? `· ${r.materi}` : ''}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ padding: '4px 8px', fontSize: 13 }}
+                    onClick={() => mulaiEdit(r)}
+                  >
+                    Sunting
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ padding: '4px 8px', fontSize: 13, color: '#dc2626' }}
+                    onClick={() => void hapusSoal(r.id)}
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </div>
 
-            {r.rationale && (
-              <p className="type-lab" style={{ margin: 0 }}>
-                Pembahasan: <MathText text={r.rationale} />
+              <p style={{ margin: '8px 0 4px', fontWeight: 500 }}>
+                <MathText text={r.stem} />
               </p>
-            )}
-          </article>
-        ))}
+
+              {r.rationale && (
+                <p className="type-lab" style={{ margin: 0 }}>
+                  Pembahasan: <MathText text={r.rationale} />
+                </p>
+              )}
+            </article>
+          );
+        })}
       </section>
     </div>
   );
