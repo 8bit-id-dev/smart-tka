@@ -54,6 +54,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
       .from('items')
       .select('id, item_type, mapel, materi, jenjang, stem, choices, correct_key, rationale, status, created_at')
       .eq('author_id', profile.id)
+      .neq('status', 'retired')
       .order('created_at', { ascending: false });
     if (error) setErr(error.message);
     else setList((data || []) as ItemRow[]);
@@ -131,12 +132,28 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     setErr('');
     setOk('');
     setBusy(true);
+
+    // Optimistically remove from UI list immediately
+    setList((prev) => prev.filter((item) => item.id !== id));
+
+    // Try hard delete first
     const { error } = await insforge.database.from('items').delete().eq('id', id);
-    setBusy(false);
     if (error) {
-      setErr('Gagal menghapus soal: ' + error.message);
-      return;
+      // If hard delete fails (e.g. FK constraint because item is linked to a package or attempt), perform soft delete (status = 'retired')
+      const { error: softErr } = await insforge.database
+        .from('items')
+        .update({ status: 'retired' })
+        .eq('id', id);
+
+      if (softErr) {
+        setErr('Gagal menghapus soal: ' + softErr.message);
+        await load(); // restore list if soft delete also fails
+        setBusy(false);
+        return;
+      }
     }
+
+    setBusy(false);
     setOk('Soal berhasil dihapus.');
     if (editingId === id) resetForm();
     await load();
