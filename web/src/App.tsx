@@ -140,6 +140,22 @@ export default function App() {
     );
   }
 
+  if (profile.is_active === false) {
+    return (
+      <div className="auth-page">
+        <main className="auth-card unlinked" style={{ borderLeft: '4px solid #dc2626' }}>
+          <h1 style={{ color: '#dc2626' }}>Akun Dinonaktifkan</h1>
+          <p className="auth-lead">
+            Akun Anda telah dinonaktifkan oleh administrator sekolah. Silakan hubungi admin sekolah Anda untuk mengaktifkan kembali akses akun ini.
+          </p>
+          <button className="btn" type="button" onClick={onSignOut} style={{ marginTop: 20 }}>
+            Keluar (Sign Out)
+          </button>
+        </main>
+      </div>
+    );
+  }
+
   if (needOnboard) {
     return (
       <Onboarding

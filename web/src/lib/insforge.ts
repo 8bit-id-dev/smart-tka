@@ -25,6 +25,7 @@ export type AppProfile = {
   role: string;
   school_id: string | null;
   jenjang: string | null;
+  is_active?: boolean | null;
 };
 
 export async function getMyProfile(): Promise<{
@@ -43,7 +44,7 @@ export async function getMyProfile(): Promise<{
 
   const { data, error } = await insforge.database
     .from('profiles')
-    .select('id, user_id, full_name, role, school_id, jenjang')
+    .select('id, user_id, full_name, role, school_id, jenjang, is_active')
     .eq('user_id', user.id);
 
   if (error) {

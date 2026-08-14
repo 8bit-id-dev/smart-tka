@@ -45,7 +45,7 @@ export function Admin({ me }: { me: AppProfile }) {
 
   async function load(opts?: { keepMessages?: boolean }) {
     if (!opts?.keepMessages) setErr('');
-    const u = await insforge.database.from('profiles').select('id, user_id, full_name, role, school_id, jenjang');
+    const u = await insforge.database.from('profiles').select('id, user_id, full_name, role, school_id, jenjang, is_active');
     if (u.error && !opts?.keepMessages) setErr(u.error.message);
     else setUsers((u.data || []) as UserRow[]);
 
@@ -61,15 +61,47 @@ export function Admin({ me }: { me: AppProfile }) {
     if (!m.error) setAnggota((m.data || []) as CS[]);
   }
 
+  async function toggleActiveUser(id: string, currentIsActive: boolean) {
+    setErr('');
+    setOk('');
+    const nextState = !currentIsActive;
+    const { error } = await insforge.database
+      .from('profiles')
+      .update({ is_active: nextState })
+      .eq('id', id);
+    if (error) {
+      setErr('Gagal mengubah status user: ' + error.message);
+    } else {
+      setOk(`User berhasil di-${nextState ? 'aktifkan' : 'nonaktifkan'}.`);
+      await load({ keepMessages: true });
+    }
+  }
+
   function urutNama(a: UserRow, b: UserRow) {
     return (a.full_name || '').localeCompare(b.full_name || '', 'id', { sensitivity: 'base' });
   }
 
   function barisUser(u: UserRow) {
+    const active = u.is_active !== false;
+    const isMe = u.id === me.id;
+
     return (
       <div key={u.id} className="profil-list" style={{ borderBottom: '1px solid var(--card-border)' }}>
         <div>
-          <dt>{u.full_name || '—'}</dt>
+          <dt style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>{u.full_name || '—'}</span>
+            <span
+              className="chip"
+              style={{
+                fontSize: 11,
+                padding: '2px 6px',
+                backgroundColor: active ? '#e6f4ea' : '#fce8e6',
+                color: active ? '#137333' : '#c5221f',
+              }}
+            >
+              {active ? 'Aktif' : 'Nonaktif'}
+            </span>
+          </dt>
           <dd className="mono">{u.user_id}</dd>
         </div>
         <div>
@@ -84,13 +116,23 @@ export function Admin({ me }: { me: AppProfile }) {
             </select>
           </dd>
         </div>
-        <div>
-          <dt></dt>
-          <dd>
-            <button type="button" className="btn-ghost btn" style={{ maxWidth: 160 }} onClick={() => hapusUser(u.id)}>
-              Hapus profil
-            </button>
-          </dd>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn-ghost btn"
+            disabled={isMe}
+            style={{
+              maxWidth: 130,
+              fontSize: 13,
+              color: active ? '#dc2626' : '#2f9e6b',
+            }}
+            onClick={() => void toggleActiveUser(u.id, active)}
+          >
+            {active ? 'Nonaktifkan' : 'Aktifkan'}
+          </button>
+          <button type="button" className="btn-ghost btn" style={{ maxWidth: 130, fontSize: 13 }} onClick={() => hapusUser(u.id)}>
+            Hapus
+          </button>
         </div>
       </div>
     );
