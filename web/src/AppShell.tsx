@@ -37,7 +37,7 @@ export function AppShell({
     if (['guru', 'admin', 'konten'].includes(role)) {
       items.push({ id: 'soal', label: 'Soal' }, { id: 'paket', label: 'Paket' }, { id: 'kelas', label: 'Kelas' }, { id: 'pengumuman', label: 'Pengumuman' }, { id: 'laporan', label: 'Laporan' });
     }
-    if (role === 'kepsek') items.push({ id: 'laporan', label: 'Laporan' });
+    if (role === 'kepsek' || role === 'siswa') items.push({ id: 'laporan', label: 'Laporan' });
     if (['admin', 'kepsek'].includes(role)) items.push({ id: 'admin', label: 'Admin' });
     items.push({ id: 'profil', label: 'Profil' });
   }
