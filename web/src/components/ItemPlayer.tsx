@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MathText } from './MathText';
 import { LETTERS, optionsOf, parseKey, parseMatchPairs, sameSet, type DbItem } from '../lib/soal';
+import { evalUraianAI, type KoreksiUraianResult } from '../lib/aiSoal';
 
 type Props = {
   item: DbItem;
@@ -22,10 +23,34 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
   const [matchAns, setMatchAns] = useState<Record<number, string>>({});
   const [essayAns, setEssayAns] = useState<string>('');
 
+  // AI essay grading state
+  const [aiEval, setAiEval] = useState<KoreksiUraianResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiErr, setAiErr] = useState('');
+
   const opts = optionsOf(item);
   const key = parseKey(item);
   const matchPairs = parseMatchPairs(item);
   const reveal = showBahas && locked && !hideKeys;
+
+  async function mintaKoreksiAI() {
+    if (!essayAns.trim()) return;
+    setAiLoading(true);
+    setAiErr('');
+    const res = await evalUraianAI({
+      stem: item.stem,
+      jawabanSiswa: essayAns,
+      kunciAcuan: typeof key === 'string' ? key : '',
+      pembahasan: item.rationale,
+    });
+    setAiLoading(false);
+    if ('error' in res) {
+      setAiErr(res.error);
+    } else {
+      setAiEval(res);
+      onUpdate?.({ answer: essayAns, correct: res.isCorrect });
+    }
+  }
 
   function correct(): boolean {
     if (item.item_type === 'pg' || item.item_type === 'single') return pg === key;
@@ -43,6 +68,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
     }
 
     if (item.item_type === 'uraian') {
+      if (aiEval) return aiEval.isCorrect;
       if (!essayAns.trim()) return false;
       if (typeof key === 'string' && key.trim()) {
         return essayAns.trim().toLowerCase().includes(key.trim().toLowerCase());
@@ -83,7 +109,9 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
         });
       ans = JSON.stringify(nextMatch);
     } else if (item.item_type === 'uraian') {
-      ok = !nextEssay.trim()
+      ok = aiEval
+        ? aiEval.isCorrect
+        : !nextEssay.trim()
         ? false
         : typeof key === 'string' && key.trim()
         ? nextEssay.trim().toLowerCase().includes(key.trim().toLowerCase())
@@ -260,6 +288,42 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
               pushUpdate(pg, kom, bs, matchAns, val);
             }}
           />
+
+          <div style={{ marginTop: 10 }}>
+            <button
+              className="btn btn-ghost"
+              type="button"
+              disabled={aiLoading || !essayAns.trim()}
+              onClick={() => void mintaKoreksiAI()}
+            >
+              {aiLoading ? 'AI sedang menilai & mengoreksi…' : '✨ Koreksi & Beri Nilai dengan AI'}
+            </button>
+          </div>
+
+          {aiErr && <p className="auth-msg" style={{ marginTop: 8 }}>{aiErr}</p>}
+
+          {aiEval && (
+            <div
+              className="card"
+              style={{
+                marginTop: 12,
+                boxShadow: 'none',
+                borderLeft: `4px solid ${aiEval.isCorrect ? '#2f9e6b' : '#d97706'}`,
+                backgroundColor: aiEval.isCorrect ? '#f0fdf4' : '#fffbeb',
+                padding: '12px 16px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong style={{ color: aiEval.isCorrect ? '#2f9e6b' : '#d97706', fontSize: 16 }}>
+                  Penilaian AI: {aiEval.skor} / 100
+                </strong>
+                <span className="chip chip-sedang">{aiEval.isCorrect ? 'Memenuhi' : 'Perlu Diperbaiki'}</span>
+              </div>
+              <p className="type-lab" style={{ marginTop: 6, marginBottom: 0, color: 'var(--text, #1c1917)' }}>
+                {aiEval.feedback}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

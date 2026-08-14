@@ -11,6 +11,12 @@ export type DrafSoal = {
   pembahasan: string;
 };
 
+export type KoreksiUraianResult = {
+  skor: number;
+  feedback: string;
+  isCorrect: boolean;
+};
+
 function normalizeBase(raw: string | undefined): string {
   if (!raw) return '';
   return raw.trim().replace(/\/+$/, '').replace(/\/api$/i, '');
@@ -138,6 +144,80 @@ Untuk pg, kunci array 1 huruf. Untuk pg_kompleks, kunci 2-3 huruf. Untuk pernyat
       pernyataan: pernyataan.slice(0, 3),
       kunci_bs,
       pembahasan: String(parsed.pembahasan || '').trim(),
+    };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function evalUraianAI(input: {
+  stem: string;
+  jawabanSiswa: string;
+  kunciAcuan?: string;
+  pembahasan?: string;
+}): Promise<KoreksiUraianResult | { error: string }> {
+  const base = normalizeBase(import.meta.env.VITE_INSFORGE_URL as string | undefined);
+  if (!base) return { error: 'VITE_INSFORGE_URL belum diisi.' };
+  const token = await bearer();
+  if (!token) return { error: 'Tidak ada token AI. Cek anon key / login.' };
+
+  const prompt = `Anda adalah penilai dan korektor AI untuk ujian sekolah / TKA.
+Tugas Anda adalah menilai jawaban uraian/isian siswa secara bijak berdasarkan kelengkapan konsep dan kebenaran argumen.
+
+Soal / Pertanyaan: ${input.stem}
+Kunci Acuan Guru: ${input.kunciAcuan || 'Sesuai dengan pembahasan'}
+Pembahasan Guru: ${input.pembahasan || '-'}
+Jawaban Siswa: ${input.jawabanSiswa}
+
+Berikan penilaian dari 0 sampai 100 dan umpan balik (feedback) singkat (2-4 kalimat) yang suportif, menjelaskan poin mana yang sudah benar dan poin mana yang perlu dilengkapi.
+
+Balas HANYA JSON valid, tanpa markdown:
+{
+  "skor": 85,
+  "feedback": "Jawaban Anda sudah menjelaskan konsep utama dengan benar. Namun perlu ditambahkan penjelasan mengenai..."
+}`;
+
+  try {
+    const res = await fetch(`${base}/api/ai/chat/completion`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        temperature: 0.3,
+        maxTokens: 500,
+        systemPrompt: 'Anda adalah penilai ujian uraian otomatis yang adil, sopan, dan konstruktif. Hanya balaskan JSON.',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    const json = (await res.json().catch(() => ({}))) as {
+      text?: string;
+      message?: string;
+      error?: string | { message?: string };
+      choices?: { message?: { content?: string } }[];
+    };
+
+    if (!res.ok) {
+      const msg =
+        typeof json.error === 'string' ? json.error : json.error?.message || json.message || `HTTP ${res.status}`;
+      return { error: msg };
+    }
+
+    const text = json.text || json.choices?.[0]?.message?.content || '';
+    if (!text) return { error: 'AI tidak mengirim teks hasil penilaian.' };
+
+    const parsed = extractJson(text) as { skor?: number; feedback?: string };
+    const skorRaw = Number(parsed.skor);
+    const skor = isNaN(skorRaw) ? 75 : Math.min(100, Math.max(0, Math.round(skorRaw)));
+    const feedback = String(parsed.feedback || 'Jawaban telah dievaluasi oleh AI.').trim();
+
+    return {
+      skor,
+      feedback,
+      isCorrect: skor >= 70,
     };
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
