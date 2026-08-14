@@ -9,23 +9,31 @@ import type { MapelRow, MateriRow } from '../lib/kurikulum';
 const LETTERS = ['A', 'B', 'C', 'D', 'E'] as const;
 type Tipe = 'pg' | 'pg_kompleks' | 'pernyataan_bs';
 
-type Row = {
+type ItemRow = {
   id: string;
   item_type: string;
   mapel: string;
   materi?: string | null;
+  jenjang: string;
   stem: string;
+  choices: unknown;
+  correct_key: string;
+  rationale: string;
   status: string;
+  created_at?: string;
 };
 
 export function SoalGuru({ profile }: { profile: AppProfile }) {
-  const [list, setList] = useState<Row[]>([]);
+  const [list, setList] = useState<ItemRow[]>([]);
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const [drafAi, setDrafAi] = useState(false);
   const [catatanAi, setCatatanAi] = useState('');
+
+  // Editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [tipe, setTipe] = useState<Tipe>('pg');
   const [mapel, setMapel] = useState('');
@@ -44,15 +52,95 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   async function load() {
     const { data, error } = await insforge.database
       .from('items')
-      .select('id, item_type, mapel, materi, stem, status')
-      .eq('author_id', profile.id);
+      .select('id, item_type, mapel, materi, jenjang, stem, choices, correct_key, rationale, status, created_at')
+      .eq('author_id', profile.id)
+      .order('created_at', { ascending: false });
     if (error) setErr(error.message);
-    else setList((data || []) as Row[]);
+    else setList((data || []) as ItemRow[]);
   }
 
   useEffect(() => {
     void load();
   }, [profile.id]);
+
+  function resetForm() {
+    setEditingId(null);
+    setDrafAi(false);
+    setStem('');
+    setRationale('');
+    setOpsi(['', '', '', '', '']);
+    setKunciPg('C');
+    setKunciKom([]);
+    setPernyataan(['', '', '']);
+    setKunciBs(['B', 'S', 'B']);
+    setErr('');
+    setOk('');
+  }
+
+  function mulaiEdit(item: ItemRow) {
+    setEditingId(item.id);
+    setJenjang(item.jenjang || profile.jenjang || 'sma');
+    setMapel(item.mapel || '');
+    setMateri(item.materi || '');
+    const t = (item.item_type as Tipe) || 'pg';
+    setTipe(t);
+    setStem(item.stem || '');
+    setRationale(item.rationale || '');
+
+    if (t === 'pernyataan_bs') {
+      if (Array.isArray(item.choices)) {
+        setPernyataan(item.choices.map(String));
+      } else {
+        setPernyataan(['', '', '']);
+      }
+      try {
+        const parsed = JSON.parse(item.correct_key);
+        if (Array.isArray(parsed)) setKunciBs(parsed);
+      } catch {
+        setKunciBs(['B', 'S', 'B']);
+      }
+    } else {
+      if (Array.isArray(item.choices)) {
+        const arr = item.choices.map(String);
+        while (arr.length < 5) arr.push('');
+        setOpsi(arr.slice(0, 5));
+      } else {
+        setOpsi(['', '', '', '', '']);
+      }
+
+      if (t === 'pg') {
+        setKunciPg(item.correct_key || 'A');
+      } else if (t === 'pg_kompleks') {
+        try {
+          const parsed = JSON.parse(item.correct_key);
+          if (Array.isArray(parsed)) setKunciKom(parsed);
+        } catch {
+          setKunciKom([]);
+        }
+      }
+    }
+
+    setOk('Mode sunting soal. Ubah data lalu klik "Simpan Perubahan".');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function hapusSoal(id: string) {
+    if (!window.confirm('Yakin ingin menghapus soal ini dari bank soal Anda?')) {
+      return;
+    }
+    setErr('');
+    setOk('');
+    setBusy(true);
+    const { error } = await insforge.database.from('items').delete().eq('id', id);
+    setBusy(false);
+    if (error) {
+      setErr('Gagal menghapus soal: ' + error.message);
+      return;
+    }
+    setOk('Soal berhasil dihapus.');
+    if (editingId === id) resetForm();
+    await load();
+  }
 
   function toggleKom(L: string) {
     setKunciKom((c) => (c.includes(L) ? c.filter((x) => x !== L) : [...c, L].sort()));
@@ -141,32 +229,49 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     }
 
     setBusy(true);
-    const { error } = await insforge.database.from('items').insert({
-      scope: 'school',
-      school_id: profile.school_id,
-      author_id: profile.id,
-      jenjang,
-      mapel,
-      materi: materi || null,
-      item_type,
-      stem: stem.trim(),
-      choices,
-      correct_key,
-      rationale: rationale.trim(),
-      status: 'published',
-      difficulty: 2,
-    });
+    let errorObj = null;
+
+    if (editingId) {
+      const { error } = await insforge.database
+        .from('items')
+        .update({
+          jenjang,
+          mapel,
+          materi: materi || null,
+          item_type,
+          stem: stem.trim(),
+          choices,
+          correct_key,
+          rationale: rationale.trim(),
+        })
+        .eq('id', editingId);
+      errorObj = error;
+    } else {
+      const { error } = await insforge.database.from('items').insert({
+        scope: 'school',
+        school_id: profile.school_id,
+        author_id: profile.id,
+        jenjang,
+        mapel,
+        materi: materi || null,
+        item_type,
+        stem: stem.trim(),
+        choices,
+        correct_key,
+        rationale: rationale.trim(),
+        status: 'published',
+        difficulty: 2,
+      });
+      errorObj = error;
+    }
+
     setBusy(false);
-    if (error) {
-      setErr(error.message);
+    if (errorObj) {
+      setErr(errorObj.message);
       return;
     }
-    setOk('Soal tersimpan di bank sekolah (bukan bank nasional SMART).');
-    setDrafAi(false);
-    setStem('');
-    setRationale('');
-    setOpsi(['', '', '', '', '']);
-    setPernyataan(['', '', '']);
+    setOk(editingId ? 'Perubahan soal berhasil disimpan!' : 'Soal tersimpan di bank sekolah.');
+    resetForm();
     await load();
   }
 
@@ -186,8 +291,20 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   return (
     <div className="placeholder" style={{ maxWidth: 760 }}>
       <section className="card">
-        <h2>Buat soal</h2>
-        <p className="type-lab">Masuk bank sekolah Anda, bukan bank nasional SMART. AI hanya draf — guru wajib menyunting.</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2>{editingId ? 'Sunting Soal' : 'Buat Soal'}</h2>
+          {editingId && (
+            <button className="btn btn-ghost" type="button" onClick={resetForm}>
+              Batal Edit
+            </button>
+          )}
+        </div>
+        <p className="type-lab">
+          {editingId
+            ? 'Mengubah soal yang sudah ada di bank sekolah Anda.'
+            : 'Masuk bank sekolah Anda, bukan bank nasional SMART. AI hanya draf — guru wajib menyunting.'}
+        </p>
+
         <div className="auth-form">
           <label>
             Jenjang
@@ -211,6 +328,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
             }}
           />
         </div>
+
         <form onSubmit={simpan} className="auth-form">
           <label>
             Tipe
@@ -220,32 +338,45 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
               <option value="pernyataan_bs">Pernyataan benar / salah</option>
             </select>
           </label>
-          <div className="hint-panel">
-            <span className="hint-kicker">Petunjuk untuk AI</span>
-            <div className="hint-row">
-              <input
-                type="text"
-                className="sel-input"
-                value={catatanAi}
-                onChange={(e) => setCatatanAi(e.target.value)}
-                placeholder="Opsional · contoh: stimulus tabel, penalaran"
-              />
+
+          {!editingId && (
+            <div className="hint-panel">
+              <span className="hint-kicker">Petunjuk untuk AI</span>
+              <div className="hint-row">
+                <input
+                  type="text"
+                  className="sel-input"
+                  value={catatanAi}
+                  onChange={(e) => setCatatanAi(e.target.value)}
+                  placeholder="Opsional · contoh: stimulus tabel, penalaran"
+                />
+              </div>
+              <p className="hint-note">AI hanya draf. Guru wajib menyunting sebelum simpan.</p>
             </div>
-            <p className="hint-note">AI hanya draf. Guru wajib menyunting sebelum simpan.</p>
-          </div>
-          <div className="login-actions">
-            <button className="btn" type="button" disabled={aiBusy} onClick={() => void buatDraf('baru')}>
-              {aiBusy ? 'AI menulis…' : 'Draf soal + pembahasan AI'}
-            </button>
-            <button className="btn btn-ghost" type="button" disabled={aiBusy || !stem.trim()} onClick={() => void buatDraf('bahas')}>
-              Perbaiki pembahasan AI
-            </button>
-          </div>
+          )}
+
+          {!editingId && (
+            <div className="login-actions">
+              <button className="btn" type="button" disabled={aiBusy} onClick={() => void buatDraf('baru')}>
+                {aiBusy ? 'AI menulis…' : 'Draf soal + pembahasan AI'}
+              </button>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                disabled={aiBusy || !stem.trim()}
+                onClick={() => void buatDraf('bahas')}
+              >
+                Perbaiki pembahasan AI
+              </button>
+            </div>
+          )}
+
           {drafAi && (
             <p className="legal" style={{ color: '#d97706' }}>
               Ini draf AI. Cek kunci, opsi, dan bahasa. Baru klik Simpan soal.
             </p>
           )}
+
           <MathField label="Pertanyaan / stimulus" value={stem} onChange={setStem} rows={3} required />
 
           {tipe !== 'pernyataan_bs' &&
@@ -274,10 +405,18 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                   onChange={(v) => setPernyataan((a) => a.map((x, i) => (i === idx ? v : x)))}
                 />
                 <span className="bs-btns" style={{ marginTop: 8 }}>
-                  <button type="button" className={`choice bs ${kunciBs[idx] === 'B' ? 'sel' : ''}`} onClick={() => setKunciBs((a) => a.map((x, i) => (i === idx ? 'B' : x)))}>
+                  <button
+                    type="button"
+                    className={`choice bs ${kunciBs[idx] === 'B' ? 'sel' : ''}`}
+                    onClick={() => setKunciBs((a) => a.map((x, i) => (i === idx ? 'B' : x)))}
+                  >
                     Kunci: Benar
                   </button>
-                  <button type="button" className={`choice bs ${kunciBs[idx] === 'S' ? 'sel' : ''}`} onClick={() => setKunciBs((a) => a.map((x, i) => (i === idx ? 'S' : x)))}>
+                  <button
+                    type="button"
+                    className={`choice bs ${kunciBs[idx] === 'S' ? 'sel' : ''}`}
+                    onClick={() => setKunciBs((a) => a.map((x, i) => (i === idx ? 'S' : x)))}
+                  >
                     Kunci: Salah
                   </button>
                 </span>
@@ -288,21 +427,60 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
 
           {err && <p className="auth-msg">{err}</p>}
           {ok && <p className="legal" style={{ color: '#2f9e6b' }}>{ok}</p>}
-          <button className="btn" type="submit" disabled={busy}>
-            Simpan soal
-          </button>
+
+          <div className="login-actions" style={{ marginTop: 16 }}>
+            <button className="btn" type="submit" disabled={busy}>
+              {busy ? 'Menyimpan…' : editingId ? 'Simpan Perubahan Soal' : 'Simpan Soal'}
+            </button>
+            {editingId && (
+              <button className="btn btn-ghost" type="button" onClick={resetForm}>
+                Batal Edit
+              </button>
+            )}
+          </div>
         </form>
       </section>
 
       <section className="card" style={{ marginTop: 16 }}>
-        <h2>Soal saya ({list.length})</h2>
+        <h2>Soal Saya ({list.length})</h2>
         {list.length === 0 && <p className="type-lab">Belum ada. Simpan soal pertama di atas.</p>}
+
         {list.map((r) => (
-          <article key={r.id} className="card" style={{ marginBottom: 8, boxShadow: 'none' }}>
-            <span className="chip chip-sedang">{r.item_type}</span> {r.mapel}
-            <p style={{ margin: '8px 0 0' }}>
+          <article key={r.id} className="card" style={{ marginBottom: 12, boxShadow: 'none' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <span className="chip chip-sedang">{r.item_type}</span>{' '}
+                <strong>{r.mapel}</strong> {r.materi ? `· ${r.materi}` : ''}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ padding: '4px 8px', fontSize: 13 }}
+                  onClick={() => mulaiEdit(r)}
+                >
+                  Sunting
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ padding: '4px 8px', fontSize: 13, color: '#dc2626' }}
+                  onClick={() => void hapusSoal(r.id)}
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+
+            <p style={{ margin: '8px 0 4px', fontWeight: 500 }}>
               <MathText text={r.stem} />
             </p>
+
+            {r.rationale && (
+              <p className="type-lab" style={{ margin: 0 }}>
+                Pembahasan: <MathText text={r.rationale} />
+              </p>
+            )}
           </article>
         ))}
       </section>
