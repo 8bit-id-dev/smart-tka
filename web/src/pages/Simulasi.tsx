@@ -14,7 +14,9 @@ type Pkg = {
   shuffle?: boolean;
 };
 
-export function Simulasi({ schoolId }: { schoolId: string | null }) {
+type Ans = { answer: string; correct: boolean };
+
+export function Simulasi({ schoolId, studentId }: { schoolId: string | null; studentId?: string }) {
   const [pkgs, setPkgs] = useState<Pkg[]>([]);
   const [pkg, setPkg] = useState<Pkg | null>(null);
   const [items, setItems] = useState<DbItem[]>([]);
@@ -22,12 +24,14 @@ export function Simulasi({ schoolId }: { schoolId: string | null }) {
   const [sisa, setSisa] = useState(0);
   const [phase, setPhase] = useState<'list' | 'run' | 'hasil'>('list');
   const [err, setErr] = useState('');
+  const [ans, setAns] = useState<Record<string, Ans>>({});
+  const [skor, setSkor] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
       const { data, error } = await insforge.database
         .from('packages')
-        .select('id, title, kind, mapel, item_count, duration_sec, discuss_after_each');
+        .select('id, title, kind, mapel, item_count, duration_sec, discuss_after_each, shuffle');
       if (error) setErr(error.message);
       else setPkgs((data || []) as Pkg[]);
     })();
@@ -39,7 +43,7 @@ export function Simulasi({ schoolId }: { schoolId: string | null }) {
       setSisa((s) => {
         if (s <= 1) {
           clearInterval(t);
-          setPhase('hasil');
+          void kumpulkan();
           return 0;
         }
         return s - 1;
@@ -50,6 +54,8 @@ export function Simulasi({ schoolId }: { schoolId: string | null }) {
 
   async function mulai(p: Pkg) {
     setErr('');
+    setAns({});
+    setSkor(null);
     const { data: links, error } = await insforge.database.from('package_items').select('item_id, position').eq('package_id', p.id);
     if (error) {
       setErr(error.message);
@@ -75,6 +81,44 @@ export function Simulasi({ schoolId }: { schoolId: string | null }) {
     setI(0);
     setSisa(p.duration_sec && p.duration_sec > 0 ? p.duration_sec : 15 * 60);
     setPhase('run');
+  }
+
+  async function kumpulkan() {
+    if (!pkg || items.length === 0) {
+      setPhase('hasil');
+      return;
+    }
+    const benar = items.filter((it) => ans[it.id]?.correct).length;
+    const nilai = Math.round((benar / items.length) * 10000) / 100;
+    setSkor(nilai);
+    setPhase('hasil');
+
+    if (!studentId) return;
+
+    const { data, error } = await insforge.database
+      .from('attempts')
+      .insert({
+        package_id: pkg.id,
+        student_id: studentId,
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+        score: nilai,
+      })
+      .select('id');
+    if (error) {
+      setErr('Nilai dihitung, tapi belum tersimpan ke laporan: ' + error.message);
+      return;
+    }
+    const aid = (data?.[0] as { id?: string } | undefined)?.id;
+    if (!aid) return;
+    const rows = items.map((it) => ({
+      attempt_id: aid,
+      item_id: it.id,
+      answer: ans[it.id]?.answer || '',
+      is_correct: !!ans[it.id]?.correct,
+      locked_at: new Date().toISOString(),
+    }));
+    await insforge.database.from('attempt_answers').insert(rows);
   }
 
   const mm = String(Math.floor(sisa / 60)).padStart(2, '0');
@@ -105,11 +149,16 @@ export function Simulasi({ schoolId }: { schoolId: string | null }) {
   }
 
   if (phase === 'hasil' && pkg) {
+    const benar = items.filter((it) => ans[it.id]?.correct).length;
     return (
       <div className="placeholder">
         <section className="card">
           <h2>Selesai: {pkg.title}</h2>
-          <p className="type-lab">Pembahasan paket (bukan prediksi TKA resmi).</p>
+          <p className="type-lab">Skor internal SMART-TKA, bukan prediksi TKA resmi.</p>
+          <p className="type-hm" style={{ color: 'var(--teal)' }}>
+            {skor ?? 0} <small style={{ fontSize: 16 }}>/ 100</small> · {benar}/{items.length} benar
+          </p>
+          {err && <p className="auth-msg">{err}</p>}
           {items.map((it) => (
             <div key={it.id} className="bahas" style={{ marginTop: 12 }}>
               <p>{it.stem}</p>
@@ -132,7 +181,7 @@ export function Simulasi({ schoolId }: { schoolId: string | null }) {
           {pkg?.title} · {i + 1}/{items.length}
         </span>
         <div>
-          <div className="timer-lab">Waktu server</div>
+          <div className="timer-lab">Waktu</div>
           <div className="timer">
             {mm}:{ss}
           </div>
@@ -141,7 +190,13 @@ export function Simulasi({ schoolId }: { schoolId: string | null }) {
       {err && <p className="auth-msg">{err}</p>}
       <section className="card" style={{ marginTop: 12 }}>
         {item && (
-          <ItemPlayer key={item.id} item={item} showBahas={bahasLangsung} hideKeys={!bahasLangsung} />
+          <ItemPlayer
+            key={item.id}
+            item={item}
+            showBahas={bahasLangsung}
+            hideKeys={!bahasLangsung}
+            onUpdate={(info) => setAns((m) => ({ ...m, [item.id]: info }))}
+          />
         )}
         <div className="login-actions">
           <button className="btn-ghost btn" type="button" disabled={i === 0} onClick={() => setI((x) => x - 1)}>
@@ -152,7 +207,7 @@ export function Simulasi({ schoolId }: { schoolId: string | null }) {
               Selanjutnya
             </button>
           ) : (
-            <button className="btn" type="button" onClick={() => setPhase('hasil')}>
+            <button className="btn" type="button" onClick={() => void kumpulkan()}>
               Kumpulkan
             </button>
           )}

@@ -56,7 +56,7 @@ export async function attemptStart(packageId: string, token: string): Promise<St
     };
   }
   const j = data as StartOk & { ok?: boolean; error?: string };
-  if (!j || j.ok === false) return { ok: false, error: (j && j.error) || 'Gagal mulai sesi.' };
+  if (!j || !j.ok) return { ok: false, error: (j && j.error) || 'Gagal mulai sesi.' };
   return j;
 }
 
