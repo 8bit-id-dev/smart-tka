@@ -1,6 +1,6 @@
 export const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 
-export type ItemTipe = 'pg' | 'pg_kompleks' | 'pernyataan_bs' | string;
+export type ItemTipe = 'pg' | 'pg_kompleks' | 'pernyataan_bs' | 'mencocokkan' | 'uraian' | string;
 
 export type DbItem = {
   id: string;
@@ -13,6 +13,32 @@ export type DbItem = {
   rationale: string;
   jenjang: string;
 };
+
+export type MatchPairs = { kiri: string[]; kanan: string[] };
+
+export function parseMatchPairs(item: DbItem): MatchPairs {
+  if (typeof item.choices === 'object' && item.choices !== null && 'kiri' in item.choices && 'kanan' in item.choices) {
+    const obj = item.choices as { kiri: unknown; kanan: unknown };
+    return {
+      kiri: Array.isArray(obj.kiri) ? obj.kiri.map(String) : [],
+      kanan: Array.isArray(obj.kanan) ? obj.kanan.map(String) : [],
+    };
+  }
+  if (typeof item.choices === 'string') {
+    try {
+      const obj = JSON.parse(item.choices);
+      if (typeof obj === 'object' && obj !== null && 'kiri' in obj && 'kanan' in obj) {
+        return {
+          kiri: Array.isArray(obj.kiri) ? obj.kiri.map(String) : [],
+          kanan: Array.isArray(obj.kanan) ? obj.kanan.map(String) : [],
+        };
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return { kiri: [], kanan: [] };
+}
 
 export function asStringList(v: unknown): string[] {
   if (Array.isArray(v)) return v.map(String);
@@ -27,12 +53,13 @@ export function asStringList(v: unknown): string[] {
   return [];
 }
 
-export function parseKey(item: DbItem): string | string[] {
+export function parseKey(item: DbItem): string | string[] | Record<string, string> {
   const k = item.correct_key;
-  if (item.item_type === 'pg') return k;
+  if (item.item_type === 'pg' || item.item_type === 'uraian') return k;
   try {
     const p = JSON.parse(k);
     if (Array.isArray(p)) return p.map(String);
+    if (typeof p === 'object' && p !== null) return p as Record<string, string>;
   } catch {
     /* single */
   }
@@ -63,9 +90,11 @@ export function acakList<T>(arr: T[]): T[] {
   return a;
 }
 
-/** Acak opsi PG; huruf A–E mengikuti urutan baru, kunci ikut pindah. Pernyataan B/S tidak diacak. */
+/** Acak opsi PG; huruf A–E mengikuti urutan baru, kunci ikut pindah. Pernyataan B/S, mencocokkan, dan uraian tidak diacak. */
 export function acakOpsi(item: DbItem): DbItem {
-  if (item.item_type === 'pernyataan_bs') return item;
+  if (item.item_type === 'pernyataan_bs' || item.item_type === 'mencocokkan' || item.item_type === 'uraian') {
+    return item;
+  }
   const opts = optionsOf(item);
   const idxs = acakList(opts.map((_, i) => i));
   const newOpts = idxs.map((i) => opts[i]);

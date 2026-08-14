@@ -5,9 +5,10 @@ import { MathField } from '../components/MathField';
 import { MathText } from '../components/MathText';
 import { insforge, type AppProfile } from '../lib/insforge';
 import type { MapelRow, MateriRow } from '../lib/kurikulum';
+import { parseMatchPairs } from '../lib/soal';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E'] as const;
-type Tipe = 'pg' | 'pg_kompleks' | 'pernyataan_bs';
+type Tipe = 'pg' | 'pg_kompleks' | 'pernyataan_bs' | 'mencocokkan' | 'uraian';
 
 type ItemRow = {
   id: string;
@@ -16,6 +17,7 @@ type ItemRow = {
   materi?: string | null;
   jenjang: string;
   stem: string;
+  stimulus: string | null;
   choices: unknown;
   correct_key: string;
   rationale: string;
@@ -49,10 +51,15 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   const [pernyataan, setPernyataan] = useState(['', '', '']);
   const [kunciBs, setKunciBs] = useState<('B' | 'S')[]>(['B', 'S', 'B']);
 
+  // Matching & Essay state
+  const [matchKiri, setMatchKiri] = useState<string[]>(['', '', '']);
+  const [matchKanan, setMatchKanan] = useState<string[]>(['', '', '']);
+  const [kunciUraian, setKunciUraian] = useState('');
+
   async function load() {
     const { data, error } = await insforge.database
       .from('items')
-      .select('id, item_type, mapel, materi, jenjang, stem, choices, correct_key, rationale, status, created_at')
+      .select('id, item_type, mapel, materi, jenjang, stem, stimulus, choices, correct_key, rationale, status, created_at')
       .eq('author_id', profile.id)
       .neq('status', 'retired')
       .order('created_at', { ascending: false });
@@ -74,6 +81,9 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     setKunciKom([]);
     setPernyataan(['', '', '']);
     setKunciBs(['B', 'S', 'B']);
+    setMatchKiri(['', '', '']);
+    setMatchKanan(['', '', '']);
+    setKunciUraian('');
     setErr('');
     setOk('');
   }
@@ -100,6 +110,12 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
       } catch {
         setKunciBs(['B', 'S', 'B']);
       }
+    } else if (t === 'mencocokkan') {
+      const parsed = parseMatchPairs(item);
+      setMatchKiri(parsed.kiri.length ? parsed.kiri : ['', '', '']);
+      setMatchKanan(parsed.kanan.length ? parsed.kanan : ['', '', '']);
+    } else if (t === 'uraian') {
+      setKunciUraian(item.correct_key || '');
     } else {
       if (Array.isArray(item.choices)) {
         const arr = item.choices.map(String);
@@ -173,7 +189,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     if (tipe === 'pernyataan_bs') {
       setPernyataan(d.pernyataan);
       setKunciBs(d.kunci_bs);
-    } else {
+    } else if (tipe === 'pg' || tipe === 'pg_kompleks') {
       setOpsi(d.opsi);
       if (tipe === 'pg') setKunciPg(d.kunci[0] || 'C');
       else setKunciKom(d.kunci);
@@ -194,7 +210,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
       jenjang,
       mapel,
       materi,
-      tipe,
+      tipe: tipe === 'mencocokkan' || tipe === 'uraian' ? 'pg' : tipe,
       catatan: catatanAi,
       stemAda: mode === 'bahas' ? stem : '',
     });
@@ -243,6 +259,18 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
       }
       choices = pernyataan;
       correct_key = JSON.stringify(kunciBs);
+    }
+    if (tipe === 'mencocokkan') {
+      if (matchKiri.some((k) => !k.trim()) || matchKanan.some((k) => !k.trim())) {
+        setErr('Isi semua item pasangan Kiri dan Kanan.');
+        return;
+      }
+      choices = { kiri: matchKiri, kanan: matchKanan };
+      correct_key = JSON.stringify(matchKanan);
+    }
+    if (tipe === 'uraian') {
+      choices = null;
+      correct_key = kunciUraian.trim();
     }
 
     setBusy(true);
@@ -353,6 +381,8 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
               <option value="pg">Pilihan ganda (5 opsi, satu kunci)</option>
               <option value="pg_kompleks">Pilihan ganda kompleks (lebih dari satu kunci)</option>
               <option value="pernyataan_bs">Pernyataan benar / salah</option>
+              <option value="mencocokkan">Mencocokkan / Penjodohan (Kiri ↔ Kanan)</option>
+              <option value="uraian">Uraian / Isian Singkat</option>
             </select>
           </label>
 
@@ -396,7 +426,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
 
           <MathField label="Pertanyaan / stimulus" value={stem} onChange={setStem} rows={3} required />
 
-          {tipe !== 'pernyataan_bs' &&
+          {(tipe === 'pg' || tipe === 'pg_kompleks') &&
             LETTERS.map((L, idx) => (
               <MathField
                 key={L}
@@ -439,6 +469,70 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                 </span>
               </div>
             ))}
+
+          {tipe === 'mencocokkan' && (
+            <div style={{ marginTop: 12 }}>
+              <p className="type-lab">Isi Pasangan Kiri dan Pasangan Kanan yang Cocok:</p>
+              {matchKiri.map((k, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+                  <input
+                    className="sel-input"
+                    placeholder={`Premis/Item Kiri ${idx + 1}`}
+                    value={k}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setMatchKiri((arr) => arr.map((x, i) => (i === idx ? v : x)));
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                  <span>↔</span>
+                  <input
+                    className="sel-input"
+                    placeholder={`Pasangan Kanan ${idx + 1}`}
+                    value={matchKanan[idx] || ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setMatchKanan((arr) => arr.map((x, i) => (i === idx ? v : x)));
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                  {matchKiri.length > 2 && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ color: '#dc2626', padding: '6px 10px', fontSize: 13 }}
+                      onClick={() => {
+                        setMatchKiri((arr) => arr.filter((_, i) => i !== idx));
+                        setMatchKanan((arr) => arr.filter((_, i) => i !== idx));
+                      }}
+                    >
+                      Hapus
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ marginTop: 4 }}
+                onClick={() => {
+                  setMatchKiri((arr) => [...arr, '']);
+                  setMatchKanan((arr) => [...arr, '']);
+                }}
+              >
+                + Tambah Baris Pasangan
+              </button>
+            </div>
+          )}
+
+          {tipe === 'uraian' && (
+            <MathField
+              label="Kunci Acuan / Kata Kunci Jawaban Ideal (opsional)"
+              value={kunciUraian}
+              onChange={setKunciUraian}
+              rows={2}
+            />
+          )}
 
           <MathField label="Pembahasan (wajib)" value={rationale} onChange={setRationale} rows={3} required />
 

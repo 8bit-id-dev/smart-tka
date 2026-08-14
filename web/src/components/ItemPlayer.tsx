@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MathText } from './MathText';
-import { LETTERS, optionsOf, parseKey, sameSet, type DbItem } from '../lib/soal';
+import { LETTERS, optionsOf, parseKey, parseMatchPairs, sameSet, type DbItem } from '../lib/soal';
 
 type Props = {
   item: DbItem;
@@ -18,21 +18,52 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
     item.item_type === 'pernyataan_bs' ? optionsOf(item).map(() => null) : [],
   );
 
+  // State for matching (mencocokkan) and essay (uraian)
+  const [matchAns, setMatchAns] = useState<Record<number, string>>({});
+  const [essayAns, setEssayAns] = useState<string>('');
+
   const opts = optionsOf(item);
   const key = parseKey(item);
+  const matchPairs = parseMatchPairs(item);
   const reveal = showBahas && locked && !hideKeys;
 
-  function correct() {
-    if (item.item_type === 'pg') return pg === key;
+  function correct(): boolean {
+    if (item.item_type === 'pg' || item.item_type === 'single') return pg === key;
     if (item.item_type === 'pg_kompleks' && Array.isArray(key)) return sameSet(kom, key);
     if (item.item_type === 'pernyataan_bs' && Array.isArray(key)) return key.every((k, i) => bs[i] === k);
+
+    if (item.item_type === 'mencocokkan') {
+      const targetMap = typeof key === 'object' && key !== null && !Array.isArray(key) ? (key as Record<string, string>) : {};
+      const targetArr = Array.isArray(key) ? key : null;
+      if (matchPairs.kiri.length === 0) return false;
+      return matchPairs.kiri.every((_, i) => {
+        const expected = targetArr ? targetArr[i] : targetMap[String(i)] ?? matchPairs.kanan[i];
+        return (matchAns[i] || '').trim().toLowerCase() === (expected || '').trim().toLowerCase();
+      });
+    }
+
+    if (item.item_type === 'uraian') {
+      if (!essayAns.trim()) return false;
+      if (typeof key === 'string' && key.trim()) {
+        return essayAns.trim().toLowerCase().includes(key.trim().toLowerCase());
+      }
+      return true;
+    }
+
     return false;
   }
 
-  function pushUpdate(nextPg: string | null, nextKom: string[], nextBs: ('B' | 'S' | null)[]) {
+  function pushUpdate(
+    nextPg: string | null,
+    nextKom: string[],
+    nextBs: ('B' | 'S' | null)[],
+    nextMatch: Record<number, string>,
+    nextEssay: string,
+  ) {
     let ok = false;
     let ans = '';
-    if (item.item_type === 'pg') {
+
+    if (item.item_type === 'pg' || item.item_type === 'single') {
       ok = nextPg === key;
       ans = nextPg || '';
     } else if (item.item_type === 'pg_kompleks' && Array.isArray(key)) {
@@ -41,14 +72,35 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
     } else if (item.item_type === 'pernyataan_bs' && Array.isArray(key)) {
       ok = key.every((k, i) => nextBs[i] === k);
       ans = JSON.stringify(nextBs);
+    } else if (item.item_type === 'mencocokkan') {
+      const targetMap = typeof key === 'object' && key !== null && !Array.isArray(key) ? (key as Record<string, string>) : {};
+      const targetArr = Array.isArray(key) ? key : null;
+      ok =
+        matchPairs.kiri.length > 0 &&
+        matchPairs.kiri.every((_, i) => {
+          const expected = targetArr ? targetArr[i] : targetMap[String(i)] ?? matchPairs.kanan[i];
+          return (nextMatch[i] || '').trim().toLowerCase() === (expected || '').trim().toLowerCase();
+        });
+      ans = JSON.stringify(nextMatch);
+    } else if (item.item_type === 'uraian') {
+      ok = !nextEssay.trim()
+        ? false
+        : typeof key === 'string' && key.trim()
+        ? nextEssay.trim().toLowerCase().includes(key.trim().toLowerCase())
+        : true;
+      ans = nextEssay;
     }
+
     onUpdate?.({ answer: ans, correct: ok });
   }
 
   function canLock() {
-    if (item.item_type === 'pg') return pg != null;
+    if (item.item_type === 'pg' || item.item_type === 'single') return pg != null;
     if (item.item_type === 'pg_kompleks') return kom.length > 0;
-    return bs.length > 0 && bs.every((x) => x != null);
+    if (item.item_type === 'pernyataan_bs') return bs.length > 0 && bs.every((x) => x != null);
+    if (item.item_type === 'mencocokkan') return matchPairs.kiri.length > 0 && matchPairs.kiri.every((_, i) => Boolean(matchAns[i]));
+    if (item.item_type === 'uraian') return Boolean(essayAns.trim());
+    return false;
   }
 
   function lock() {
@@ -79,7 +131,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
                 className={`choice ${pg === L ? 'sel' : ''} ${reveal && L === key ? 'ok' : ''} ${reveal && pg === L && pg !== key ? 'bad' : ''}`}
                 onClick={() => {
                   setPg(L);
-                  pushUpdate(L, kom, bs);
+                  pushUpdate(L, kom, bs, matchAns, essayAns);
                 }}
               >
                 <strong>{L}.</strong> <MathText text={t} />
@@ -105,7 +157,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
                 onClick={() => {
                   const next = kom.includes(L) ? kom.filter((x) => x !== L) : [...kom, L];
                   setKom(next);
-                  pushUpdate(pg, next, bs);
+                  pushUpdate(pg, next, bs, matchAns, essayAns);
                 }}
               >
                 <span className={`box ${on ? 'on' : ''}`} />
@@ -133,7 +185,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
                     onClick={() => {
                       const next = bs.map((x, i) => (i === idx ? v : x));
                       setBs(next);
-                      pushUpdate(pg, kom, next);
+                      pushUpdate(pg, kom, next, matchAns, essayAns);
                     }}
                   >
                     {v === 'B' ? 'Benar' : 'Salah'}
@@ -145,6 +197,72 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
         </div>
       )}
 
+      {item.item_type === 'mencocokkan' && (
+        <div className="bs-list">
+          <p className="type-lab">Pasangkan item di sebelah kiri dengan jawaban di sebelah kanan yang tepat.</p>
+          {matchPairs.kiri.map((kiriText, idx) => {
+            const selectedVal = matchAns[idx] || '';
+            const targetMap = typeof key === 'object' && key !== null && !Array.isArray(key) ? (key as Record<string, string>) : {};
+            const targetArr = Array.isArray(key) ? key : null;
+            const expectedVal = targetArr ? targetArr[idx] : targetMap[String(idx)] ?? matchPairs.kanan[idx];
+            const isPairCorrect = (selectedVal || '').trim().toLowerCase() === (expectedVal || '').trim().toLowerCase();
+
+            return (
+              <div key={idx} className="bs-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6, marginBottom: 12 }}>
+                <p style={{ margin: 0, fontWeight: 500 }}>
+                  {idx + 1}. <MathText text={kiriText} />
+                </p>
+                <select
+                  className="sel-input"
+                  disabled={locked && showBahas}
+                  value={selectedVal}
+                  style={{
+                    borderColor: reveal ? (isPairCorrect ? '#2f9e6b' : '#dc2626') : undefined,
+                    backgroundColor: reveal ? (isPairCorrect ? '#f0fdf4' : '#fef2f2') : undefined,
+                  }}
+                  onChange={(e) => {
+                    const nextMatch = { ...matchAns, [idx]: e.target.value };
+                    setMatchAns(nextMatch);
+                    pushUpdate(pg, kom, bs, nextMatch, essayAns);
+                  }}
+                >
+                  <option value="">-- Pilih Pasangan --</option>
+                  {matchPairs.kanan.map((kananText, kIdx) => (
+                    <option key={kIdx} value={kananText}>
+                      {kananText}
+                    </option>
+                  ))}
+                </select>
+                {reveal && !isPairCorrect && (
+                  <p className="type-lab" style={{ color: '#dc2626', margin: 0 }}>
+                    Kunci tepat: <strong>{expectedVal}</strong>
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {item.item_type === 'uraian' && (
+        <div style={{ marginTop: 12 }}>
+          <p className="type-lab">Tuliskan jawaban atau uraian Anda secara rinci:</p>
+          <textarea
+            className="sel-input"
+            rows={4}
+            disabled={locked && showBahas}
+            value={essayAns}
+            placeholder="Tuliskan jawaban Anda di sini…"
+            style={{ width: '100%', resize: 'vertical' }}
+            onChange={(e) => {
+              const val = e.target.value;
+              setEssayAns(val);
+              pushUpdate(pg, kom, bs, matchAns, val);
+            }}
+          />
+        </div>
+      )}
+
       {showBahas && !locked && (
         <button className="btn" type="button" disabled={!canLock()} onClick={lock} style={{ marginTop: 16 }}>
           Kunci jawaban
@@ -153,8 +271,13 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
 
       {reveal && (
         <div className={`bahas ${correct() ? 'ok' : 'bad'}`}>
-          <strong>{correct() ? 'Benar' : 'Belum tepat'}.</strong>
-          <p>{item.rationale}</p>
+          <strong>{correct() ? 'Benar' : item.item_type === 'uraian' ? 'Jawaban Terkumpul' : 'Belum tepat'}.</strong>
+          {typeof key === 'string' && key.trim() && item.item_type === 'uraian' && (
+            <p style={{ marginTop: 4 }}>
+              <strong>Kunci Acuan Guru:</strong> {key}
+            </p>
+          )}
+          <p style={{ marginTop: 4 }}>{item.rationale}</p>
         </div>
       )}
     </div>
