@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export type Tab =
   | 'beranda'
@@ -96,6 +96,17 @@ const Icons = {
   ),
 };
 
+type DisplayRole = 'guru' | 'admin' | 'konten' | 'kepsek' | 'siswa' | 'orang_tua';
+
+const roleOptions: { value: DisplayRole; label: string }[] = [
+  { value: 'guru', label: 'Guru' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'konten', label: 'Konten' },
+  { value: 'kepsek', label: 'Kepsek' },
+  { value: 'siswa', label: 'Siswa' },
+  { value: 'orang_tua', label: 'Orang Tua' },
+];
+
 export function AppShell({
   tab,
   onTab,
@@ -110,18 +121,32 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [masqueradeRole, setMasqueradeRole] = useState<DisplayRole | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('masqueradeRole');
+    if (saved && role === 'admin') {
+      const r = saved as DisplayRole;
+      if (roleOptions.some((o) => o.value === r)) {
+        setMasqueradeRole(r);
+      }
+    }
+  }, [role]);
+
+  const displayRole = masqueradeRole ?? (role as DisplayRole);
+  const isMasquerading = !!masqueradeRole && role === 'admin';
 
   const items: { id: Tab; label: string }[] = [];
-  if (role === 'orang_tua') {
+  if (displayRole === 'orang_tua') {
     items.push({ id: 'beranda', label: 'Anak' }, { id: 'profil', label: 'Profil' });
   } else {
     items.push(
       { id: 'beranda', label: 'Beranda' },
       { id: 'latihan', label: 'Latihan' },
       { id: 'simulasi', label: 'Simulasi' },
-      { id: 'inbox', label: 'Kotak Masuk' },
+      { id: 'inbox', label: 'Kotak Masuk' }
     );
-    if (['guru', 'admin', 'konten'].includes(role)) {
+    if (['guru', 'admin', 'konten'].includes(displayRole)) {
       items.push(
         { id: 'soal', label: 'Soal' },
         { id: 'paket', label: 'Paket' },
@@ -130,21 +155,43 @@ export function AppShell({
         { id: 'laporan', label: 'Laporan' }
       );
     }
-    if (role === 'kepsek' || role === 'siswa') items.push({ id: 'laporan', label: 'Laporan' });
-    if (['admin', 'kepsek'].includes(role)) items.push({ id: 'admin', label: 'Admin' });
+    if (displayRole === 'kepsek' || displayRole === 'siswa') {
+      items.push({ id: 'laporan', label: 'Laporan' });
+    }
+    if (['admin', 'kepsek'].includes(displayRole)) {
+      items.push({ id: 'admin', label: 'Admin' });
+    }
     items.push({ id: 'profil', label: 'Profil' });
   }
 
-  const isDesktopRole = ['guru', 'admin', 'konten', 'kepsek'].includes(role);
+  const isDesktopRole = ['guru', 'admin', 'konten', 'kepsek'].includes(displayRole);
 
-  const getIcon = (id: Tab, isActive: boolean) => {
-    const iconKey = id === 'beranda' && role === 'orang_tua' ? 'anak' : id;
+  const getIcon = (id: Tab, isActive: boolean): React.ReactNode => {
+    const iconKey = id === 'beranda' && displayRole === 'orang_tua' ? 'anak' : id;
     const IconComponent = Icons[iconKey as keyof typeof Icons];
     return IconComponent ? IconComponent(isActive) : null;
   };
 
+  const exitMasquerade = () => {
+    setMasqueradeRole(null);
+    localStorage.removeItem('masqueradeRole');
+  };
+
   return (
-    <div className={`shell ${isDesktopRole ? 'shell-desktop' : 'shell-mobile'} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+    <div
+      className={`shell ${isDesktopRole ? 'shell-desktop' : 'shell-mobile'} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}
+    >
+      {isMasquerading && (
+        <div className="masquerade-banner">
+          <span>
+            🥷 Admin bermain sebagai: <strong>{name} · {displayRole}</strong>
+          </span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={exitMasquerade}>
+            Keluar
+          </button>
+        </div>
+      )}
+
       {isDesktopRole ? (
         <>
           <aside className="shell-sidebar">
@@ -175,14 +222,94 @@ export function AppShell({
                   </button>
                 );
               })}
+              {role === 'admin' && !sidebarCollapsed && (
+                <div style={{ padding: '12px 16px', borderTop: '1px solid var(--card-border)', marginTop: 'auto' }}>
+                  <label
+                    className="form-label"
+                    style={{ marginBottom: 6, fontSize: 12, fontWeight: 600 }}
+                  >
+                    Mode Uji
+                  </label>
+                  <select
+                    className="select"
+                    value={masqueradeRole ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) {
+                        exitMasquerade();
+                      } else {
+                        setMasqueradeRole(v as DisplayRole);
+                        localStorage.setItem('masqueradeRole', v);
+                      }
+                    }}
+                    style={{ fontSize: 13 }}
+                  >
+                    <option value="">Kembali ke admin</option>
+                    {roleOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </nav>
             <span className="shell-user">
-              {sidebarCollapsed ? name.charAt(0).toUpperCase() : `${name} · ${role}`}
+              {sidebarCollapsed
+                ? name.charAt(0).toUpperCase()
+                : `${name} · ${displayRole}`}
             </span>
           </aside>
           <main className="shell-main">{children}</main>
         </>
-      ) : (
+      ) : role === 'admin' && (
+        <>
+          <header className="shell-bar">
+            <strong className="brand">SMART-TKA</strong>
+            {sidebarCollapsed && (
+              <button
+                type="button"
+                className="sidebar-toggle"
+                onClick={() => setSidebarCollapsed(false)}
+                title="Expand"
+              >
+                ◀
+              </button>
+            )}
+          </header>
+        </>
+      )}
+
+      {!isDesktopRole && !isMasquerading && role === 'admin' && sidebarCollapsed && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
+          <div className="masquerade-banner">
+            <span>🥷 Pilih peran untuk melihat tampilan</span>
+            <select
+              className="select"
+              value={masqueradeRole ?? ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!v) {
+                  exitMasquerade();
+                } else {
+                  setMasqueradeRole(v as DisplayRole);
+                  localStorage.setItem('masqueradeRole', v);
+                }
+              }}
+              style={{ fontSize: 13, maxWidth: 140 }}
+            >
+              <option value="">Pilih peran...</option>
+              {roleOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {!isDesktopRole && !isMasquerading && (
         <>
           <header className="shell-bar">
             <strong className="brand">SMART-TKA</strong>
@@ -190,7 +317,12 @@ export function AppShell({
               {items.map((i) => {
                 const isActive = tab === i.id;
                 return (
-                  <button key={i.id} className={isActive ? 'on' : ''} type="button" onClick={() => onTab(i.id)}>
+                  <button
+                    key={i.id}
+                    className={isActive ? 'on' : ''}
+                    type="button"
+                    onClick={() => onTab(i.id)}
+                  >
                     <span className="nav-icon-mobile">{getIcon(i.id, isActive)}</span>
                     <span>{i.label}</span>
                   </button>
@@ -198,8 +330,25 @@ export function AppShell({
               })}
             </nav>
             <span className="shell-user">
-              {name} · {role}
+              {name} · {displayRole}
             </span>
+          </header>
+          <main className="shell-main-mobile">{children}</main>
+        </>
+      )}
+
+      {!isDesktopRole && isMasquerading && (
+        <>
+          <header className="shell-bar">
+            <strong className="brand">SMART-TKA (Admin Mode)</strong>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ color: 'var(--danger)' }}
+              onClick={exitMasquerade}
+            >
+              Keluar
+            </button>
           </header>
           <main className="shell-main-mobile">{children}</main>
         </>

@@ -491,6 +491,19 @@ pre.debug {
   .shell-desktop .shell-main { margin-left: 72px; padding: 24px 16px 48px; }
 }
 
+/* Masquerade banner */
+.masquerade-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--teal);
+  color: #fff;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 /* Subtabs - horizontal single row */
 .subtabs {
   display: flex;
