@@ -42,93 +42,130 @@ export function Home({
   const offset = circ * (1 - (rata == null ? 0 : value / 100));
 
   if (staf) {
-    const pintas: { id: Tab; t: string; d: string }[] = [
-      { id: 'soal', t: 'Soal', d: 'Tulis atau draf AI' },
-      { id: 'paket', t: 'Paket', d: 'Rakit latihan / ujian' },
-      { id: 'kelas', t: 'Kelas', d: 'Siswa, pindah, kenaikan' },
-      { id: 'laporan', t: 'Laporan', d: 'Skor & cetak PDF' },
+    const pintas: { id: Tab; t: string; d: string; icon: string }[] = [
+      { id: 'soal', t: 'Soal', d: 'Tulis atau draf AI', icon: 'P' },
+      { id: 'paket', t: 'Paket', d: 'Rakit latihan / ujian', icon: 'K' },
+      { id: 'kelas', t: 'Kelas', d: 'Siswa, pindah, kenaikan', icon: 'S' },
+      { id: 'laporan', t: 'Laporan', d: 'Skor & cetak PDF', icon: 'L' },
     ];
-    if (['admin', 'kepsek'].includes(profile.role)) pintas.push({ id: 'admin', t: 'Admin', d: 'Impor user & assignment' });
+    if (['admin', 'kepsek'].includes(profile.role)) pintas.push({ id: 'admin', t: 'Admin', d: 'Impor user & assignment', icon: 'A' });
     return (
-      <div className="board" style={{ paddingTop: 8 }}>
-        <p className="board-sub">Halo, {name}</p>
-        <h1 className="type-hl" style={{ color: 'var(--teal)', marginTop: 0 }}>
-          Kerja sekolah
-        </h1>
-        <p className="caption" style={{ maxWidth: 420, marginBottom: 24 }}>
-          SMART-TKA persiapan internal. Bukan aplikasi resmi Kemendikdasmen. Tes Kemampuan Akademik.
-        </p>
-        <div className="bento">
-          {pintas.map((p) => (
-            <section key={p.id} className="card" style={{ cursor: 'pointer' }} onClick={() => onTab(p.id)}>
-              <h3 style={{ margin: '0 0 6px' }}>{p.t}</h3>
-              <p className="meta" style={{ margin: 0 }}>
-                {p.d}
-              </p>
-            </section>
-          ))}
-        </div>
+      <div className="page">
+        <header className="page-header">
+          <p className="page-subtitle">Halo, {name}</p>
+          <h1 className="page-title">Kerja sekolah</h1>
+          <p className="page-subtitle" style={{ maxWidth: 500 }}>
+            SMART-TKA persiapan internal. Bukan aplikasi resmi Kemendikdasmen. Tes Kemampuan Akademik.
+          </p>
+        </header>
+        <section className="section">
+          <div className="bento">
+            {pintas.map((p) => (
+              <article key={p.id} className="card" style={{ cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }} onClick={() => onTab(p.id)} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--teal-soft)', color: 'var(--teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18 }}>{p.icon}</div>
+                  <div>
+                    <h3 className="card-title" style={{ margin: '0 0 4px' }}>{p.t}</h3>
+                    <p className="card-subtitle" style={{ margin: 0 }}>{p.d}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       </div>
     );
   }
 
   return (
-    <div className="board" style={{ paddingTop: 8 }}>
-      <p className="board-sub">Halo, {name}</p>
-      <h1 className="type-hl" style={{ color: 'var(--teal)', marginTop: 0 }}>
-        Siap TKA karena menguasai
-      </h1>
-      <p className="caption" style={{ maxWidth: 420, marginBottom: 28 }}>
-        Angka ini rata-rata skor latihan/simulasi Anda di SMART-TKA — bukan prediksi Tes Kemampuan Akademik resmi.
-      </p>
-      {err && <p className="auth-msg">{err}</p>}
+    <div className="page">
+      <header className="page-header">
+        <p className="page-subtitle">Halo, {name}</p>
+        <h1 className="page-title">Siap TKA karena menguasai</h1>
+        <p className="page-subtitle" style={{ maxWidth: 500 }}>
+          Angka ini rata-rata skor latihan/simulasi Anda di SMART-TKA — bukan prediksi Tes Kemampuan Akademik resmi.
+        </p>
+      </header>
+      {err && <div className="banner banner-danger"><p className="banner-text">{err}</p></div>}
 
-      <div className="bento" style={{ marginBottom: 16 }}>
-        <section className="card ring-wrap">
-          <div className="ring">
-            <svg viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r={r} fill="none" stroke="#E6E1D8" strokeWidth="8" />
-              <circle
-                cx="50"
-                cy="50"
-                r={r}
-                fill="none"
-                stroke="#0F6B6B"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={circ}
-                strokeDashoffset={offset}
-              />
-            </svg>
-            <div className="ring-label">
-              {rata == null ? '—' : Math.round(value)}
-              {rata != null && <small>%</small>}
+      <section className="section">
+        <div className="bento">
+          <article className="card ring-wrap">
+            <div className="ring">
+              <svg viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r={r} fill="none" stroke={value === 0 ? 'var(--card-border)' : 'var(--teal-light)'} strokeWidth="8" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r={r}
+                  fill="none"
+                  stroke="var(--teal)"
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={circ}
+                  strokeDashoffset={offset}
+                />
+              </svg>
+              <div className="ring-label">
+                {rata == null ? '—' : Math.round(value)}
+                {rata != null && <small>%</small>}
+              </div>
             </div>
-          </div>
-          <p className="type-lab" style={{ margin: 0 }}>
-            {nSesi === 0 ? 'Belum ada sesi terkumpul' : `Rata-rata ${nSesi} sesi`}
-          </p>
-          <button className="btn" type="button" onClick={() => onTab('latihan')}>
-            Mulai latihan
-          </button>
-        </section>
+            <p className="type-lab" style={{ margin: 0 }}>
+              {nSesi === 0 ? 'Belum ada sesi terkumpul' : `Rata-rata ${nSesi} sesi`}
+            </p>
+            <div className="actions" style={{ width: '100%' }}>
+              <button className="btn btn-primary" type="button" onClick={() => onTab('latihan')}>
+                Mulai latihan
+              </button>
+            </div>
+          </article>
 
-        <section className="card topic">
-          <div className="topic-head">
-            <div>
-              <h3>Latihan terarah</h3>
-              <p className="meta">Pilih mapel, kunci jawaban, pembahasan langsung</p>
+          <article className="card topic">
+            <div className="topic-head">
+              <div>
+                <h3>Latihan terarah</h3>
+                <p className="meta">Pilih mapel, kunci jawaban, pembahasan langsung</p>
+              </div>
             </div>
-          </div>
-          <p>Kerjakan soal sekolah Anda. Skor tersimpan di laporan guru setelah sesi selesai.</p>
-          <div className="topic-foot">
-            <span>Bukan nilai TKA resmi</span>
-            <button type="button" className="link" onClick={() => onTab('simulasi')}>
-              Simulasi paket →
-            </button>
-          </div>
-        </section>
-      </div>
+            <p>Kerjakan soal sekolah Anda. Skor tersimpan di laporan guru setelah sesi selesai.</p>
+            <div className="topic-foot">
+              <span>Bukan nilai TKA resmi</span>
+              <button type="button" className="link" onClick={() => onTab('simulasi')}>
+                Simulasi paket →
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className="section">
+        <header className="section-header">
+          <h2 className="section-title">Menu cepat</h2>
+        </header>
+        <div className="bento">
+          <article className="card" style={{ cursor: 'pointer' }} onClick={() => onTab('latihan')}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--teal-soft)', color: 'var(--teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, marginBottom: 12 }}>L</div>
+            <h3 className="card-title">Latihan Bebas</h3>
+            <p className="card-subtitle">Soal per mapel dengan pembahasan langsung</p>
+          </article>
+          <article className="card" style={{ cursor: 'pointer' }} onClick={() => onTab('simulasi')}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--teal-soft)', color: 'var(--teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, marginBottom: 12 }}>S</div>
+            <h3 className="card-title">Simulasi Paket</h3>
+            <p className="card-subtitle">Ujian lengkap dengan timer dan pembahasan akhir</p>
+          </article>
+          <article className="card" style={{ cursor: 'pointer' }} onClick={() => onTab('inbox')}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--teal-soft)', color: 'var(--teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, marginBottom: 12 }}>I</div>
+            <h3 className="card-title">Kotak Masuk</h3>
+            <p className="card-subtitle">Pengumuman dan tugas dari guru</p>
+          </article>
+          <article className="card" style={{ cursor: 'pointer' }} onClick={() => onTab('laporan')}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--teal-soft)', color: 'var(--teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, marginBottom: 12 }}>R</div>
+            <h3 className="card-title">Laporan Saya</h3>
+            <p className="card-subtitle">Riwayat nilai dan progres belajar</p>
+          </article>
+        </div>
+      </section>
     </div>
   );
 }
