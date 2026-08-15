@@ -211,7 +211,11 @@ export function KurikulumCrud({
             ))}
         </div>
       </div>
-      {err && <p className="auth-msg">{err}</p>}
+      {err && (
+        <div className="banner banner-danger">
+          <p className="banner-text">{err}</p>
+        </div>
+      )}
       {!mapels.length && !err && (
         <p className="type-lab">
           Belum ada mapel untuk jenjang {jenjang}.{' '}
@@ -235,7 +239,7 @@ export function KurikulumCrud({
           <div className="hint-panel">
             <span className="hint-kicker">{editMapel ? 'Ubah mapel' : 'Mapel baru'}</span>
             <div className="hint-row">
-              <input type="text" className="sel-input" value={namaMapel} onChange={(e) => setNamaMapel(e.target.value)} placeholder="Contoh: Fisika" />
+              <input type="text" className="input" value={namaMapel} onChange={(e) => setNamaMapel(e.target.value)} placeholder="Contoh: Fisika" />
               <button className="btn" type="button" onClick={() => void simpanMapel()}>
                 {editMapel ? 'Simpan' : 'Tambah'}
               </button>
@@ -275,7 +279,7 @@ export function KurikulumCrud({
             <div className="hint-row">
               <input
                 type="text"
-                className="sel-input"
+                className="input"
                 value={namaMateri}
                 onChange={(e) => setNamaMateri(e.target.value)}
                 placeholder="Contoh: Turunan"

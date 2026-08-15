@@ -17,6 +17,7 @@ type CsvRow = {
 };
 
 const ROLES = ['siswa', 'orang_tua', 'guru', 'admin', 'kepsek'] as const;
+const JENJANG_OPTS = ['sd', 'smp', 'sma', 'smk'] as const;
 
 export function Admin({ me }: { me: AppProfile }) {
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -65,10 +66,7 @@ export function Admin({ me }: { me: AppProfile }) {
     setErr('');
     setOk('');
     const nextState = !currentIsActive;
-    const { error } = await insforge.database
-      .from('profiles')
-      .update({ is_active: nextState })
-      .eq('id', id);
+    const { error } = await insforge.database.from('profiles').update({ is_active: nextState }).eq('id', id);
     if (error) {
       setErr('Gagal mengubah status user: ' + error.message);
     } else {
@@ -107,7 +105,7 @@ export function Admin({ me }: { me: AppProfile }) {
         <div>
           <dt>Peran</dt>
           <dd>
-            <select className="sel-input" value={u.role} onChange={(e) => setRole(u.id, e.target.value)}>
+            <select className="select" value={u.role} onChange={(e) => setRole(u.id, e.target.value)}>
               {ROLES.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -124,7 +122,7 @@ export function Admin({ me }: { me: AppProfile }) {
             style={{
               maxWidth: 130,
               fontSize: 13,
-              color: active ? '#dc2626' : '#2f9e6b',
+              color: active ? 'var(--danger)' : 'var(--success)',
             }}
             onClick={() => void toggleActiveUser(u.id, active)}
           >
@@ -138,27 +136,12 @@ export function Admin({ me }: { me: AppProfile }) {
     );
   }
 
-  function toggleHead(label: string, count: number, open: boolean, onClick: () => void) {
+  function collapsibleSub(label: string, count: number, open: boolean, onClick: () => void) {
     return (
-      <button
-        type="button"
-        className="link"
-        style={{
-          display: 'flex',
-          width: '100%',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'none',
-          border: 0,
-          padding: 0,
-          cursor: 'pointer',
-          textAlign: 'left',
-        }}
-        onClick={onClick}
-      >
-        <strong>{label}</strong>
-        <span className="type-lab">
-          {count} · {open ? '▲ tutup' : '▼ buka'}
+      <button type="button" className="collapsible-subheader" onClick={onClick}>
+        <h4 className="collapsible-subtitle">{label}</h4>
+        <span className="collapsible-toggle" style={{ color: 'var(--muted)' }}>
+          {count} · {open ? '▲' : '▼'}
         </span>
       </button>
     );
@@ -442,89 +425,135 @@ export function Admin({ me }: { me: AppProfile }) {
 
   if (!['admin', 'kepsek'].includes(me.role)) {
     return (
-      <div className="placeholder">
-        <section className="card">
-          <h2>Admin</h2>
-          <p>Hanya admin / kepsek.</p>
-        </section>
+      <div className="page">
+        <div className="card">
+          <h2 className="card-title">Admin</h2>
+          <p className="card-subtitle">Hanya admin / kepsek.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="placeholder" style={{ maxWidth: 860 }}>
+    <div className="page">
+      <header className="page-header">
+        <h1 className="page-title">Admin</h1>
+        <p className="page-subtitle">Kelola pengguna, kelas, paket, dan assignment di satu tempat.</p>
+      </header>
+
       {err && (
-        <p className="auth-msg" style={{ whiteSpace: 'pre-wrap' }}>
-          {err}
-        </p>
+        <div className="banner banner-danger">
+          <p className="banner-text" style={{ whiteSpace: 'pre-wrap' }}>{err}</p>
+        </div>
       )}
       {ok && (
-        <p className="legal" style={{ color: '#2f9e6b' }}>
-          {ok}
-        </p>
+        <div className="banner banner-ok">
+          <p className="banner-text">{ok}</p>
+        </div>
       )}
 
-      <section className="card">
-        <h2>Import Excel / CSV</h2>
-        <p className="type-lab">
-          Wajib file <b>.csv</b>. Email yang sudah di Auth akan ditautkan (bukan dibuat ulang) jika password CSV sama,
-          atau jika daftar user Auth bisa dibaca. Auto-confirm email diatur di dashboard InsForge, bukan di tombol import.
-        </p>
-        <p>
-          <a href="/contoh-import-user.csv" download>
-            Unduh contoh CSV
-          </a>
-        </p>
-        <form onSubmit={importCsv} className="auth-form">
-          <label>
-            File CSV
-            <input type="file" accept=".csv,text/csv,.txt" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} />
-          </label>
-          {csvFile && <p className="type-lab">Dipilih: {csvFile.name}</p>}
-          <button className="btn" type="submit" disabled={!csvFile}>
-            Submit import
-          </button>
-        </form>
-      </section>
+      <form onSubmit={importCsv} className="form-container">
+        <div className="card">
+          <header className="card-header">
+            <h2 className="card-title">Import CSV</h2>
+            <p className="card-subtitle">Wajib file .csv. Email sudah ada di Auth akan ditautkan (bukan dibuat ulang) jika password CSV sama.</p>
+          </header>
 
-      <section className="card" style={{ marginTop: 16 }}>
-        <h2>Buat user (tanpa Daftar)</h2>
-        <p className="type-lab">Siswa langsung Masuk dengan email/password yang Anda isi.</p>
-        <form onSubmit={createUser} className="auth-form">
-          <label>
-            Email
-            <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required />
-          </label>
-          <label>
-            Password sementara
-            <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={8} required />
-          </label>
-          <label>
-            Nama
-            <input value={newName} onChange={(e) => setNewName(e.target.value)} />
-          </label>
-          <label>
-            Peran
-            <select className="sel-input" value={newRole} onChange={(e) => setNewRole(e.target.value)}>
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Jenjang
-            <select className="sel-input" value={newJenjang} onChange={(e) => setNewJenjang(e.target.value)}>
-              <option value="sd">sd</option>
-              <option value="smp">smp</option>
-              <option value="sma">sma</option>
-              <option value="smk">smk</option>
-            </select>
-          </label>
-          <label>
-            Masukkan ke kelas (opsional)
-            <select className="sel-input" value={newClass} onChange={(e) => setNewClass(e.target.value)}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="csv-file">File CSV</label>
+            <input
+              id="csv-file"
+              type="file"
+              accept=".csv,text/csv,.txt"
+              onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+            />
+          </div>
+          {csvFile && <p className="type-lab">Dipilih: {csvFile.name}</p>}
+
+          <div className="actions">
+            <button className="btn btn-primary" type="submit" disabled={!csvFile}>
+              Submit import
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <form onSubmit={createUser} className="form-container" style={{ marginTop: 24 }}>
+        <div className="card">
+          <header className="card-header">
+            <h2 className="card-title">Buat user (tanpa Daftar)</h2>
+            <p className="card-subtitle">Siswa langsung masuk dengan email/password yang Anda isi.</p>
+          </header>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label" htmlFor="new-email">
+                Email <span className="req"></span>
+              </label>
+              <input
+                id="new-email"
+                className="input"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                required
+                placeholder="contoh@email.com"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="new-password">
+                Password sementera <span className="req"></span>
+              </label>
+              <input
+                id="new-password"
+                className="input"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                minLength={8}
+                required
+                placeholder="Minimal 8 karakter"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="new-name">Nama</label>
+            <input
+              id="new-name"
+              className="input"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Opsional — default ke email"
+            />
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label" htmlFor="new-role">Peran</label>
+              <select id="new-role" className="select" value={newRole} onChange={(e) => setNewRole(e.target.value)}>
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="new-jenjang">Jenjang</label>
+              <select id="new-jenjang" className="select" value={newJenjang} onChange={(e) => setNewJenjang(e.target.value)}>
+                {JENJANG_OPTS.map((j) => (
+                  <option key={j} value={j}>
+                    {j.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="new-class">Masukkan ke kelas (opsional)</label>
+            <select id="new-class" className="select" value={newClass} onChange={(e) => setNewClass(e.target.value)}>
               <option value="">— belum —</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -532,34 +561,39 @@ export function Admin({ me }: { me: AppProfile }) {
                 </option>
               ))}
             </select>
-          </label>
-          <button className="btn" type="submit">
-            Buat akun + profil
-          </button>
-        </form>
-      </section>
+          </div>
 
-      <section className="card" style={{ marginTop: 16 }}>
+          <div className="actions">
+            <button className="btn btn-primary" type="submit">
+              Buat akun + profil
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div className="collapsible-section" style={{ marginTop: 24 }}>
         <button
           type="button"
-          className="link"
-          style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
+          className="collapsible-header"
           onClick={() => setOpenUsers((v) => !v)}
           aria-expanded={openUsers}
         >
-          <h2 style={{ margin: 0 }}>User & peran ({users.length})</h2>
-          <span className="type-lab">{openUsers ? '▲ tutup' : '▼ buka'}</span>
+          <h2 className="collapsible-title" style={{ margin: 0 }}>
+            User & peran ({users.length})
+          </h2>
+          <span className="collapsible-toggle">{openUsers ? '▲' : '▼'}</span>
         </button>
         {openUsers && (
-          <>
+          <div className="collapsible-content">
             <p className="type-lab">Per peran (dilipat). Siswa dikelompokkan per kelas.</p>
             {ROLES.map((role) => {
               const grup = users.filter((u) => u.role === role).sort(urutNama);
               const buka = !!openRole[role];
               const label = role === 'orang_tua' ? 'Orang tua' : role.charAt(0).toUpperCase() + role.slice(1);
               return (
-                <div key={role} style={{ marginTop: 12, border: '1px solid var(--card-border)', borderRadius: 12, padding: 12 }}>
-                  {toggleHead(label, grup.length, buka, () => setOpenRole((m) => ({ ...m, [role]: !m[role] })))}
+                <div key={role} className="collapsible-subsection">
+                  {collapsibleSub(label, grup.length, buka, () => setOpenRole((m) => ({ ...m, [role]: !m[role] })))}
+                  {!buka && null}
                   {buka && role !== 'siswa' && grup.length === 0 && <p className="type-lab">Belum ada.</p>}
                   {buka && role !== 'siswa' && grup.map((u) => barisUser(u))}
                   {buka && role === 'siswa' && (
@@ -567,29 +601,29 @@ export function Admin({ me }: { me: AppProfile }) {
                       {[...classes]
                         .sort((a, b) => a.name.localeCompare(b.name, 'id', { sensitivity: 'base' }))
                         .map((kl) => {
-                        const ids = new Set(anggota.filter((x) => x.class_id === kl.id).map((x) => x.profile_id));
-                        const isi = grup.filter((u) => ids.has(u.id)).sort(urutNama);
-                        const bk = !!openKelas[kl.id];
-                        return (
-                          <div key={kl.id} style={{ marginTop: 10, paddingLeft: 8 }}>
-                            {toggleHead(
-                              `${kl.name}${kl.invite_code ? ` · ${kl.invite_code}` : ''}`,
-                              isi.length,
-                              bk,
-                              () => setOpenKelas((m) => ({ ...m, [kl.id]: !m[kl.id] })),
-                            )}
-                            {bk && isi.length === 0 && <p className="type-lab">Belum ada siswa di kelas ini.</p>}
-                            {bk && isi.map((u) => barisUser(u))}
-                          </div>
-                        );
-                      })}
+                          const ids = new Set(anggota.filter((x) => x.class_id === kl.id).map((x) => x.profile_id));
+                          const isi = grup.filter((u) => ids.has(u.id)).sort(urutNama);
+                          const bk = !!openKelas[kl.id];
+                          return (
+                            <div key={kl.id} className="collapsible-subsection">
+                              {collapsibleSub(
+                                `${kl.name}${kl.invite_code ? ` · ${kl.invite_code}` : ''}`,
+                                isi.length,
+                                bk,
+                                () => setOpenKelas((m) => ({ ...m, [kl.id]: !m[kl.id] })),
+                              )}
+                              {bk && isi.length === 0 && <p className="type-lab">Belum ada siswa di kelas ini.</p>}
+                              {bk && isi.map((u) => barisUser(u))}
+                            </div>
+                          );
+                        })}
                       {(() => {
                         const ada = new Set(anggota.map((x) => x.profile_id));
                         const tanpa = grup.filter((u) => !ada.has(u.id)).sort(urutNama);
                         const bk = !!openKelas['__tanpa'];
                         return (
-                          <div style={{ marginTop: 10, paddingLeft: 8 }}>
-                            {toggleHead('Belum masuk kelas', tanpa.length, bk, () =>
+                          <div className="collapsible-subsection">
+                            {collapsibleSub('Belum masuk kelas', tanpa.length, bk, () =>
                               setOpenKelas((m) => ({ ...m, __tanpa: !m.__tanpa })),
                             )}
                             {bk && tanpa.length === 0 && <p className="type-lab">Semua siswa sudah di kelas.</p>}
@@ -602,71 +636,102 @@ export function Admin({ me }: { me: AppProfile }) {
                 </div>
               );
             })}
-          </>
+          </div>
         )}
-      </section>
+      </div>
 
-      <section className="card" style={{ marginTop: 16 }}>
+      <div className="collapsible-section" style={{ marginTop: 24 }}>
         <button
           type="button"
-          className="link"
-          style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
+          className="collapsible-header"
           onClick={() => setOpenAsg((v) => !v)}
           aria-expanded={openAsg}
         >
-          <h2 style={{ margin: 0 }}>Assignment ({asgs.length})</h2>
-          <span className="type-lab">{openAsg ? '▲ tutup' : '▼ buka'}</span>
+          <h2 className="collapsible-title" style={{ margin: 0 }}>
+            Assignment ({asgs.length})
+          </h2>
+          <span className="collapsible-toggle">{openAsg ? '▲' : '▼'}</span>
         </button>
         {openAsg && (
-          <>
-            <p className="type-lab">
-              Tugaskan paket ke kelas yang sudah ada. Buat kelas di menu Kelas; buat paket di menu Paket.
-            </p>
-            <form onSubmit={buatAssignment} className="auth-form">
-              <label>
-                Paket
-                <select className="sel-input" value={asgPkg} onChange={(e) => setAsgPkg(e.target.value)}>
-                  <option value="">— pilih —</option>
-                  {pkgs.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title} ({p.mapel})
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Kelas
-                <select className="sel-input" value={asgClass} onChange={(e) => setAsgClass(e.target.value)}>
-                  <option value="">— pilih —</option>
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Tenggat (opsional)
-                <input type="datetime-local" value={asgDue} onChange={(e) => setAsgDue(e.target.value)} />
-              </label>
-              <button className="btn" type="submit">
-                Simpan assignment
-              </button>
+          <div className="collapsible-content">
+            <p className="type-lab">Tugaskan paket ke kelas yang sudah ada. Buat kelas di menu Kelas; buat paket di menu Paket.</p>
+
+            <form onSubmit={buatAssignment} className="form-container">
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="asg-pkg">Paket</label>
+                  <select id="asg-pkg" className="select" value={asgPkg} onChange={(e) => setAsgPkg(e.target.value)}>
+                    <option value="">— pilih —</option>
+                    {pkgs.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title} ({p.mapel})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="asg-class">Kelas</label>
+                  <select id="asg-class" className="select" value={asgClass} onChange={(e) => setAsgClass(e.target.value)}>
+                    <option value="">— pilih —</option>
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="asg-due">Tenggat (opsional)</label>
+                <input
+                  id="asg-due"
+                  className="input"
+                  type="datetime-local"
+                  value={asgDue}
+                  onChange={(e) => setAsgDue(e.target.value)}
+                />
+              </div>
+
+              <div className="actions">
+                <button className="btn btn-primary" type="submit">
+                  Simpan assignment
+                </button>
+              </div>
             </form>
+
             {pkgs.length === 0 && <p className="type-lab">Belum ada paket. Guru perlu merakit paket atau isi tabel packages.</p>}
-            <ul>
-              {asgs.map((a) => (
-                <li key={a.id}>
-                  paket {a.package_id.slice(0, 8)}… → kelas {a.class_id.slice(0, 8)}…{' '}
-                  <button type="button" className="link" onClick={() => hapusAsg(a.id)}>
-                    hapus
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
+            {asgs.length === 0 ? (
+              <p className="type-lab" style={{ marginTop: 12 }}>Belum ada assignment.</p>
+            ) : (
+              <table className="table" style={{ marginTop: 12 }}>
+                <thead>
+                  <tr>
+                    <th>Paket</th>
+                    <th>Kelas</th>
+                    <th>Tenggat</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {asgs.map((a) => (
+                    <tr key={a.id}>
+                      <td>{a.package_id.slice(0, 8)}…</td>
+                      <td>{a.class_id.slice(0, 8)}…</td>
+                      <td className="muted">{a.due_at ? new Date(a.due_at).toLocaleString('id-ID') : '—'}</td>
+                      <td>
+                        <button type="button" className="link" style={{ fontSize: 12 }} onClick={() => hapusAsg(a.id)}>
+                          hapus
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         )}
-      </section>
+      </div>
     </div>
   );
 }

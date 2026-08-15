@@ -9,6 +9,8 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
   const [body, setBody] = useState('');
   const [ack, setAck] = useState(false);
   const [err, setErr] = useState('');
+  const [ok, setOk] = useState('');
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     const { data, error } = await insforge.database.from('announcements').select('id, title, body, priority, requires_ack');
@@ -22,10 +24,12 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
 
   async function kirim(e: React.FormEvent) {
     e.preventDefault();
+    setErr('');
     if (!profile.school_id) {
       setErr('Tidak ada school_id.');
       return;
     }
+    setBusy(true);
     const { error } = await insforge.database.from('announcements').insert({
       school_id: profile.school_id,
       author_id: profile.id,
@@ -34,8 +38,10 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
       priority: ack ? 'urgent' : 'normal',
       requires_ack: ack,
     });
+    setBusy(false);
     if (error) setErr(error.message);
     else {
+      setOk('Pengumuman terkirim.');
       setTitle('');
       setBody('');
       await load();
@@ -43,42 +49,112 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
   }
 
   async function hapus(id: string) {
-    await insforge.database.from('announcements').delete().eq('id', id);
-    await load();
+    if (!confirm('Hapus pengumuman ini?')) return;
+    const { error } = await insforge.database.from('announcements').delete().eq('id', id);
+    if (error) setErr(error.message);
+    else await load();
   }
 
   return (
-    <div className="placeholder">
-      <section className="card">
-        <h2>Tulis pengumuman</h2>
-        <form onSubmit={kirim} className="auth-form">
-          <label>
-            Judul
-            <input value={title} onChange={(e) => setTitle(e.target.value)} required />
-          </label>
-          <label>
-            Isi
-            <textarea className="sel-input" rows={3} value={body} onChange={(e) => setBody(e.target.value)} required />
-          </label>
-          <label style={{ flexDirection: 'row', gap: 8 }}>
-            <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
-            Wajib baca
-          </label>
-          {err && <p className="auth-msg">{err}</p>}
-          <button className="btn" type="submit">
-            Kirim
+    <div className="page">
+      <header className="page-header">
+        <h1 className="page-title">Pengumuman</h1>
+        <p className="page-subtitle">Kirim pengumuman ke seluruh sekolah. Centang "wajib baca" agar muncul sebagai prioritas tinggi.</p>
+      </header>
+
+      {err && (
+        <div className="banner banner-danger">
+          <p className="banner-text">{err}</p>
+        </div>
+      )}
+      {ok && (
+        <div className="banner banner-ok">
+          <p className="banner-text">{ok}</p>
+        </div>
+      )}
+
+      <form onSubmit={kirim} className="form-container">
+        <div className="card">
+          <header className="card-header">
+            <div>
+              <h2 className="card-title">Tulis pengumuman</h2>
+              <p className="card-subtitle">Judul singkat dan isi lengkap pengumuman.</p>
+            </div>
+          </header>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="pkt-title">
+              Judul <span className="req"></span>
+            </label>
+            <input
+              id="pkt-title"
+              className="input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              placeholder="Mis. Libur hari Jumat depan"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="pkt-body">
+              Isi <span className="req"></span>
+            </label>
+            <textarea
+              id="pkt-body"
+              className="textarea"
+              rows={4}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              required
+              placeholder="Tulis isi pengumuman di sini..."
+            />
+          </div>
+
+          <div className="field-row">
+            <input type="checkbox" id="pkt-ack" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+            <label className="form-label" htmlFor="pkt-ack">
+              Wajib baca (prioritas tinggi)
+            </label>
+          </div>
+        </div>
+
+        <div className="actions">
+          <button className="btn btn-primary" type="submit" disabled={busy}>
+            {busy ? 'Mengirim…' : 'Kirim'}
           </button>
-        </form>
-      </section>
-      <section className="card" style={{ marginTop: 16 }}>
-        <h2>Terkirim</h2>
+        </div>
+      </form>
+
+      <section className="card" style={{ marginTop: 24 }}>
+        <header className="card-header">
+          <h2 className="card-title">Terkirim ({rows.length})</h2>
+        </header>
+
+        {rows.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">📭</div>
+            <h3 className="empty-state-title">Belum ada pengumuman</h3>
+            <p className="empty-state-text">Ajukan pengumuman pertama di formulir di atas.</p>
+          </div>
+        )}
+
         {rows.map((r) => (
-          <article key={r.id} className="card" style={{ marginTop: 8, boxShadow: 'none' }}>
-            <strong>{r.title}</strong>
-            <p>{r.body}</p>
-            <button type="button" className="btn-ghost btn" style={{ maxWidth: 120 }} onClick={() => hapus(r.id)}>
-              Hapus
-            </button>
+          <article key={r.id} className="card" style={{ marginBottom: 8, boxShadow: 'none', padding: '12px 16px' }}>
+            <div className="card-header">
+              <div>
+                <h3 className="card-title" style={{ fontSize: 15 }}>{r.title}</h3>
+                <p className="card-subtitle">{r.body}</p>
+              </div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => hapus(r.id)}>
+                Hapus
+              </button>
+            </div>
+            {r.requires_ack && (
+              <span className="badge badge-warn" style={{ marginTop: 4, display: 'inline-block' }}>
+                Wajib baca
+              </span>
+            )}
           </article>
         ))}
       </section>

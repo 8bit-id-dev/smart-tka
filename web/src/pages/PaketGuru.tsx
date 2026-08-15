@@ -24,12 +24,15 @@ const KINDS = [
   { id: 'lab_25', label: 'Lab 25 menit' },
 ] as const;
 
+const JENJANG_OPTS = ['sd', 'smp', 'sma', 'smk'] as const;
+
 export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [pkgs, setPkgs] = useState<Pkg[]>([]);
   const [items, setItems] = useState<ItemRow[]>([]);
   const [picked, setPicked] = useState<string[]>([]);
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
+  const [busy, setBusy] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
@@ -122,12 +125,14 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     };
 
     setOk('Menyimpan…');
+    setBusy(true);
     let pkgId = editId;
     if (editId) {
       const { error } = await insforge.database.from('packages').update(row).eq('id', editId);
       if (error) {
         setErr(error.message);
         setOk('');
+        setBusy(false);
         return;
       }
       await insforge.database.from('package_items').delete().eq('package_id', editId);
@@ -136,6 +141,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       if (error || !data?.[0]) {
         setErr(error?.message || 'Gagal insert paket.');
         setOk('');
+        setBusy(false);
         return;
       }
       pkgId = (data[0] as { id: string }).id;
@@ -146,10 +152,12 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     if (e2) {
       setErr(e2.message);
       setOk('');
+      setBusy(false);
       return;
     }
     setOk(editId ? 'Paket diperbarui.' : 'Paket dibuat.');
     kosongkanForm();
+    setBusy(false);
     await load();
   }
 
@@ -163,113 +171,248 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     }
   }
 
+  const filteredItems = items.filter((it) => !mapel || it.mapel === mapel).filter((it) => !materi || it.materi === materi);
+
   if (!['guru', 'admin', 'konten'].includes(profile.role)) {
     return (
-      <div className="placeholder">
-        <section className="card">
-          <h2>Paket</h2>
-          <p>Hanya guru/admin.</p>
-        </section>
+      <div className="page">
+        <div className="card">
+          <h2 className="card-title">Paket</h2>
+          <p className="card-subtitle">Hanya guru/admin.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="placeholder" style={{ maxWidth: 800 }}>
-      <section className="card">
-        <h2>{editId ? 'Ubah paket' : 'Buat paket soal'}</h2>
-        <p className="type-lab">Satu paket = satu mapel. Pilih soal dari bank Anda (menu Soal).</p>
-        <form onSubmit={simpan} className="auth-form">
-          <label>
-            Judul
-            <input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Latihan penalaran 15 menit" />
-          </label>
-          <label>
-            Jenis
-            <select className="sel-input" value={kind} onChange={(e) => setKind(e.target.value as (typeof KINDS)[number]['id'])}>
-              {KINDS.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Jenjang
-            <select className="sel-input" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
-              <option value="sd">sd</option>
-              <option value="smp">smp</option>
-              <option value="sma">sma</option>
-              <option value="smk">smk</option>
-            </select>
-          </label>
-          <KurikulumCrud
-            profile={profile}
-            jenjang={jenjang}
-            pilihMapelId={mapelId}
-            pilihMateriId={materiId}
-            onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
-              setMapelId(mp?.id || '');
-              setMateriId(mt?.id || '');
-              setMapel(mp?.name || '');
-              setMateri(mt?.name || '');
-            }}
-          />
-          <label>
-            Durasi (menit) {kind === 'latihan' ? '— 0 = tanpa countdown ketat' : '— wajib untuk simulasi/ujian'}
-            <input type="number" min={kind === 'latihan' ? 0 : 5} max={180} value={menit} onChange={(e) => setMenit(Number(e.target.value))} />
-          </label>
-          <label style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} />
-            Acak urutan per murid
-          </label>
+    <div className="page">
+      <header className="page-header">
+        <h1 className="page-title">{editId ? 'Ubah paket' : 'Buat paket soal'}</h1>
+        <p className="page-subtitle">Satu paket = satu mapel. Pilih soal dari bank Anda (menu Soal).</p>
+      </header>
 
-          <p className="type-lab">Pilih soal ({picked.length} dipilih)</p>
-          {items.length === 0 && <p className="auth-msg">Belum ada soal. Buat dulu di menu Soal.</p>}
-          {items
-            .filter((it) => !mapel || it.mapel === mapel)
-            .filter((it) => !materi || it.materi === materi)
-            .map((it) => (
-            <label key={it.id} style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start', fontWeight: 400 }}>
-              <input type="checkbox" checked={picked.includes(it.id)} onChange={() => toggle(it.id)} />
-              <span>
-                <span className="chip chip-sedang">{it.item_type}</span> {it.mapel}
-                {it.materi ? ` · ${it.materi}` : ''} — {it.stem.slice(0, 100)}
-              </span>
-            </label>
-          ))}
+      {err && (
+        <div className="banner banner-danger">
+          <p className="banner-text">{err}</p>
+        </div>
+      )}
+      {ok && (
+        <div className="banner banner-ok">
+          <p className="banner-text">{ok}</p>
+        </div>
+      )}
 
-          {err && <p className="auth-msg">{err}</p>}
-          {ok && <p className="legal" style={{ color: '#2f9e6b' }}>{ok}</p>}
-          <div className="login-actions">
-            <button className="btn" type="submit">
-              {editId ? 'Simpan perubahan' : 'Buat paket'}
-            </button>
+      <form onSubmit={simpan} className="form-container">
+        <div className="card">
+          <header className="card-header">
+            <div>
+              <h2 className="card-title">{editId ? 'Sunting paket' : 'Identitas paket'}</h2>
+              <p className="card-subtitle">Judul, jenis uji, jenjang, dan mapel/materi.</p>
+            </div>
             {editId && (
-              <button className="btn btn-ghost" type="button" onClick={kosongkanForm}>
+              <button className="btn btn-ghost btn-sm" type="button" onClick={kosongkanForm}>
                 Batal
               </button>
             )}
-          </div>
-        </form>
-      </section>
+          </header>
 
-      <section className="card" style={{ marginTop: 16 }}>
-        <h2>Paket saya ({pkgs.length})</h2>
-        {pkgs.map((p) => (
-          <article key={p.id} className="card" style={{ marginBottom: 8, boxShadow: 'none' }}>
-            <strong>{p.title}</strong>
-            <p className="meta">
-              {p.kind} · {p.mapel} · {p.item_count} soal · {p.duration_sec ? `${Math.round(p.duration_sec / 60)} mnt` : 'tanpa timer ketat'} ·{' '}
-              {p.discuss_after_each ? 'pembahasan langsung' : 'pembahasan setelah paket'}
+          <div className="form-group">
+            <label className="form-label" htmlFor="pkg-title">
+              Judul <span className="req"></span>
+            </label>
+            <input
+              id="pkg-title"
+              className="input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              placeholder="Latihan penalaran 15 menit"
+            />
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label" htmlFor="pkg-kind">
+                Jenis <span className="req"></span>
+              </label>
+              <select id="pkg-kind" className="select" value={kind} onChange={(e) => setKind(e.target.value as (typeof KINDS)[number]['id'])}>
+                {KINDS.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="pkg-jenjang">
+                Jenjang <span className="req"></span>
+              </label>
+              <select id="pkg-jenjang" className="select" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
+                {JENJANG_OPTS.map((j) => (
+                  <option key={j} value={j}>
+                    {j.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="pkg-mapel">
+              Mapel & materi <span className="req"></span>
+            </label>
+            <p className="type-lab" style={{ marginTop: -4, marginBottom: 8 }}>
+              {mapel ? `${mapel}${materi ? ` · ${materi}` : ''}` : 'Belum dipilih'}
             </p>
-            <div className="login-actions">
-              <button type="button" className="btn-ghost btn" onClick={() => muatPaket(p)}>
-                Ubah
-              </button>
-              <button type="button" className="btn-ghost btn" onClick={() => hapus(p.id)}>
-                Hapus
-              </button>
+            <div className="hint-panel" style={{ marginTop: 0 }}>
+              <KurikulumCrud
+                profile={profile}
+                jenjang={jenjang}
+                pilihMapelId={mapelId}
+                pilihMateriId={materiId}
+                onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
+                  setMapelId(mp?.id || '');
+                  setMateriId(mt?.id || '');
+                  setMapel(mp?.name || '');
+                  setMateri(mt?.name || '');
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label" htmlFor="pkg-menit">
+                Durasi (menit) <span className="req"></span>
+              </label>
+              <input
+                id="pkg-menit"
+                className="input"
+                type="number"
+                min={kind === 'latihan' ? 0 : 5}
+                max={180}
+                value={menit}
+                onChange={(e) => setMenit(Number(e.target.value))}
+              />
+              <p className="input-hint" style={{ marginTop: 4 }}>
+                {kind === 'latihan' ? '0 = tanpa countdown ketat' : 'wajib untuk simulasi/ujian'}
+              </p>
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="pkg-shuffle">
+                Pengaturan
+              </label>
+              <div className="field-row" style={{ marginTop: 8 }}>
+                <input
+                  id="pkg-shuffle"
+                  type="checkbox"
+                  checked={shuffle}
+                  onChange={(e) => setShuffle(e.target.checked)}
+                />
+                <label className="form-label" htmlFor="pkg-shuffle">
+                  Acak urutan per murid
+                </label>
+              </div>
+              <div className="field-row" style={{ marginTop: 6 }}>
+                <input
+                  id="pkg-discuss"
+                  type="checkbox"
+                  checked={discuss}
+                  onChange={() => {}}
+                  disabled
+                />
+                <label className="form-label" htmlFor="pkg-discuss" style={{ color: 'var(--muted)' }}>
+                  Pembahasan langsung (otomatis untuk jenis Latihan)
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <header className="card-header">
+            <h2 className="card-title">Pilih soal</h2>
+            <p className="card-subtitle">{picked.length} dipilih · {filteredItems.length} tersedia untuk mapel ini</p>
+          </header>
+
+          {items.length === 0 && (
+            <div className="banner banner-warn">
+              <p className="banner-text">Belum ada soal. Buat dulu di menu Soal.</p>
+            </div>
+          )}
+          {items.length > 0 && filteredItems.length === 0 && (
+            <p className="type-lab">Tidak ada soal yang cocok dengan filter mapel/materi ini.</p>
+          )}
+
+          <div className="chip-pick-row">
+            {filteredItems.map((it) => (
+              <label
+                key={it.id}
+                className="chip-pick"
+                style={{
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: 6,
+                  cursor: 'pointer',
+                  backgroundColor: picked.includes(it.id) ? 'var(--teal-soft)' : undefined,
+                }}
+              >
+                <div className="field-row" style={{ width: '100%', margin: 0, gap: 6, padding: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={picked.includes(it.id)}
+                    onChange={() => toggle(it.id)}
+                  />
+                  <span className="chip chip-sedang" style={{ fontSize: 10, padding: '2px 6px' }}>{it.item_type}</span>
+                </div>
+                <span className="type-bm" style={{ fontSize: 13, marginTop: 2 }}>
+                  {it.mapel}
+                  {it.materi ? ` · ${it.materi}` : ''} — {it.stem.slice(0, 120)}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="actions">
+          <button className="btn btn-primary" type="submit" disabled={busy}>
+            {busy ? 'Menyimpan…' : editId ? 'Simpan perubahan' : 'Buat paket'}
+          </button>
+        </div>
+      </form>
+
+      <section className="card" style={{ marginTop: 24 }}>
+        <header className="card-header">
+          <h2 className="card-title">Paket saya ({pkgs.length})</h2>
+        </header>
+
+        {pkgs.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">📦</div>
+            <h3 className="empty-state-title">Belum ada paket</h3>
+            <p className="empty-state-text">Buat paket pertama di formulir di atas.</p>
+          </div>
+        )}
+
+        {pkgs.map((p) => (
+          <article key={p.id} className="card" style={{ marginBottom: 8, boxShadow: 'none', padding: '12px 16px' }}>
+            <div className="card-header">
+              <div>
+                <h3 className="card-title" style={{ fontSize: 15 }}>{p.title}</h3>
+                <p className="card-subtitle">
+                  {p.kind} · {p.mapel} · {p.item_count} soal ·{' '}
+                  {p.duration_sec ? `${Math.round(p.duration_sec / 60)} mnt` : 'tanpa timer ketat'} ·{' '}
+                  {p.discuss_after_each ? 'pembahasan langsung' : 'pembahasan setelah paket'}
+                </p>
+              </div>
+              <div className="btn-group">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => muatPaket(p)}>
+                  Ubah
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => hapus(p.id)}>
+                  Hapus
+                </button>
+              </div>
             </div>
           </article>
         ))}

@@ -152,8 +152,29 @@ label.field { display: block; font-size: 13px; color: var(--muted); margin-botto
 .input-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 textarea.textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
 
+.form-container { display: flex; flex-direction: column; gap: 16px; }
+.form-container > .card { margin-bottom: 4px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.field-row input[type='checkbox'],
+.field-row input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--teal);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.req { color: var(--danger); }
+.req::after { content: ' *'; font-weight: 600; }
+
+.field-row .form-label { margin: 0; font-weight: 500; cursor: pointer; }
 
 /* Buttons */
 .btn {
@@ -491,19 +512,6 @@ pre.debug {
   .shell-desktop .shell-main { margin-left: 72px; padding: 24px 16px 48px; }
 }
 
-/* Masquerade banner */
-.masquerade-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: var(--teal);
-  color: #fff;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
 /* Subtabs - horizontal single row */
 .subtabs {
   display: flex;
@@ -805,7 +813,7 @@ pre.debug {
   gap: 8px;
   align-items: stretch;
 }
-.hint-row .sel-input,
+.hint-row .input,
 .hint-row input[type='text'] {
   flex: 1;
   min-width: 0;

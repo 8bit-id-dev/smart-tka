@@ -19,6 +19,7 @@ export function Kelas({ profile }: { profile: AppProfile }) {
   const [editKode, setEditKode] = useState('');
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
+  const [busy, setBusy] = useState(false);
   const [pindahKe, setPindahKe] = useState<Record<string, string>>({});
   const [naikKe, setNaikKe] = useState<Record<string, string>>({});
 
@@ -57,6 +58,7 @@ export function Kelas({ profile }: { profile: AppProfile }) {
       setErr('Admin/guru belum punya school_id.');
       return;
     }
+    setBusy(true);
     const code = (kode.trim() || 'K' + Math.random().toString(36).slice(2, 8)).toUpperCase();
     const { error } = await insforge.database.from('classes').insert({
       school_id: profile.school_id,
@@ -64,9 +66,10 @@ export function Kelas({ profile }: { profile: AppProfile }) {
       jenjang,
       invite_code: code,
     });
+    setBusy(false);
     if (error) setErr(error.message);
     else {
-      setOk('Kelas dibuat. Kode: ' + code);
+      setOk(`Kelas dibuat. Kode: ${code}`);
       setName('Kelas 9A');
       setKode('');
       await load();
@@ -74,6 +77,9 @@ export function Kelas({ profile }: { profile: AppProfile }) {
   }
 
   async function simpanKelas(id: string) {
+    setErr('');
+    setOk('');
+    setBusy(true);
     const { error } = await insforge.database
       .from('classes')
       .update({
@@ -81,6 +87,7 @@ export function Kelas({ profile }: { profile: AppProfile }) {
         invite_code: (editKode.trim() || editName.trim()).toUpperCase(),
       })
       .eq('id', id);
+    setBusy(false);
     if (error) setErr(error.message);
     else {
       setEditId(null);
@@ -140,6 +147,7 @@ export function Kelas({ profile }: { profile: AppProfile }) {
     const tujuan = rows.find((r) => r.id === toId);
     if (!confirm(`Pindahkan ${ids.length} siswa ke ${tujuan?.name}? Untuk kenaikan kelas.`)) return;
     setErr('');
+    setBusy(true);
     for (const pid of ids) {
       const { error } = await assignSiswaKeKelas(pid, toId, {
         fromClassId: fromId,
@@ -149,10 +157,12 @@ export function Kelas({ profile }: { profile: AppProfile }) {
       if (error) {
         setErr(error.message);
         await load();
+        setBusy(false);
         return;
       }
     }
     setOk(`${ids.length} siswa dinaikkan ke ${tujuan?.name}.`);
+    setBusy(false);
     await load();
   }
 
@@ -167,108 +177,154 @@ export function Kelas({ profile }: { profile: AppProfile }) {
 
   if (!['guru', 'admin', 'kepsek'].includes(profile.role)) {
     return (
-      <div className="placeholder">
-        <section className="card">
-          <h2>Kelas</h2>
-          <p>Hanya guru/admin/kepsek.</p>
-        </section>
+      <div className="page">
+        <div className="card">
+          <h2 className="card-title">Kelas</h2>
+          <p className="card-subtitle">Hanya guru/admin/kepsek.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="placeholder" style={{ maxWidth: 800 }}>
-      {err && <p className="auth-msg">{err}</p>}
+    <div className="page">
+      <header className="page-header">
+        <h1 className="page-title">Kelas</h1>
+        <p className="page-subtitle">Kelola kelas dan anggotanya. Satu siswa hanya di satu kelas.</p>
+      </header>
+
+      {err && (
+        <div className="banner banner-danger">
+          <p className="banner-text" style={{ whiteSpace: 'pre-wrap' }}>{err}</p>
+        </div>
+      )}
       {ok && (
-        <p className="legal" style={{ color: '#2f9e6b' }}>
-          {ok}
-        </p>
+        <div className="banner banner-ok">
+          <p className="banner-text">{ok}</p>
+        </div>
       )}
 
-      <section className="card">
-        <h2>Buat kelas + kode</h2>
-        <p className="type-lab">Satu siswa hanya di satu kelas. Import CSV memakai kolom kode_kelas = kode undangan ini.</p>
-        <form onSubmit={buat} className="auth-form">
-          <label>
-            Nama kelas
-            <input value={name} onChange={(e) => setName(e.target.value)} required />
-          </label>
-          <label>
-            Kode kelas (undangan)
-            <input
-              value={kode}
-              onChange={(e) => setKode(e.target.value.toUpperCase())}
-              placeholder="Contoh: 9A-2026 (kosong = otomatis)"
-            />
-          </label>
-          <label>
-            Jenjang
-            <select className="sel-input" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
-              <option value="sd">sd</option>
-              <option value="smp">smp</option>
-              <option value="sma">sma</option>
-              <option value="smk">smk</option>
+      <form onSubmit={buat} className="form-container">
+        <div className="card">
+          <header className="card-header">
+            <h2 className="card-title">Buat kelas + kode</h2>
+            <p className="card-subtitle">Satu siswa hanya di satu kelas. Import CSV memakai kolom kode_kelas = kode undangan ini.</p>
+          </header>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label" htmlFor="cls-name">
+                Nama kelas <span className="req"></span>
+              </label>
+              <input
+                id="cls-name"
+                className="input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="cls-code">
+                Kode kelas (undangan)
+              </label>
+              <input
+                id="cls-code"
+                className="input"
+                value={kode}
+                onChange={(e) => setKode(e.target.value.toUpperCase())}
+                placeholder="Contoh: 9A-2026 (kosong = otomatis)"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="cls-jenjang">
+              Jenjang <span className="req"></span>
+            </label>
+            <select id="cls-jenjang" className="select" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
+              <option value="sd">SD</option>
+              <option value="smp">SMP</option>
+              <option value="sma">SMA</option>
+              <option value="smk">SMK</option>
             </select>
-          </label>
-          <button className="btn" type="submit">
-            Buat kelas
+          </div>
+        </div>
+
+        <div className="actions">
+          <button className="btn btn-primary" type="submit" disabled={busy}>
+            {busy ? 'Membuat…' : 'Buat kelas'}
           </button>
-        </form>
-      </section>
+        </div>
+      </form>
+
+      {rows.length === 0 && (
+        <div className="empty-state" style={{ marginTop: 24 }}>
+          <div className="empty-state-icon">🏫</div>
+          <h3 className="empty-state-title">Belum ada kelas</h3>
+          <p className="empty-state-text">Buat kelas pertama di formulir di atas.</p>
+        </div>
+      )}
 
       {rows.map((c) => {
         const ids = anggota[c.id] || [];
         const belum = siswa.filter((s) => !sudahDiKelas.has(s.id));
         const terbuka = openId === c.id;
         return (
-          <section key={c.id} className="card" style={{ marginTop: 16 }}>
+          <div key={c.id} className="collapsible-section">
             <button
               type="button"
-              className="link"
-              style={{
-                display: 'flex',
-                width: '100%',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                textAlign: 'left',
-                background: 'none',
-                border: 0,
-                padding: 0,
-                cursor: 'pointer',
-              }}
+              className="collapsible-header"
               onClick={() => setOpenId((cur) => (cur === c.id ? null : c.id))}
               aria-expanded={terbuka}
             >
-              <h2 style={{ margin: 0 }}>
+              <h3 className="collapsible-title">
                 {c.name} <span className="type-lab">({ids.length} siswa)</span>
-              </h2>
-              <span className="type-lab">{terbuka ? '▲ tutup' : '▼ buka'}</span>
+              </h3>
+              <span className="collapsible-toggle">{terbuka ? '▲' : '▼'}</span>
             </button>
-            <p className="mono" style={{ marginTop: 8 }}>
-              Kode: {c.invite_code} · {c.jenjang}
-            </p>
 
             {terbuka && (
-              <>
+              <div className="collapsible-content">
+                <p className="type-lab" style={{ marginTop: 8 }}>
+                  Kode: <span className="mono">{c.invite_code}</span> · {c.jenjang}
+                </p>
+
                 {editId === c.id ? (
-                  <div className="auth-form">
-                    <label>
-                      Nama
-                      <input value={editName} onChange={(e) => setEditName(e.target.value)} />
-                    </label>
-                    <label>
-                      Kode kelas
-                      <input value={editKode} onChange={(e) => setEditKode(e.target.value.toUpperCase())} />
-                    </label>
-                    <button type="button" className="btn" onClick={() => simpanKelas(c.id)}>
-                      Simpan nama & kode
-                    </button>
+                  <div className="form-container" style={{ marginTop: 16 }}>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor={`edit-name-${c.id}`}>Nama</label>
+                      <input
+                        id={`edit-name-${c.id}`}
+                        className="input"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor={`edit-code-${c.id}`}>Kode kelas</label>
+                      <input
+                        id={`edit-code-${c.id}`}
+                        className="input"
+                        value={editKode}
+                        onChange={(e) => setEditKode(e.target.value.toUpperCase())}
+                      />
+                    </div>
+                    <div className="actions">
+                      <button type="button" className="btn btn-primary" onClick={() => void simpanKelas(c.id)}>
+                        {busy ? 'Menyimpan…' : 'Simpan nama & kode'}
+                      </button>
+                      <button type="button" className="btn btn-ghost" onClick={() => setEditId(null)}>
+                        Batal
+                      </button>
+                    </div>
                   </div>
                 ) : null}
-                <div className="login-actions">
+
+                <div className="actions" style={{ marginTop: 12 }}>
                   <button
                     type="button"
-                    className="btn-ghost btn"
+                    className="btn btn-ghost btn-sm"
                     onClick={() => {
                       setEditId(c.id);
                       setEditName(c.name);
@@ -277,50 +333,48 @@ export function Kelas({ profile }: { profile: AppProfile }) {
                   >
                     Ubah nama & kode
                   </button>
-                  <button type="button" className="btn-ghost btn" onClick={() => hapusKelas(c.id)}>
+                  <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => hapusKelas(c.id)}>
                     Hapus kelas
                   </button>
                 </div>
 
-                <h3 className="type-hm" style={{ fontSize: 18, marginTop: 20 }}>
-                  Siswa di kelas ({ids.length})
-                </h3>
+                <h3 className="type-hm">Siswa di kelas ({ids.length})</h3>
                 {ids.length === 0 && <p className="type-lab">Belum ada siswa.</p>}
                 {ids
                   .slice()
                   .sort((a, b) => namaSiswa(a).localeCompare(namaSiswa(b), 'id', { sensitivity: 'base' }))
                   .map((pid) => (
-                  <div key={pid} className="login-actions" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ flex: '1 1 140px' }}>{namaSiswa(pid)}</span>
-                    <select
-                      className="sel-input"
-                      style={{ maxWidth: 200 }}
-                      value={pindahKe[pid] || ''}
-                      onChange={(e) => setPindahKe((m) => ({ ...m, [pid]: e.target.value }))}
-                    >
-                      <option value="">Pindah ke…</option>
-                      {rows
-                        .filter((k) => k.id !== c.id)
-                        .map((k) => (
-                          <option key={k.id} value={k.id}>
-                            {k.name}
-                          </option>
-                        ))}
-                    </select>
-                    <button type="button" className="btn" style={{ maxWidth: 120 }} onClick={() => void pindah(c.id, pid)}>
-                      Pindah
-                    </button>
-                    <button type="button" className="btn-ghost btn" style={{ maxWidth: 120 }} onClick={() => keluarkan(c.id, pid)}>
-                      Keluarkan
-                    </button>
-                  </div>
-                ))}
+                    <div key={pid} className="actions" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ flex: '1 1 140px' }}>{namaSiswa(pid)}</span>
+                      <select
+                        className="select"
+                        style={{ maxWidth: 200 }}
+                        value={pindahKe[pid] || ''}
+                        onChange={(e) => setPindahKe((m) => ({ ...m, [pid]: e.target.value }))}
+                      >
+                        <option value="">Pindah ke…</option>
+                        {rows
+                          .filter((k) => k.id !== c.id)
+                          .map((k) => (
+                            <option key={k.id} value={k.id}>
+                              {k.name}
+                            </option>
+                          ))}
+                      </select>
+                      <button type="button" className="btn btn-sm" style={{ maxWidth: 120 }} onClick={() => void pindah(c.id, pid)}>
+                        Pindah
+                      </button>
+                      <button type="button" className="btn btn-ghost btn-sm" style={{ maxWidth: 120 }} onClick={() => keluarkan(c.id, pid)}>
+                        Keluarkan
+                      </button>
+                    </div>
+                  ))}
 
                 <div className="hint-panel" style={{ marginTop: 16 }}>
                   <span className="hint-kicker">Kenaikan kelas (semua siswa di sini)</span>
                   <div className="hint-row">
                     <select
-                      className="sel-input"
+                      className="select"
                       value={naikKe[c.id] || ''}
                       onChange={(e) => setNaikKe((m) => ({ ...m, [c.id]: e.target.value }))}
                     >
@@ -333,14 +387,14 @@ export function Kelas({ profile }: { profile: AppProfile }) {
                           </option>
                         ))}
                     </select>
-                    <button type="button" className="btn" onClick={() => void naikkanSemua(c.id)}>
-                      Naikkan semua
+                    <button type="button" className="btn" onClick={() => void naikkanSemua(c.id)} disabled={busy}>
+                      {busy ? 'Memindah…' : 'Naikkan semua'}
                     </button>
                   </div>
                   <p className="hint-note">Satu siswa tetap satu kelas. Jenjang profil mengikuti kelas tujuan. Buat kelas baru dulu (mis. 11 IPA 1) sebelum menaikkan dari 10.</p>
                 </div>
 
-                <h3 className="type-hm" style={{ fontSize: 18, marginTop: 16 }}>
+                <h3 className="type-hm" style={{ marginTop: 16 }}>
                   Masukkan siswa yang belum punya kelas
                 </h3>
                 {siswa.length === 0 && <p className="type-lab">Belum ada profil siswa. Buat di menu Admin dulu.</p>}
@@ -348,8 +402,8 @@ export function Kelas({ profile }: { profile: AppProfile }) {
                   <p className="type-lab">Semua siswa sudah di satu kelas. Keluarkan dulu untuk memindah, atau pilih siswa di sini lalu mereka pindah otomatis.</p>
                 )}
                 {belum.map((s) => (
-                  <div key={s.id} className="login-actions" style={{ alignItems: 'center' }}>
-                    <span>
+                  <div key={s.id} className="actions" style={{ alignItems: 'center' }}>
+                    <span style={{ flex: '1 1 140px' }}>
                       {s.full_name || s.user_id} <span className="type-lab">{s.jenjang}</span>
                     </span>
                     <button type="button" className="btn" style={{ maxWidth: 160 }} onClick={() => masukkan(c.id, s.id)}>
@@ -357,9 +411,9 @@ export function Kelas({ profile }: { profile: AppProfile }) {
                     </button>
                   </div>
                 ))}
-              </>
+              </div>
             )}
-          </section>
+          </div>
         );
       })}
     </div>
