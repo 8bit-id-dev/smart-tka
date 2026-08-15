@@ -62,6 +62,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   // Collapsible state for bank soal
   const [openMapel, setOpenMapel] = useState<Record<string, boolean>>({});
   const [openMateri, setOpenMateri] = useState<Record<string, boolean>>({});
+  const [openTipe, setOpenTipe] = useState<Record<string, boolean>>({});
   const [openDiff, setOpenDiff] = useState<Record<string, boolean>>({});
 
   async function load() {
@@ -609,16 +610,27 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
           )}
 
           {(() => {
-            const grouped: Record<string, Record<string, Record<number, ItemRow[]>>> = {};
+            const grouped: Record<string, Record<string, Record<string, Record<number, ItemRow[]>>>> = {};
             for (const item of list) {
               const mp = item.mapel || 'Tanpa Mapel';
               const mt = item.materi || 'Tanpa Materi';
+              const tp = item.item_type || 'pg';
               const diff = item.difficulty || 2;
               if (!grouped[mp]) grouped[mp] = {};
               if (!grouped[mp][mt]) grouped[mp][mt] = {};
-              if (!grouped[mp][mt][diff]) grouped[mp][mt][diff] = [];
-              grouped[mp][mt][diff].push(item);
+              if (!grouped[mp][mt][tp]) grouped[mp][mt][tp] = {};
+              if (!grouped[mp][mt][tp][diff]) grouped[mp][mt][tp][diff] = [];
+              grouped[mp][mt][tp][diff].push(item);
             }
+
+            const tipeLabels: Record<string, string> = {
+              pg: 'Pilihan Ganda',
+              pg_kompleks: 'Pilihan Ganda Kompleks',
+              pernyataan_bs: 'Pernyataan B/S',
+              mencocokkan: 'Mencocokkan',
+              uraian: 'Uraian',
+            };
+
             return Object.entries(grouped).map(([mapel, materiGroups]) => {
               const mapelKey = `mapel-${mapel}`;
               const isOpenMapel = openMapel[mapelKey] ?? true;
@@ -634,7 +646,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                   </button>
                   {isOpenMapel && (
                     <div className="collapsible-content">
-                      {Object.entries(materiGroups).map(([materi, diffGroups]) => {
+                      {Object.entries(materiGroups).map(([materi, tipeGroups]) => {
                         const materiKey = `${mapelKey}-${materi}`;
                         const isOpenMateri = openMateri[materiKey] ?? true;
                         return (
@@ -649,65 +661,87 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                             </button>
                             {isOpenMateri && (
                               <div className="collapsible-subcontent">
-                                {Object.entries(diffGroups).map(([diffStr, items]) => {
-                                  const diff = Number(diffStr);
-                                  const diffKey = `${materiKey}-${diff}`;
-                                  const isOpenDiffLocal = openDiff[diffKey] ?? true;
-                                  const diffLabel = diff === 1 ? 'Mudah' : diff === 3 ? 'Sulit (HOTS)' : 'Sedang';
-                                  const diffColor = diff === 1 ? 'var(--success)' : diff === 3 ? 'var(--danger)' : 'var(--warn)';
+                                {Object.entries(tipeGroups).map(([tipeKey, diffGroups]) => {
+                                  const tipeFullKey = `${materiKey}-${tipeKey}`;
+                                  const isOpenTipeLocal = openTipe[tipeFullKey] ?? true;
+                                  const tipeLabelName = tipeLabels[tipeKey] || tipeKey;
                                   return (
-                                    <div key={diffKey} className="collapsible-subsection">
+                                    <div key={tipeKey} className="collapsible-subsection">
                                       <button
                                         type="button"
                                         className="collapsible-subheader"
                                         style={{ background: 'var(--canvas)', borderRadius: 'var(--radius-sm)' }}
-                                        onClick={() => setOpenDiff((m) => ({ ...m, [diffKey]: !isOpenDiffLocal }))}
+                                        onClick={() => setOpenTipe((m) => ({ ...m, [tipeFullKey]: !isOpenTipeLocal }))}
                                       >
-                                        <span className="badge" style={{ background: 'var(--teal-soft)', color: diffColor, borderColor: diffColor }}>
-                                          {diffLabel} ({items.length})
-                                        </span>
-                                        <span className="collapsible-toggle">{isOpenDiffLocal ? '▼' : '▶'}</span>
+                                        <span className="chip chip-type">{tipeLabelName}</span>
+                                        <span className="collapsible-toggle">{isOpenTipeLocal ? '▼' : '▶'}</span>
                                       </button>
-                                      {isOpenDiffLocal && (
-                                        <div style={{ paddingLeft: 16, paddingTop: 8 }}>
-                                          {items.map((r) => (
-                                            <article key={r.id} className="card" style={{ marginBottom: 8, boxShadow: 'none', padding: '12px 16px' }}>
-                                              <div className="card-header">
-                                                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                                                  <span className="chip chip-type">{r.item_type}</span>
-                                                </div>
-                                                <div className="btn-group">
-                                                  <button
-                                                    type="button"
-                                                    className="btn btn-ghost btn-sm"
-                                                    onClick={() => mulaiEdit(r)}
-                                                  >
-                                                    Sunting
-                                                  </button>
-                                                  <button
-                                                    type="button"
-                                                    className="btn btn-ghost btn-sm"
-                                                    style={{ color: 'var(--danger)' }}
-                                                    onClick={() => void hapusSoal(r.id)}
-                                                  >
-                                                    Hapus
-                                                  </button>
-                                                </div>
+                                      {isOpenTipeLocal && (
+                                        <div style={{ paddingLeft: 12, paddingTop: 4 }}>
+                                          {Object.entries(diffGroups).map(([diffStr, items]) => {
+                                            const diff = Number(diffStr);
+                                            const diffKey = `${tipeFullKey}-${diff}`;
+                                            const isOpenDiffLocal = openDiff[diffKey] ?? true;
+                                            const diffLabel = diff === 1 ? 'Mudah' : diff === 3 ? 'Sulit (HOTS)' : 'Sedang';
+                                            const diffColor = diff === 1 ? 'var(--success)' : diff === 3 ? 'var(--danger)' : 'var(--warn)';
+                                            return (
+                                              <div key={diffKey} className="collapsible-subsection">
+                                                <button
+                                                  type="button"
+                                                  className="collapsible-subheader"
+                                                  style={{ background: 'var(--teal-soft)' }}
+                                                  onClick={() => setOpenDiff((m) => ({ ...m, [diffKey]: !isOpenDiffLocal }))}
+                                                >
+                                                  <span className="badge" style={{ color: diffColor }}>
+                                                    {diffLabel} ({items.length})
+                                                  </span>
+                                                  <span className="collapsible-toggle">{isOpenDiffLocal ? '▼' : '▶'}</span>
+                                                </button>
+                                                {isOpenDiffLocal && (
+                                                  <div style={{ paddingLeft: 12, paddingTop: 4 }}>
+                                                    {items.map((r) => (
+                                                      <article key={r.id} className="card" style={{ marginBottom: 8, boxShadow: 'none', padding: '12px 16px' }}>
+                                                        <div className="card-header">
+                                                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                                                            <span className="chip chip-type">{r.item_type}</span>
+                                                          </div>
+                                                          <div className="btn-group">
+                                                            <button
+                                                              type="button"
+                                                              className="btn btn-ghost btn-sm"
+                                                              onClick={() => mulaiEdit(r)}
+                                                            >
+                                                              Sunting
+                                                            </button>
+                                                            <button
+                                                              type="button"
+                                                              className="btn btn-ghost btn-sm"
+                                                              style={{ color: 'var(--danger)' }}
+                                                              onClick={() => void hapusSoal(r.id)}
+                                                            >
+                                                              Hapus
+                                                            </button>
+                                                          </div>
+                                                        </div>
+                                                        <p style={{ margin: '8px 0 4px', fontWeight: 500 }}>
+                                                          <MathText text={r.stem} />
+                                                        </p>
+                                                        {r.rationale && (
+                                                          <p className="type-lab">
+                                                            Pembahasan: <MathText text={r.rationale} />
+                                                          </p>
+                                                        )}
+                                                      </article>
+                                                    ))}
+                                                  </div>
+                                                )}
                                               </div>
-                                              <p style={{ margin: '8px 0 4px', fontWeight: 500 }}>
-                                                <MathText text={r.stem} />
-                                              </p>
-                                              {r.rationale && (
-                                                <p className="type-lab">
-                                                  Pembahasan: <MathText text={r.rationale} />
-                                                </p>
-                                              )}
-                                             </article>
-                                           ))}
-                                         </div>
-                                       )}
-                                     </div>
-                                   );
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
                                 })}
                               </div>
                             )}
@@ -719,7 +753,8 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                 </div>
               );
             });
-          })()}        </section>
+          })()}
+        </section>
       )}
     </div>
   );
