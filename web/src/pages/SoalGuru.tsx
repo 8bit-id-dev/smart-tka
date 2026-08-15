@@ -52,7 +52,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   const [opsi, setOpsi] = useState(['', '', '', '', '']);
   const [kunciPg, setKunciPg] = useState('C');
   const [kunciKom, setKunciKom] = useState<string[]>([]);
-  const [pernyataan, setPernyataan] = useState(['', '', '']);
+  const [pernyataan, setPernyataan] = useState<string[]>(['', '', '']);
   const [kunciBs, setKunciBs] = useState<('B' | 'S')[]>(['B', 'S', 'B']);
 
   const [matchKiri, setMatchKiri] = useState<string[]>(['', '', '']);
@@ -202,8 +202,8 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     if (d.stem) setStem(d.stem);
     if (d.pembahasan) setRationale(d.pembahasan);
     if (tipe === 'pernyataan_bs') {
-      setPernyataan(d.pernyataan);
-      setKunciBs(d.kunci_bs);
+      setPernyataan(d.pernyataan || ['', '']);
+      setKunciBs(d.kunci_bs || ['S', 'S']);
     } else if (tipe === 'pg' || tipe === 'pg_kompleks') {
       setOpsi(d.opsi);
       if (tipe === 'pg') setKunciPg(d.kunci[0] || 'C');
@@ -497,32 +497,74 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                 />
               ))}
 
-            {tipe === 'pernyataan_bs' &&
-              pernyataan.map((p, idx) => (
-                <div key={idx} className="form-group">
-                  <MathField
-                    label={`Pernyataan ${idx + 1}`}
-                    value={p}
-                    onChange={(v) => setPernyataan((a) => a.map((x, i) => (i === idx ? v : x)))}
-                  />
-                  <div className="btn-group">
-                    <button
-                      type="button"
-                      className={`btn btn-sm ${kunciBs[idx] === 'B' ? 'btn-primary' : 'btn-ghost'}`}
-                      onClick={() => setKunciBs((a) => a.map((x, i) => (i === idx ? 'B' : x)))}
-                    >
-                      Benar
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn btn-sm ${kunciBs[idx] === 'S' ? 'btn-danger' : 'btn-ghost'}`}
-                      onClick={() => setKunciBs((a) => a.map((x, i) => (i === idx ? 'S' : x)))}
-                    >
-                      Salah
-                    </button>
+            {tipe === 'pernyataan_bs' && (
+              <div className="form-group">
+                {pernyataan.map((p, idx) => (
+                  <div key={idx} className="form-group" style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <MathField
+                          label={`Pernyataan ${idx + 1}`}
+                          value={p}
+                          onChange={(v) =>
+                            setPernyataan((a) => a.map((x, i) => (i === idx ? v : x)))
+                          }
+                        />
+                      </div>
+                      <div className="btn-group">
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${kunciBs[idx] === 'B' ? 'btn-primary' : 'btn-ghost'}`}
+                          onClick={() => setKunciBs((a) => {
+                            const arr = [...a];
+                            arr[idx] = 'B';
+                            return arr;
+                          })}
+                        >
+                          Benar
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${kunciBs[idx] === 'S' ? 'btn-danger' : 'btn-ghost'}`}
+                          onClick={() => setKunciBs((a) => {
+                            const arr = [...a];
+                            arr[idx] = 'S';
+                            return arr;
+                          })}
+                        >
+                          Salah
+                        </button>
+                      </div>
+                    </div>
+                    {pernyataan.length > 2 && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ marginTop: 4, color: 'var(--danger)' }}
+                        onClick={() => {
+                          const newPernyataan = pernyataan.filter((_, i) => i !== idx);
+                          const newKunciBs = kunciBs.filter((_, i) => i !== idx);
+                          setPernyataan(newPernyataan);
+                          setKunciBs(newKunciBs);
+                        }}
+                      >
+                        Hapus Pernyataan
+                      </button>
+                    )}
                   </div>
-                </div>
-              ))}
+                ))}
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    setPernyataan([...pernyataan, '']);
+                    setKunciBs([...kunciBs, 'S']);
+                  }}
+                >
+                  + Tambah Pernyataan
+                </button>
+              </div>
+            )}
 
             {tipe === 'mencocokkan' && (
               <div className="form-group">
