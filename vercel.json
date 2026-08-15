@@ -1,20 +1,5 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "web/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "web/dist",
-        "installCommand": "npm install --prefix web",
-        "buildCommand": "npm run build --prefix web"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "web/dist/$1"
-    }
-  ]
+  "buildCommand": "npm run build --prefix web",
+  "installCommand": "npm install --prefix web",
+  "outputDirectory": "web/dist"
 }
