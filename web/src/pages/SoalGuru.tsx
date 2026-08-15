@@ -26,7 +26,10 @@ type ItemRow = {
   created_at?: string;
 };
 
+type SubTab = 'buat' | 'bank';
+
 export function SoalGuru({ profile }: { profile: AppProfile }) {
+  const [subTab, setSubTab] = useState<SubTab>('buat');
   const [list, setList] = useState<ItemRow[]>([]);
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
@@ -339,21 +342,31 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   }
 
   return (
-    <div className="placeholder" style={{ maxWidth: 760 }}>
-      <section className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>{editingId ? 'Sunting Soal' : 'Buat Soal'}</h2>
-          {editingId && (
-            <button className="btn btn-ghost" type="button" onClick={resetForm}>
-              Batal Edit
-            </button>
-          )}
-        </div>
-        <p className="type-lab">
-          {editingId
-            ? 'Mengubah soal yang sudah ada di bank sekolah Anda.'
-            : 'Masuk bank sekolah Anda, bukan bank nasional SMART. AI hanya draf — guru wajib menyunting.'}
-        </p>
+    <div className="placeholder" style={{ maxWidth: 900 }}>
+      <div className="shell-nav" style={{ marginBottom: 16, borderBottom: '1px solid var(--card-border)', paddingBottom: 8 }}>
+        <button className={subTab === 'buat' ? 'on' : ''} type="button" onClick={() => setSubTab('buat')}>
+          Buat Soal
+        </button>
+        <button className={subTab === 'bank' ? 'on' : ''} type="button" onClick={() => setSubTab('bank')}>
+          Bank Soal
+        </button>
+      </div>
+
+      {subTab === 'buat' && (
+        <section className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2>{editingId ? 'Sunting Soal' : 'Buat Soal'}</h2>
+            {editingId && (
+              <button className="btn btn-ghost" type="button" onClick={resetForm}>
+                Batal Edit
+              </button>
+            )}
+          </div>
+          <p className="type-lab">
+            {editingId
+              ? 'Mengubah soal yang sudah ada di bank sekolah Anda.'
+              : 'Masuk bank sekolah Anda, bukan bank nasional SMART. AI hanya draf — guru wajib menyunting.'}
+          </p>
 
         <div className="auth-form">
           <label>
@@ -567,63 +580,93 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
             )}
           </div>
         </form>
-      </section>
+        </section>
+      )}
 
-      <section className="card" style={{ marginTop: 16 }}>
-        <h2>Soal Saya ({list.length})</h2>
-        {list.length === 0 && <p className="type-lab">Belum ada. Simpan soal pertama di atas.</p>}
+      {subTab === 'bank' && (
+        <section className="card">
+          <h2>Bank Soal Saya ({list.length})</h2>
+          {list.length === 0 && <p className="type-lab">Belum ada soal. Buat soal pertama di tab "Buat Soal".</p>}
 
-        {list.map((r) => {
-          const diffLabel = r.difficulty === 1 ? 'Mudah' : r.difficulty === 3 ? 'Sulit (HOTS)' : 'Sedang';
-          const diffBg = r.difficulty === 1 ? '#e6f4ea' : r.difficulty === 3 ? '#fce8e6' : '#fef7e0';
-          const diffColor = r.difficulty === 1 ? '#137333' : r.difficulty === 3 ? '#c5221f' : '#b06000';
-
-          return (
-            <article key={r.id} className="card" style={{ marginBottom: 12, boxShadow: 'none' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span className="chip chip-sedang">{r.item_type}</span>
-                  <span
-                    className="chip"
-                    style={{ backgroundColor: diffBg, color: diffColor, fontSize: 11, fontWeight: 600 }}
-                  >
-                    {diffLabel}
-                  </span>
-                  <strong>{r.mapel}</strong> {r.materi ? `· ${r.materi}` : ''}
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    style={{ padding: '4px 8px', fontSize: 13 }}
-                    onClick={() => mulaiEdit(r)}
-                  >
-                    Sunting
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    style={{ padding: '4px 8px', fontSize: 13, color: '#dc2626' }}
-                    onClick={() => void hapusSoal(r.id)}
-                  >
-                    Hapus
-                  </button>
-                </div>
+          {(() => {
+            // Group by mapel > materi > difficulty
+            const grouped: Record<string, Record<string, Record<number, ItemRow[]>>> = {};
+            for (const item of list) {
+              const mp = item.mapel || 'Tanpa Mapel';
+              const mt = item.materi || 'Tanpa Materi';
+              const diff = item.difficulty || 2;
+              if (!grouped[mp]) grouped[mp] = {};
+              if (!grouped[mp][mt]) grouped[mp][mt] = {};
+              if (!grouped[mp][mt][diff]) grouped[mp][mt][diff] = [];
+              grouped[mp][mt][diff].push(item);
+            }
+            return Object.entries(grouped).map(([mapel, materiGroups]) => (
+              <div key={mapel} style={{ marginBottom: 24 }}>
+                <h3 style={{ margin: '0 0 12px', color: 'var(--teal)', fontSize: 18 }}>{mapel}</h3>
+                {Object.entries(materiGroups).map(([materi, diffGroups]) => (
+                  <div key={materi} style={{ marginLeft: 12, marginBottom: 16, borderLeft: '3px solid var(--teal-soft)', paddingLeft: 12 }}>
+                    <h4 style={{ margin: '8px 0 10px', fontSize: 15, color: 'var(--ink)' }}>{materi}</h4>
+                    {Object.entries(diffGroups).map(([diffStr, items]) => {
+                      const diff = Number(diffStr);
+                      const diffLabel = diff === 1 ? 'Mudah' : diff === 3 ? 'Sulit (HOTS)' : 'Sedang';
+                      const diffBg = diff === 1 ? '#e6f4ea' : diff === 3 ? '#fce8e6' : '#fef7e0';
+                      const diffColor = diff === 1 ? '#137333' : diff === 3 ? '#c5221f' : '#b06000';
+                      return (
+                        <div key={diffStr} style={{ marginBottom: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <span
+                              className="chip"
+                              style={{ backgroundColor: diffBg, color: diffColor, fontSize: 11, fontWeight: 600 }}
+                            >
+                              {diffLabel} ({items.length})
+                            </span>
+                          </div>
+                          {items.map((r) => (
+                            <article key={r.id} className="card" style={{ marginBottom: 8, boxShadow: 'none', padding: 12 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                                  <span className="chip chip-sedang">{r.item_type}</span>
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost"
+                                    style={{ padding: '4px 8px', fontSize: 13 }}
+                                    onClick={() => mulaiEdit(r)}
+                                  >
+                                    Sunting
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost"
+                                    style={{ padding: '4px 8px', fontSize: 13, color: '#dc2626' }}
+                                    onClick={() => void hapusSoal(r.id)}
+                                  >
+                                    Hapus
+                                  </button>
+                                </div>
+                              </div>
+                              <p style={{ margin: '8px 0 4px', fontWeight: 500 }}>
+                                <MathText text={r.stem} />
+                              </p>
+                              {r.rationale && (
+                                <p className="type-lab" style={{ margin: 0 }}>
+                                  Pembahasan: <MathText text={r.rationale} />
+                                </p>
+                              )}
+                            </article>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
+            ));
+          })()}
+        </section>
+      )}
 
-              <p style={{ margin: '8px 0 4px', fontWeight: 500 }}>
-                <MathText text={r.stem} />
-              </p>
-
-              {r.rationale && (
-                <p className="type-lab" style={{ margin: 0 }}>
-                  Pembahasan: <MathText text={r.rationale} />
-                </p>
-              )}
-            </article>
-          );
-        })}
-      </section>
     </div>
   );
 }

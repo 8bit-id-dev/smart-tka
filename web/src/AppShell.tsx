@@ -42,22 +42,45 @@ export function AppShell({
     items.push({ id: 'profil', label: 'Profil' });
   }
 
+  const isDesktopRole = ['guru', 'admin', 'konten', 'kepsek'].includes(role);
+
   return (
-    <div className="shell">
-      <header className="shell-bar">
-        <strong className="brand">SMART-TKA</strong>
-        <nav className="shell-nav">
-          {items.map((i) => (
-            <button key={i.id} className={tab === i.id ? 'on' : ''} type="button" onClick={() => onTab(i.id)}>
-              {i.label}
-            </button>
-          ))}
-        </nav>
-        <span className="shell-user">
-          {name} · {role}
-        </span>
-      </header>
-      <main className="shell-main">{children}</main>
+    <div className={`shell ${isDesktopRole ? 'shell-desktop' : 'shell-mobile'}`}>
+      {isDesktopRole ? (
+        <>
+          <aside className="shell-sidebar">
+            <strong className="brand">SMART-TKA</strong>
+            <nav className="shell-nav">
+              {items.map((i) => (
+                <button key={i.id} className={tab === i.id ? 'on' : ''} type="button" onClick={() => onTab(i.id)}>
+                  {i.label}
+                </button>
+              ))}
+            </nav>
+            <span className="shell-user">
+              {name} · {role}
+            </span>
+          </aside>
+          <main className="shell-main">{children}</main>
+        </>
+      ) : (
+        <>
+          <header className="shell-bar">
+            <strong className="brand">SMART-TKA</strong>
+            <nav className="shell-nav">
+              {items.map((i) => (
+                <button key={i.id} className={tab === i.id ? 'on' : ''} type="button" onClick={() => onTab(i.id)}>
+                  {i.label}
+                </button>
+              ))}
+            </nav>
+            <span className="shell-user">
+              {name} · {role}
+            </span>
+          </header>
+          <main className="shell-main-mobile">{children}</main>
+        </>
+      )}
     </div>
   );
 }

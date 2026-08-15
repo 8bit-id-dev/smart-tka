@@ -261,11 +261,41 @@ pre.debug {
 }
 
 .shell { min-height: 100vh; }
+
+/* Desktop-first: sidebar for admin/guru/konten/kepsek */
+.shell-desktop { display: flex; }
+.shell-desktop .shell-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 16px;
+  width: 220px;
+  min-height: 100vh;
+  background: var(--card);
+  border-right: 1px solid var(--card-border);
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 20;
+}
+.shell-desktop .shell-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.shell-desktop .shell-nav button {
+  background: none; border: 0; padding: 10px 12px; border-radius: 8px;
+  cursor: pointer; font-weight: 550; font-size: 13px; color: var(--muted);
+  text-align: left;
+}
+.shell-desktop .shell-nav button:hover { background: var(--canvas); color: var(--ink); }
+.shell-desktop .shell-nav button.on { background: var(--teal-soft); color: var(--teal); font-weight: 650; }
+.shell-desktop .shell-user { font-size: 12px; color: var(--outline); margin-top: auto; }
+.shell-desktop .shell-main { padding: 24px 32px 48px; margin-left: 220px; flex: 1; min-height: 100vh; }
+
+/* Mobile-first: top bar for siswa/orang_tua */
+.shell-mobile { display: flex; flex-direction: column; }
 .shell-bar {
   display: flex;
   align-items: center;
   gap: 12px 16px;
-  padding: 10px 20px;
+  padding: 10px 16px;
   background: rgba(255, 252, 248, 0.92);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--card-border);
@@ -274,21 +304,23 @@ pre.debug {
   top: 0;
   z-index: 20;
 }
-.brand {
-  color: var(--teal);
-  font-size: 15px;
-  letter-spacing: -0.03em;
-  font-weight: 750;
-}
-.shell-nav { display: flex; gap: 2px; flex: 1; flex-wrap: wrap; }
-.shell-nav button {
+.shell-mobile .shell-nav { display: flex; gap: 2px; flex: 1; flex-wrap: wrap; }
+.shell-mobile .shell-nav button {
   background: none; border: 0; padding: 6px 10px; border-radius: 8px;
   cursor: pointer; font-weight: 550; font-size: 13px; color: var(--muted);
 }
-.shell-nav button:hover { background: var(--canvas); color: var(--ink); }
-.shell-nav button.on { background: var(--teal-soft); color: var(--teal); font-weight: 650; }
-.shell-user { font-size: 12px; color: var(--outline); }
-.shell-main { padding: 8px 0 48px; }
+.shell-mobile .shell-nav button:hover { background: var(--canvas); color: var(--ink); }
+.shell-mobile .shell-nav button.on { background: var(--teal-soft); color: var(--teal); font-weight: 650; }
+.shell-mobile .shell-user { font-size: 12px; color: var(--outline); }
+.shell-main-mobile { padding: 16px; flex: 1; min-height: 100vh; }
+
+/* Desktop sidebar responsive collapse */
+@media (max-width: 900px) {
+  .shell-desktop .shell-sidebar { width: 64px; padding: 16px 8px; }
+  .shell-desktop .shell-nav button { padding: 10px 8px; font-size: 0; }
+  .shell-desktop .shell-nav button::before { font-size: 13px; content: attr(aria-label); }
+  .shell-desktop .shell-main { margin-left: 64px; padding: 16px; }
+}
 
 .choices { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .choice {
