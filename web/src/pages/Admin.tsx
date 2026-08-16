@@ -119,11 +119,7 @@ export function Admin({ me }: { me: AppProfile }) {
             type="button"
             className="btn-ghost btn"
             disabled={isMe}
-            style={{
-              maxWidth: 130,
-              fontSize: 13,
-              color: active ? 'var(--danger)' : 'var(--success)',
-            }}
+            style={{ maxWidth: 130, fontSize: 13, color: active ? 'var(--danger)' : 'var(--success)' }}
             onClick={() => void toggleActiveUser(u.id, active)}
           >
             {active ? 'Nonaktifkan' : 'Aktifkan'}
@@ -426,7 +422,7 @@ export function Admin({ me }: { me: AppProfile }) {
   if (!['admin', 'kepsek'].includes(me.role)) {
     return (
       <div className="page">
-        <div className="card">
+        <div className="form-card">
           <h2 className="card-title">Admin</h2>
           <p className="card-subtitle">Hanya admin / kepsek.</p>
         </div>
@@ -442,33 +438,38 @@ export function Admin({ me }: { me: AppProfile }) {
       </header>
 
       {err && (
-        <div className="banner banner-danger">
-          <p className="banner-text" style={{ whiteSpace: 'pre-wrap' }}>{err}</p>
+        <div className="banner banner-danger" style={{ marginBottom: 20, whiteSpace: 'pre-wrap' }}>
+          <p className="banner-text">{err}</p>
         </div>
       )}
       {ok && (
-        <div className="banner banner-ok">
+        <div className="banner banner-ok" style={{ marginBottom: 20 }}>
           <p className="banner-text">{ok}</p>
         </div>
       )}
 
       <form onSubmit={importCsv} className="form-container">
-        <div className="card">
+        <div className="form-card">
           <header className="card-header">
             <h2 className="card-title">Import CSV</h2>
-            <p className="card-subtitle">Wajib file .csv. Email sudah ada di Auth akan ditautkan (bukan dibuat ulang) jika password CSV sama.</p>
+            <p className="card-subtitle">
+              Wajib file <b>.csv</b>. Email yang sudah di Auth akan ditautkan (bukan dibuat ulang) jika password CSV sama,
+              atau jika daftar user Auth bisa dibaca. Auto-confirm email diatur di dashboard InsForge, bukan di tombol import.
+            </p>
           </header>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="csv-file">File CSV</label>
-            <input
-              id="csv-file"
-              type="file"
-              accept=".csv,text/csv,.txt"
-              onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-            />
+          <div className="form-section">
+            <div className="form-section-title">File CSV <span className="req"></span></div>
+            <input type="file" id="csv-file" className="input" accept=".csv,text/csv,.txt" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} />
           </div>
+
           {csvFile && <p className="type-lab">Dipilih: {csvFile.name}</p>}
+
+          <div className="form-section">
+            <a href="/contoh-import-user.csv" download>
+              Unduh contoh CSV
+            </a>
+          </div>
 
           <div className="actions">
             <button className="btn btn-primary" type="submit" disabled={!csvFile}>
@@ -479,48 +480,43 @@ export function Admin({ me }: { me: AppProfile }) {
       </form>
 
       <form onSubmit={createUser} className="form-container" style={{ marginTop: 24 }}>
-        <div className="card">
+        <div className="form-card">
           <header className="card-header">
             <h2 className="card-title">Buat user (tanpa Daftar)</h2>
             <p className="card-subtitle">Siswa langsung masuk dengan email/password yang Anda isi.</p>
           </header>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label" htmlFor="new-email">
-                Email <span className="req"></span>
-              </label>
-              <input
-                id="new-email"
-                className="input"
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                required
-                placeholder="contoh@email.com"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="new-password">
-                Password sementera <span className="req"></span>
-              </label>
-              <input
-                id="new-password"
-                className="input"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                minLength={8}
-                required
-                placeholder="Minimal 8 karakter"
-              />
+          <div className="form-section">
+            <div className="form-row">
+              <div className="form-group">
+                <div className="form-section-title">Email <span className="req"></span></div>
+                <input
+                  className="input"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  required
+                  placeholder="contoh@email.com"
+                />
+              </div>
+              <div className="form-group">
+                <div className="form-section-title">Password sementera <span className="req"></span></div>
+                <input
+                  className="input"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  minLength={8}
+                  required
+                  placeholder="Minimal 8 karakter"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="new-name">Nama</label>
+          <div className="form-section">
+            <div className="form-section-title">Nama</div>
             <input
-              id="new-name"
               className="input"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -528,32 +524,34 @@ export function Admin({ me }: { me: AppProfile }) {
             />
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label" htmlFor="new-role">Peran</label>
-              <select id="new-role" className="select" value={newRole} onChange={(e) => setNewRole(e.target.value)}>
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="new-jenjang">Jenjang</label>
-              <select id="new-jenjang" className="select" value={newJenjang} onChange={(e) => setNewJenjang(e.target.value)}>
-                {JENJANG_OPTS.map((j) => (
-                  <option key={j} value={j}>
-                    {j.toUpperCase()}
-                  </option>
-                ))}
-              </select>
+          <div className="form-section">
+            <div className="form-row">
+              <div className="form-group">
+                <div className="form-section-title">Peran</div>
+                <select className="select" value={newRole} onChange={(e) => setNewRole(e.target.value)}>
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <div className="form-section-title">Jenjang</div>
+                <select className="select" value={newJenjang} onChange={(e) => setNewJenjang(e.target.value)}>
+                  {JENJANG_OPTS.map((j) => (
+                    <option key={j} value={j}>
+                      {j.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="new-class">Masukkan ke kelas (opsional)</label>
-            <select id="new-class" className="select" value={newClass} onChange={(e) => setNewClass(e.target.value)}>
+          <div className="form-section">
+            <div className="form-section-title">Masukkan ke kelas (opsional)</div>
+            <select className="select" value={newClass} onChange={(e) => setNewClass(e.target.value)}>
               <option value="">— belum —</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -572,12 +570,7 @@ export function Admin({ me }: { me: AppProfile }) {
       </form>
 
       <div className="collapsible-section" style={{ marginTop: 24 }}>
-        <button
-          type="button"
-          className="collapsible-header"
-          onClick={() => setOpenUsers((v) => !v)}
-          aria-expanded={openUsers}
-        >
+        <button type="button" className="collapsible-header" onClick={() => setOpenUsers((v) => !v)} aria-expanded={openUsers}>
           <h2 className="collapsible-title" style={{ margin: 0 }}>
             User & peran ({users.length})
           </h2>
@@ -593,7 +586,6 @@ export function Admin({ me }: { me: AppProfile }) {
               return (
                 <div key={role} className="collapsible-subsection">
                   {collapsibleSub(label, grup.length, buka, () => setOpenRole((m) => ({ ...m, [role]: !m[role] })))}
-                  {!buka && null}
                   {buka && role !== 'siswa' && grup.length === 0 && <p className="type-lab">Belum ada.</p>}
                   {buka && role !== 'siswa' && grup.map((u) => barisUser(u))}
                   {buka && role === 'siswa' && (
@@ -641,12 +633,7 @@ export function Admin({ me }: { me: AppProfile }) {
       </div>
 
       <div className="collapsible-section" style={{ marginTop: 24 }}>
-        <button
-          type="button"
-          className="collapsible-header"
-          onClick={() => setOpenAsg((v) => !v)}
-          aria-expanded={openAsg}
-        >
+        <button type="button" className="collapsible-header" onClick={() => setOpenAsg((v) => !v)} aria-expanded={openAsg}>
           <h2 className="collapsible-title" style={{ margin: 0 }}>
             Assignment ({asgs.length})
           </h2>
@@ -657,35 +644,36 @@ export function Admin({ me }: { me: AppProfile }) {
             <p className="type-lab">Tugaskan paket ke kelas yang sudah ada. Buat kelas di menu Kelas; buat paket di menu Paket.</p>
 
             <form onSubmit={buatAssignment} className="form-container">
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="asg-pkg">Paket</label>
-                  <select id="asg-pkg" className="select" value={asgPkg} onChange={(e) => setAsgPkg(e.target.value)}>
-                    <option value="">— pilih —</option>
-                    {pkgs.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.title} ({p.mapel})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="asg-class">Kelas</label>
-                  <select id="asg-class" className="select" value={asgClass} onChange={(e) => setAsgClass(e.target.value)}>
-                    <option value="">— pilih —</option>
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+              <div className="form-section">
+                <div className="form-row">
+                  <div className="form-group">
+                    <div className="form-section-title">Paket</div>
+                    <select className="select" value={asgPkg} onChange={(e) => setAsgPkg(e.target.value)}>
+                      <option value="">— pilih —</option>
+                      {pkgs.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title} ({p.mapel})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <div className="form-section-title">Kelas</div>
+                    <select className="select" value={asgClass} onChange={(e) => setAsgClass(e.target.value)}>
+                      <option value="">— pilih —</option>
+                      {classes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label" htmlFor="asg-due">Tenggat (opsional)</label>
+              <div className="form-section">
+                <div className="form-section-title">Tenggat (opsional)</div>
                 <input
-                  id="asg-due"
                   className="input"
                   type="datetime-local"
                   value={asgDue}

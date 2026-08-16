@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Smart TKA</string>
+    <string name="title_activity_main">Smart TKA</string>
+    <string name="package_name">com.smarttka.app</string>
+    <string name="custom_url_scheme">com.smarttka.app</string>
+</resources>

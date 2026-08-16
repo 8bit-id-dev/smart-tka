@@ -6,6 +6,8 @@ type Cls = { id: string; name: string; jenjang: string; invite_code: string };
 type Siswa = { id: string; full_name: string | null; user_id: string; jenjang: string | null };
 type Anggota = { profile_id: string };
 
+const JENJANG_OPTS = ['sd', 'smp', 'sma', 'smk'] as const;
+
 export function Kelas({ profile }: { profile: AppProfile }) {
   const [rows, setRows] = useState<Cls[]>([]);
   const [siswa, setSiswa] = useState<Siswa[]>([]);
@@ -178,7 +180,7 @@ export function Kelas({ profile }: { profile: AppProfile }) {
   if (!['guru', 'admin', 'kepsek'].includes(profile.role)) {
     return (
       <div className="page">
-        <div className="card">
+        <div className="form-card">
           <h2 className="card-title">Kelas</h2>
           <p className="card-subtitle">Hanya guru/admin/kepsek.</p>
         </div>
@@ -194,59 +196,54 @@ export function Kelas({ profile }: { profile: AppProfile }) {
       </header>
 
       {err && (
-        <div className="banner banner-danger">
-          <p className="banner-text" style={{ whiteSpace: 'pre-wrap' }}>{err}</p>
+        <div className="banner banner-danger" style={{ marginBottom: 20, whiteSpace: 'pre-wrap' }}>
+          <p className="banner-text">{err}</p>
         </div>
       )}
       {ok && (
-        <div className="banner banner-ok">
+        <div className="banner banner-ok" style={{ marginBottom: 20 }}>
           <p className="banner-text">{ok}</p>
         </div>
       )}
 
       <form onSubmit={buat} className="form-container">
-        <div className="card">
+        <div className="form-card">
           <header className="card-header">
             <h2 className="card-title">Buat kelas + kode</h2>
             <p className="card-subtitle">Satu siswa hanya di satu kelas. Import CSV memakai kolom kode_kelas = kode undangan ini.</p>
           </header>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label" htmlFor="cls-name">
-                Nama kelas <span className="req"></span>
-              </label>
-              <input
-                id="cls-name"
-                className="input"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="cls-code">
-                Kode kelas (undangan)
-              </label>
-              <input
-                id="cls-code"
-                className="input"
-                value={kode}
-                onChange={(e) => setKode(e.target.value.toUpperCase())}
-                placeholder="Contoh: 9A-2026 (kosong = otomatis)"
-              />
+          <div className="form-section">
+            <div className="form-row">
+              <div className="form-group">
+                <div className="form-section-title">Nama kelas <span className="req"></span></div>
+                <input
+                  className="input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <div className="form-section-title">Kode kelas (undangan)</div>
+                <input
+                  className="input"
+                  value={kode}
+                  onChange={(e) => setKode(e.target.value.toUpperCase())}
+                  placeholder="Contoh: 9A-2026 (kosong = otomatis)"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="cls-jenjang">
-              Jenjang <span className="req"></span>
-            </label>
-            <select id="cls-jenjang" className="select" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
-              <option value="sd">SD</option>
-              <option value="smp">SMP</option>
-              <option value="sma">SMA</option>
-              <option value="smk">SMK</option>
+          <div className="form-section">
+            <div className="form-section-title">Jenjang <span className="req"></span></div>
+            <select className="select" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
+              {JENJANG_OPTS.map((j) => (
+                <option key={j} value={j}>
+                  {j.toUpperCase()}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -293,25 +290,15 @@ export function Kelas({ profile }: { profile: AppProfile }) {
                 {editId === c.id ? (
                   <div className="form-container" style={{ marginTop: 16 }}>
                     <div className="form-group">
-                      <label className="form-label" htmlFor={`edit-name-${c.id}`}>Nama</label>
-                      <input
-                        id={`edit-name-${c.id}`}
-                        className="input"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                      />
+                      <div className="form-section-title">Nama</div>
+                      <input className="input" value={editName} onChange={(e) => setEditName(e.target.value)} />
                     </div>
                     <div className="form-group">
-                      <label className="form-label" htmlFor={`edit-code-${c.id}`}>Kode kelas</label>
-                      <input
-                        id={`edit-code-${c.id}`}
-                        className="input"
-                        value={editKode}
-                        onChange={(e) => setEditKode(e.target.value.toUpperCase())}
-                      />
+                      <div className="form-section-title">Kode kelas</div>
+                      <input className="input" value={editKode} onChange={(e) => setEditKode(e.target.value.toUpperCase())} />
                     </div>
                     <div className="actions">
-                      <button type="button" className="btn btn-primary" onClick={() => void simpanKelas(c.id)}>
+                      <button type="button" className="btn btn-primary" onClick={() => void simpanKelas(c.id)} disabled={busy}>
                         {busy ? 'Menyimpan…' : 'Simpan nama & kode'}
                       </button>
                       <button type="button" className="btn btn-ghost" onClick={() => setEditId(null)}>
@@ -346,12 +333,7 @@ export function Kelas({ profile }: { profile: AppProfile }) {
                   .map((pid) => (
                     <div key={pid} className="actions" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{ flex: '1 1 140px' }}>{namaSiswa(pid)}</span>
-                      <select
-                        className="select"
-                        style={{ maxWidth: 200 }}
-                        value={pindahKe[pid] || ''}
-                        onChange={(e) => setPindahKe((m) => ({ ...m, [pid]: e.target.value }))}
-                      >
+                      <select className="select" style={{ maxWidth: 200 }} value={pindahKe[pid] || ''} onChange={(e) => setPindahKe((m) => ({ ...m, [pid]: e.target.value }))}>
                         <option value="">Pindah ke…</option>
                         {rows
                           .filter((k) => k.id !== c.id)
@@ -399,7 +381,7 @@ export function Kelas({ profile }: { profile: AppProfile }) {
                 </h3>
                 {siswa.length === 0 && <p className="type-lab">Belum ada profil siswa. Buat di menu Admin dulu.</p>}
                 {belum.length === 0 && siswa.length > 0 && (
-                  <p className="type-lab">Semua siswa sudah di satu kelas. Keluarkan dulu untuk memindah, atau pilih siswa di sini lalu mereka pindah otomatis.</p>
+                  <p className="type-lab">Semua siswa sudah di satu kelas. Keluarkan dulu untuk memindah.</p>
                 )}
                 {belum.map((s) => (
                   <div key={s.id} className="actions" style={{ alignItems: 'center' }}>

@@ -63,18 +63,18 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
       </header>
 
       {err && (
-        <div className="banner banner-danger">
+        <div className="banner banner-danger" style={{ marginBottom: 20 }}>
           <p className="banner-text">{err}</p>
         </div>
       )}
       {ok && (
-        <div className="banner banner-ok">
+        <div className="banner banner-ok" style={{ marginBottom: 20 }}>
           <p className="banner-text">{ok}</p>
         </div>
       )}
 
       <form onSubmit={kirim} className="form-container">
-        <div className="card">
+        <div className="form-card">
           <header className="card-header">
             <div>
               <h2 className="card-title">Tulis pengumuman</h2>
@@ -82,12 +82,9 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
             </div>
           </header>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="pkt-title">
-              Judul <span className="req"></span>
-            </label>
+          <div className="form-section">
+            <div className="form-section-title">Judul <span className="req"></span></div>
             <input
-              id="pkt-title"
               className="input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -96,14 +93,11 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="pkt-body">
-              Isi <span className="req"></span>
-            </label>
+          <div className="form-section">
+            <div className="form-section-title">Isi <span className="req"></span></div>
             <textarea
-              id="pkt-body"
               className="textarea"
-              rows={4}
+              rows={5}
               value={body}
               onChange={(e) => setBody(e.target.value)}
               required
@@ -111,11 +105,13 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
             />
           </div>
 
-          <div className="field-row">
-            <input type="checkbox" id="pkt-ack" checked={ack} onChange={(e) => setAck(e.target.checked)} />
-            <label className="form-label" htmlFor="pkt-ack">
-              Wajib baca (prioritas tinggi)
-            </label>
+          <div className="form-section">
+            <div className="field-row">
+              <input type="checkbox" id="pkt-ack" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+              <label className="form-label" htmlFor="pkt-ack">
+                Wajib baca (prioritas tinggi)
+              </label>
+            </div>
           </div>
         </div>
 
@@ -126,7 +122,7 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
         </div>
       </form>
 
-      <section className="card" style={{ marginTop: 24 }}>
+      <section className="form-card" style={{ marginTop: 24 }}>
         <header className="card-header">
           <h2 className="card-title">Terkirim ({rows.length})</h2>
         </header>

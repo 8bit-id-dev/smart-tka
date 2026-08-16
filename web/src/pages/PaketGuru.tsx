@@ -176,7 +176,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   if (!['guru', 'admin', 'konten'].includes(profile.role)) {
     return (
       <div className="page">
-        <div className="card">
+        <div className="form-card">
           <h2 className="card-title">Paket</h2>
           <p className="card-subtitle">Hanya guru/admin.</p>
         </div>
@@ -192,18 +192,18 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       </header>
 
       {err && (
-        <div className="banner banner-danger">
+        <div className="banner banner-danger" style={{ marginBottom: 20 }}>
           <p className="banner-text">{err}</p>
         </div>
       )}
       {ok && (
-        <div className="banner banner-ok">
+        <div className="banner banner-ok" style={{ marginBottom: 20 }}>
           <p className="banner-text">{ok}</p>
         </div>
       )}
 
       <form onSubmit={simpan} className="form-container">
-        <div className="card">
+        <div className="form-card">
           <header className="card-header">
             <div>
               <h2 className="card-title">{editId ? 'Sunting paket' : 'Identitas paket'}</h2>
@@ -216,12 +216,9 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             )}
           </header>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="pkg-title">
-              Judul <span className="req"></span>
-            </label>
+          <div className="form-section">
+            <div className="form-section-title">Judul <span className="req"></span></div>
             <input
-              id="pkg-title"
               className="input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -230,41 +227,37 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             />
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label" htmlFor="pkg-kind">
-                Jenis <span className="req"></span>
-              </label>
-              <select id="pkg-kind" className="select" value={kind} onChange={(e) => setKind(e.target.value as (typeof KINDS)[number]['id'])}>
-                {KINDS.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="pkg-jenjang">
-                Jenjang <span className="req"></span>
-              </label>
-              <select id="pkg-jenjang" className="select" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
-                {JENJANG_OPTS.map((j) => (
-                  <option key={j} value={j}>
-                    {j.toUpperCase()}
-                  </option>
-                ))}
-              </select>
+          <div className="form-section">
+            <div className="form-row">
+              <div className="form-group">
+                <div className="form-section-title">Jenis <span className="req"></span></div>
+                <select className="select" value={kind} onChange={(e) => setKind(e.target.value as (typeof KINDS)[number]['id'])}>
+                  {KINDS.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <div className="form-section-title">Jenjang <span className="req"></span></div>
+                <select className="select" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
+                  {JENJANG_OPTS.map((j) => (
+                    <option key={j} value={j}>
+                      {j.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="pkg-mapel">
-              Mapel & materi <span className="req"></span>
-            </label>
-            <p className="type-lab" style={{ marginTop: -4, marginBottom: 8 }}>
+          <div className="form-section">
+            <div className="form-section-title">Mapel &amp; materi <span className="req"></span></div>
+            <p className="input-hint">
               {mapel ? `${mapel}${materi ? ` · ${materi}` : ''}` : 'Belum dipilih'}
             </p>
-            <div className="hint-panel" style={{ marginTop: 0 }}>
+            <div className="hint-panel" style={{ marginTop: 8 }}>
               <KurikulumCrud
                 profile={profile}
                 jenjang={jenjang}
@@ -280,56 +273,44 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label" htmlFor="pkg-menit">
-                Durasi (menit) <span className="req"></span>
-              </label>
-              <input
-                id="pkg-menit"
-                className="input"
-                type="number"
-                min={kind === 'latihan' ? 0 : 5}
-                max={180}
-                value={menit}
-                onChange={(e) => setMenit(Number(e.target.value))}
-              />
-              <p className="input-hint" style={{ marginTop: 4 }}>
-                {kind === 'latihan' ? '0 = tanpa countdown ketat' : 'wajib untuk simulasi/ujian'}
-              </p>
-            </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="pkg-shuffle">
-                Pengaturan
-              </label>
-              <div className="field-row" style={{ marginTop: 8 }}>
+          <div className="form-section">
+            <div className="form-row">
+              <div className="form-group">
+                <div className="form-section-title">
+                  Durasi (menit) <span className="req"></span>
+                </div>
                 <input
-                  id="pkg-shuffle"
-                  type="checkbox"
-                  checked={shuffle}
-                  onChange={(e) => setShuffle(e.target.checked)}
+                  className="input"
+                  type="number"
+                  min={kind === 'latihan' ? 0 : 5}
+                  max={180}
+                  value={menit}
+                  onChange={(e) => setMenit(Number(e.target.value))}
                 />
-                <label className="form-label" htmlFor="pkg-shuffle">
-                  Acak urutan per murid
-                </label>
+                <p className="input-hint" style={{ marginTop: 4 }}>
+                  {kind === 'latihan' ? '0 = tanpa countdown ketat' : 'wajib untuk simulasi/ujian'}
+                </p>
               </div>
-              <div className="field-row" style={{ marginTop: 6 }}>
-                <input
-                  id="pkg-discuss"
-                  type="checkbox"
-                  checked={discuss}
-                  onChange={() => {}}
-                  disabled
-                />
-                <label className="form-label" htmlFor="pkg-discuss" style={{ color: 'var(--muted)' }}>
-                  Pembahasan langsung (otomatis untuk jenis Latihan)
-                </label>
+              <div className="form-group">
+                <div className="form-section-title">Pengaturan</div>
+                <div className="field-row" style={{ marginTop: 8 }}>
+                  <input type="checkbox" id="pkg-shuffle" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} />
+                  <label className="form-label" htmlFor="pkg-shuffle">
+                    Acak urutan per murid
+                  </label>
+                </div>
+                <div className="field-row" style={{ marginTop: 6 }}>
+                  <input type="checkbox" id="pkg-discuss" checked={discuss} onChange={() => {}} disabled />
+                  <label className="form-label" htmlFor="pkg-discuss" style={{ color: 'var(--muted)' }}>
+                    Pembahasan langsung (otomatis untuk jenis Latihan)
+                  </label>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="card">
+        <div className="form-card">
           <header className="card-header">
             <h2 className="card-title">Pilih soal</h2>
             <p className="card-subtitle">{picked.length} dipilih · {filteredItems.length} tersedia untuk mapel ini</p>
@@ -341,7 +322,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             </div>
           )}
           {items.length > 0 && filteredItems.length === 0 && (
-            <p className="type-lab">Tidak ada soal yang cocok dengan filter mapel/materi ini.</p>
+            <p className="type-lab">Tidak ada soal yang cocup dengan filter mapel/materi ini.</p>
           )}
 
           <div className="chip-pick-row">
@@ -358,11 +339,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                 }}
               >
                 <div className="field-row" style={{ width: '100%', margin: 0, gap: 6, padding: 0 }}>
-                  <input
-                    type="checkbox"
-                    checked={picked.includes(it.id)}
-                    onChange={() => toggle(it.id)}
-                  />
+                  <input type="checkbox" checked={picked.includes(it.id)} onChange={() => toggle(it.id)} />
                   <span className="chip chip-sedang" style={{ fontSize: 10, padding: '2px 6px' }}>{it.item_type}</span>
                 </div>
                 <span className="type-bm" style={{ fontSize: 13, marginTop: 2 }}>
@@ -381,7 +358,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         </div>
       </form>
 
-      <section className="card" style={{ marginTop: 24 }}>
+      <section className="form-card" style={{ marginTop: 24 }}>
         <header className="card-header">
           <h2 className="card-title">Paket saya ({pkgs.length})</h2>
         </header>
