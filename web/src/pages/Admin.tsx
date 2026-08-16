@@ -553,11 +553,13 @@ export function Admin({ me }: { me: AppProfile }) {
             <div className="form-section-title">Masukkan ke kelas (opsional)</div>
             <select className="select" value={newClass} onChange={(e) => setNewClass(e.target.value)}>
               <option value="">— belum —</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+              {[...classes]
+                .sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' }))
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -661,11 +663,13 @@ export function Admin({ me }: { me: AppProfile }) {
                     <div className="form-section-title">Kelas</div>
                     <select className="select" value={asgClass} onChange={(e) => setAsgClass(e.target.value)}>
                       <option value="">— pilih —</option>
-                      {classes.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
+                      {[...classes]
+                        .sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' }))
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 </div>
