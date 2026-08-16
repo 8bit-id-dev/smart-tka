@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
+import type { Tab } from '../AppShell';
 
 type Attempt = {
   id: string;
@@ -28,11 +29,7 @@ function fmtDate(iso: string | null) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 }
 
@@ -48,12 +45,12 @@ function calcDuration(startIso: string, endIso: string | null): string {
   return `${m} mnt ${s} dtk`;
 }
 
-function LaporanSiswa({ me }: { me: AppProfile }) {
+function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | 'latihan' | 'simulasi' | 'inbox' | 'soal' | 'paket' | 'kelas' | 'pengumuman' | 'laporan' | 'admin' | 'profil') => void }) {
   const [rows, setRows] = useState<Attempt[]>([]);
   const [pkgs, setPkgs] = useState<Pkg[]>([]);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
-  const [filterKind, setFilterKind] = useState<string>('semua'); // semua | simulasi | latihan
+  const [filterKind, setFilterKind] = useState<string>('semua');
 
   async function load() {
     setErr('');
@@ -62,10 +59,8 @@ function LaporanSiswa({ me }: { me: AppProfile }) {
       .from('attempts')
       .select('id, package_id, student_id, status, score, started_at, submitted_at')
       .eq('student_id', me.id);
-
-    if (aErr) {
-      setErr(aErr.message);
-    } else {
+    if (aErr) setErr(aErr.message);
+    else {
       const sorted = ((aData || []) as Attempt[]).sort((x, y) => {
         const tx = new Date(x.submitted_at || x.started_at).getTime();
         const ty = new Date(y.submitted_at || y.started_at).getTime();
@@ -73,19 +68,14 @@ function LaporanSiswa({ me }: { me: AppProfile }) {
       });
       setRows(sorted);
     }
-
     const { data: pData } = await insforge.database.from('packages').select('id, title, mapel, kind');
     if (pData) setPkgs(pData as Pkg[]);
-
     setLoading(false);
   }
 
-  useEffect(() => {
-    void load();
-  }, [me.id]);
+  useEffect(() => { void load(); }, [me.id]);
 
   const pkgMap = useMemo(() => new Map(pkgs.map((p) => [p.id, p])), [pkgs]);
-
   const submittedRows = useMemo(
     () => rows.filter((r) => r.status === 'submitted' && r.score != null),
     [rows],
@@ -102,155 +92,176 @@ function LaporanSiswa({ me }: { me: AppProfile }) {
   }, [rows, pkgMap, filterKind]);
 
   const totalSesi = submittedRows.length;
-  const avgScore =
-    totalSesi === 0
-      ? null
-      : Math.round((submittedRows.reduce((s, r) => s + Number(r.score || 0), 0) / totalSesi) * 10) / 10;
-  const maxScore =
-    totalSesi === 0 ? null : Math.max(...submittedRows.map((r) => Number(r.score || 0)));
+  const avgScore = totalSesi === 0 ? null : Math.round((submittedRows.reduce((s, r) => s + Number(r.score || 0), 0) / totalSesi) * 10) / 10;
+  const maxScore = totalSesi === 0 ? null : Math.max(...submittedRows.map((r) => Number(r.score || 0)));
+
+  const domainStats = useMemo(() => {
+    const byDomain: Record<string, { total: number; count: number }> = {};
+    for (const r of submittedRows) {
+      const p = r.package_id ? pkgMap.get(r.package_id) : null;
+      const mapel = p?.mapel || 'Lainnya';
+      if (!byDomain[mapel]) byDomain[mapel] = { total: 0, count: 0 };
+      byDomain[mapel].total += Number(r.score || 0);
+      byDomain[mapel].count += 1;
+    }
+    return Object.entries(byDomain).map(([name, v]) => ({
+      name,
+      avg: v.count ? Math.round(v.total / v.count) : 0,
+      count: v.count,
+    })).sort((a, b) => a.avg - b.avg);
+  }, [submittedRows, pkgMap]);
 
   return (
-    <div className="placeholder laporan-page" style={{ maxWidth: 920 }}>
-      <section className="card no-print">
-        <h2>Laporan Hasil Latihan & Simulasi</h2>
-        <p className="type-lab">
-          Riwayat pengerjaan paket simulasi dan latihan bebas Anda di SMART-TKA.
+    <div className="dashboard-page">
+      <header className="page-header" style={{ marginBottom: 20 }}>
+        <p className="page-subtitle">Hasil belajar Anda</p>
+        <h1 className="page-title">Laporan Hasil</h1>
+        <p className="page-subtitle">Riwayat pengerjaan paket simulasi dan latihan bebas.</p>
+      </header>
+
+      {err && (
+        <div className="banner banner-danger" style={{ marginBottom: 20, whiteSpace: 'pre-wrap' }}>
+          <p className="banner-text">{err}</p>
+        </div>
+      )}
+
+      {/* Score summary card */}
+      <section className="card" style={{ marginBottom: 20, textAlign: 'center', padding: '28px 24px' }}>
+        <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>Rata-rata Nilai</p>
+         <div style={{ fontSize: 64, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.03em', lineHeight: 1, margin: '0 0 8px' }}>
+          {avgScore == null ? '—' : avgScore}<small style={{ fontSize: 24, fontWeight: 500, color: 'var(--muted)' }}>/100</small>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 20px' }}>
+          {totalSesi === 0 ? 'Belum ada sesi terkumpul' : `Berdasarkan ${totalSesi} sesi selesai`}
         </p>
-
-        <div className="bento" style={{ marginTop: 16, marginBottom: 16 }}>
-          <div className="card" style={{ boxShadow: 'none', background: 'var(--surface-variant, #f4f0ea)' }}>
-            <p className="type-lab">Total Sesi Selesai</p>
-            <p className="type-hm" style={{ margin: 0, color: 'var(--teal)' }}>
-              {totalSesi}
-            </p>
+        <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', margin: '0 0 4px' }}>Tertinggi</p>
+            <p style={{ fontSize: 22, fontWeight: 700,               color: 'var(--accent)', margin: 0 }}>{maxScore == null ? '—' : maxScore}</p>
           </div>
-          <div className="card" style={{ boxShadow: 'none', background: 'var(--surface-variant, #f4f0ea)' }}>
-            <p className="type-lab">Rata-Rata Nilai</p>
-            <p className="type-hm" style={{ margin: 0, color: 'var(--teal)' }}>
-              {avgScore == null ? '—' : avgScore}
-            </p>
-          </div>
-          <div className="card" style={{ boxShadow: 'none', background: 'var(--surface-variant, #f4f0ea)' }}>
-            <p className="type-lab">Nilai Tertinggi</p>
-            <p className="type-hm" style={{ margin: 0, color: 'var(--teal)' }}>
-              {maxScore == null ? '—' : maxScore}
-            </p>
+          <div>
+            <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', margin: '0 0 4px' }}>Total Sesi</p>
+            <p style={{ fontSize: 22, fontWeight: 700,               color: 'var(--accent)', margin: 0 }}>{totalSesi}</p>
           </div>
         </div>
-
-        <div className="auth-form" style={{ marginTop: 12 }}>
-          <label>
-            Filter Jenis Sesi
-            <select
-              className="sel-input"
-              value={filterKind}
-              onChange={(e) => setFilterKind(e.target.value)}
-            >
-              <option value="semua">Semua Sesi</option>
-              <option value="simulasi">Simulasi Paket</option>
-              <option value="latihan">Latihan Bebas</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="login-actions" style={{ marginTop: 12 }}>
-          <button type="button" className="btn btn-ghost" onClick={() => void load()}>
-            Muat ulang
-          </button>
-          <button type="button" className="btn" onClick={() => window.print()}>
-            Cetak / PDF
-          </button>
-        </div>
-
-        {err && <p className="auth-msg">{err}</p>}
       </section>
 
-      <section className="card laporan-cetak" style={{ marginTop: 16 }}>
-        <header className="laporan-kop">
-          <strong>SMART-TKA</strong>
-          <p>Laporan Hasil Latihan & Simulasi Siswa</p>
-          <p className="type-lab">
-            Nama: <strong>{me.full_name || 'Siswa'}</strong> · Dicetak: {fmtDate(new Date().toISOString())}
-          </p>
-        </header>
+      {/* Domain performance */}
+      {domainStats.length > 0 && (
+        <section className="card" style={{ marginBottom: 20 }}>
+          <h3 className="card-title" style={{ marginBottom: 14 }}>Performa per Mapel</h3>
+          {domainStats.map((d) => (
+            <div key={d.name} className="analysis-bar-row">
+              <span className="analysis-bar-label" style={{ width: 120 }}>{d.name}</span>
+              <div className="analysis-bar-track">
+                <div className="analysis-bar-fill" style={{ width: `${d.avg}%`, background: d.avg < 50 ? 'var(--warn)' : d.avg < 70 ? 'var(--gold)' : 'var(--accent)' }} />
+              </div>
+              <span className="analysis-bar-pct">{d.avg}%</span>
+              <span className={`analysis-bar-tag ${d.avg < 50 ? 'analysis-bar-tag-improve' : 'analysis-bar-tag-strong'}`}>
+                {d.avg < 50 ? 'Perlu ditingkatkan' : 'Cukup'}
+              </span>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* Recommendation */}
+      {domainStats.length > 0 && domainStats[0]?.avg < 70 && (
+        <section className="rec-card" style={{ marginBottom: 20 }}>
+          <div className="rec-icon">💡</div>
+          <div className="rec-info">
+            <h3>Perkuat {domainStats[0].name}</h3>
+            <p>Rata-rata Anda di {domainStats[0].name} adalah {domainStats[0].avg}%. Lanjutkan latihan untuk meningkatkan pemahaman.</p>
+          </div>
+          {onTab && <button className="continue-btn" type="button" onClick={() => onTab('latihan')}>Mulai Latihan</button>}
+        </section>
+      )}
+
+      {/* Filter + Table */}
+      <section className="card">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+          <h3 className="card-title" style={{ margin: 0 }}>Riwayat Pengerjaan</h3>
+          <select className="input" style={{ maxWidth: 200, padding: '8px 12px', fontSize: 13 }} value={filterKind} onChange={(e) => setFilterKind(e.target.value)}>
+            <option value="semua">Semua Sesi</option>
+            <option value="simulasi">Simulasi Paket</option>
+            <option value="latihan">Latihan Bebas</option>
+          </select>
+        </div>
 
         {loading ? (
-          <p className="type-lab">Memuat riwayat pengerjaan…</p>
+          <p style={{ color: 'var(--muted)', fontSize: 13 }}>Memuat riwayat…</p>
         ) : filteredRows.length === 0 ? (
-          <p className="type-lab" style={{ padding: '16px 0' }}>
-            Belum ada riwayat pengerjaan {filterKind !== 'semua' ? `(${filterKind})` : ''}. Silakan kerjakan soal di menu Latihan atau Simulasi.
-          </p>
+          <div className="empty-state" style={{ padding: '32px 16px' }}>
+            <div className="empty-state-icon">📋</div>
+            <h3 className="empty-state-title">Belum ada riwayat</h3>
+            <p className="empty-state-text">Silakan kerjakan soal di menu Latihan atau Simulasi.</p>
+          </div>
         ) : (
-          <table className="laporan-tabel">
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>Tanggal Pengerjaan</th>
-                <th>Jenis & Judul</th>
-                <th>Mapel</th>
-                <th>Waktu Pengerjaan</th>
-                <th>Nilai / Hasil</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.map((r, idx) => {
-                const p = r.package_id ? pkgMap.get(r.package_id) : null;
-                const title = p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan Bebas');
-                const mapel = p?.mapel || '—';
-                const durasi = calcDuration(r.started_at, r.submitted_at);
-                const isSubmitted = r.status === 'submitted';
-
-                return (
-                  <tr key={r.id}>
-                    <td>{idx + 1}</td>
-                    <td>{fmtDate(r.submitted_at || r.started_at)}</td>
-                    <td>
-                      <strong>{title}</strong>
-                      {p?.kind && (
-                        <span className="type-lab" style={{ display: 'block', fontSize: 11 }}>
-                          {p.kind}
-                        </span>
-                      )}
-                    </td>
-                    <td>{mapel}</td>
-                    <td>{durasi}</td>
-                    <td>
-                      {isSubmitted ? (
-                        <strong style={{ color: 'var(--teal)', fontSize: 15 }}>
-                          {r.score ?? 0} <small style={{ fontSize: 11, fontWeight: 400 }}>/ 100</small>
-                        </strong>
-                      ) : (
-                        <span className="type-lab" style={{ color: '#d97706' }}>
-                          Belum Selesai
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Tanggal</th>
+                  <th>Jenis & Judul</th>
+                  <th>Mapel</th>
+                  <th>Durasi</th>
+                  <th>Nilai</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((r, idx) => {
+                  const p = r.package_id ? pkgMap.get(r.package_id) : null;
+                  const title = p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan Bebas');
+                  const mapel = p?.mapel || '—';
+                  const durasi = calcDuration(r.started_at, r.submitted_at);
+                  const isSubmitted = r.status === 'submitted';
+                  return (
+                    <tr key={r.id}>
+                      <td>{idx + 1}</td>
+                      <td>{fmtDate(r.submitted_at || r.started_at)}</td>
+                      <td>
+                        <strong>{title}</strong>
+                        {p?.kind && <span style={{ display: 'block', fontSize: 11, color: 'var(--muted)' }}>{p.kind}</span>}
+                      </td>
+                      <td>{mapel}</td>
+                      <td style={{ color: 'var(--muted)' }}>{durasi}</td>
+                      <td>
+                        {isSubmitted ? (
+                          <strong style={{               color: 'var(--accent)', fontSize: 15 }}>
+                            {r.score ?? 0} <small style={{ fontSize: 11, fontWeight: 400 }}>/ 100</small>
+                          </strong>
+                        ) : (
+                          <span style={{ color: 'var(--warn)', fontSize: 12 }}>Belum Selesai</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
 
-        <p className="legal">
-          SMART-TKA tidak berafiliasi dengan Kemendikdasmen. Angka ini hasil latihan/simulasi internal, bukan prediksi skor TKA resmi.
+        <p style={{ fontSize: 11, color: 'var(--outline)', marginTop: 16 }}>
+          SMART-TKA tidak berafiliasi dengan Kemendikdasmen. Angka ini hasil latihan/simulasi internal.
         </p>
       </section>
     </div>
   );
 }
 
-export function Laporan({ me }: { me: AppProfile }) {
+export function Laporan({ me, onTab }: { me: AppProfile; onTab?: (t: Tab) => void }) {
   if (me.role === 'siswa') {
-    return <LaporanSiswa me={me} />;
+    return <LaporanSiswa me={me} onTab={onTab} />;
   }
 
   if (!['guru', 'admin', 'kepsek', 'konten'].includes(me.role)) {
     return (
-      <div className="placeholder">
+      <div className="dashboard-page">
         <section className="card">
-          <h2>Laporan</h2>
-          <p>Akses laporan tidak tersedia untuk akun ini.</p>
+          <h2 className="card-title">Laporan</h2>
+          <p style={{ color: 'var(--muted)' }}>Akses laporan tidak tersedia untuk akun ini.</p>
         </section>
       </div>
     );
@@ -267,16 +278,9 @@ export function Laporan({ me }: { me: AppProfile }) {
 
   async function load() {
     setErr('');
-    const a = await insforge.database
-      .from('attempts')
-      .select('id, package_id, student_id, status, score, submitted_at, started_at, tab_leave_count');
-    if (a.error) {
-      setErr(
-        a.error.message.includes('does not exist')
-          ? 'Tabel attempts belum ada. Jalankan migrasi inti (001) di InsForge.'
-          : a.error.message,
-      );
-    } else setRows((a.data || []) as Attempt[]);
+    const a = await insforge.database.from('attempts').select('id, package_id, student_id, status, score, started_at, submitted_at, tab_leave_count');
+    if (a.error) setErr(a.error.message.includes('does not exist') ? 'Tabel attempts belum ada.' : a.error.message);
+    else setRows((a.data || []) as Attempt[]);
 
     const p = await insforge.database.from('packages').select('id, title, mapel, kind');
     if (!p.error) setPkgs((p.data || []) as Pkg[]);
@@ -288,9 +292,7 @@ export function Laporan({ me }: { me: AppProfile }) {
     if (!m.error) setCs((m.data || []) as CS[]);
   }
 
-  useEffect(() => {
-    void load();
-  }, []);
+  useEffect(() => { void load(); }, []);
 
   const pkgMap = useMemo(() => new Map(pkgs.map((p) => [p.id, p])), [pkgs]);
   const namaMap = useMemo(() => new Map(profs.map((p) => [p.id, p.full_name || p.id.slice(0, 8)])), [profs]);
@@ -311,117 +313,93 @@ export function Laporan({ me }: { me: AppProfile }) {
     return true;
   });
 
-  const avg =
-    filtered.length === 0
-      ? 0
-      : Math.round((filtered.reduce((s, r) => s + Number(r.score || 0), 0) / filtered.length) * 100) / 100;
-
-  function cetakPdf() {
-    window.print();
-  }
+  const avg = filtered.length === 0 ? 0 : Math.round((filtered.reduce((s, r) => s + Number(r.score || 0), 0) / filtered.length) * 100) / 100;
 
   return (
-    <div className="placeholder laporan-page" style={{ maxWidth: 920 }}>
-      <section className="card no-print">
-        <h2>Laporan hasil paket</h2>
-        <p className="type-lab">
-          Skor dari pengumpulan simulasi/paket. Bukan prediksi nilai TKA resmi. Cetak → pilih “Simpan sebagai PDF”.
-        </p>
-        <div className="auth-form">
-          <label>
-            Filter paket
-            <select className="sel-input" value={fPkg} onChange={(e) => setFPkg(e.target.value)}>
+    <div className="dashboard-page">
+      <header className="page-header" style={{ marginBottom: 20 }}>
+        <p className="page-subtitle">Laporan hasil paket</p>
+        <h1 className="page-title">Laporan Kelas</h1>
+        <p className="page-subtitle">Skor dari pengumpulan simulasi/paket. Bukan prediksi nilai TKA resmi.</p>
+      </header>
+
+      {err && (
+        <div className="banner banner-danger" style={{ marginBottom: 20, whiteSpace: 'pre-wrap' }}>
+          <p className="banner-text">{err}</p>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div className="stat-card" style={{ flex: '1 1 140px' }}>
+          <p className="stat-label">Pengumpulan</p>
+          <p className="stat-value" style={{ fontSize: 24 }}>{filtered.length}</p>
+        </div>
+        <div className="stat-card" style={{ flex: '1 1 140px' }}>
+          <p className="stat-label">Rata-rata skor</p>
+          <p className="stat-value" style={{ fontSize: 24 }}>{avg}</p>
+        </div>
+      </div>
+
+      <section className="card" style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+          <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+            <label className="form-label">Filter paket</label>
+            <select className="input" value={fPkg} onChange={(e) => setFPkg(e.target.value)}>
               <option value="">Semua paket</option>
               {pkgs.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title} ({p.mapel})
-                </option>
+                <option key={p.id} value={p.id}>{p.title} ({p.mapel})</option>
               ))}
             </select>
-          </label>
-          <label>
-            Filter kelas
-            <select className="sel-input" value={fKelas} onChange={(e) => setFKelas(e.target.value)}>
+          </div>
+          <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+            <label className="form-label">Filter kelas</label>
+            <select className="input" value={fKelas} onChange={(e) => setFKelas(e.target.value)}>
               <option value="">Semua kelas</option>
               {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
-          </label>
+          </div>
         </div>
-        <div className="login-actions">
-          <button type="button" className="btn" onClick={cetakPdf}>
-            Cetak / PDF
-          </button>
-          <button type="button" className="btn btn-ghost" onClick={() => void load()}>
-            Muat ulang
-          </button>
-        </div>
-        {err && <p className="auth-msg">{err}</p>}
-      </section>
 
-      <section className="card laporan-cetak" style={{ marginTop: 16 }}>
-        <header className="laporan-kop">
-          <strong>SMART-TKA</strong>
-          <p>Laporan hasil paket soal (internal sekolah)</p>
-          <p className="type-lab">
-            Dicetak {fmt(new Date().toISOString())} · {me.full_name || me.role}
-          </p>
-        </header>
-        <div className="bento" style={{ marginBottom: 16 }}>
-          <div className="card" style={{ boxShadow: 'none' }}>
-            <p className="type-lab">Pengumpulan</p>
-            <p className="type-hm" style={{ margin: 0 }}>
-              {filtered.length}
-            </p>
-          </div>
-          <div className="card" style={{ boxShadow: 'none' }}>
-            <p className="type-lab">Rata-rata skor</p>
-            <p className="type-hm" style={{ margin: 0 }}>
-              {avg}
-            </p>
-          </div>
-        </div>
         {filtered.length === 0 && (
-          <p className="type-lab">Belum ada data. Siswa harus Kumpulkan paket di menu Simulasi.</p>
+          <div className="empty-state" style={{ padding: '24px 16px' }}>
+            <p className="empty-state-title">Belum ada data</p>
+            <p className="empty-state-text">Siswa harus mengumpulkan paket di menu Simulasi.</p>
+          </div>
         )}
-        <table className="laporan-tabel">
-          <thead>
-            <tr>
-              <th>Siswa</th>
-              <th>Kelas</th>
-              <th>Paket</th>
-              <th>Mapel</th>
-              <th>Skor</th>
-              <th>Pindah tab</th>
-              <th>Waktu</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r) => {
-              const p = r.package_id ? pkgMap.get(r.package_id) : null;
-              return (
-                <tr key={r.id}>
-                  <td>{namaMap.get(r.student_id) || r.student_id.slice(0, 8)}</td>
-                  <td>{kelasSiswa.get(r.student_id) || '—'}</td>
-                  <td>{p?.title || (r.package_id ? r.package_id.slice(0, 8) : 'Latihan bebas')}</td>
-                  <td>{p?.mapel || '—'}</td>
-                  <td>
-                    <strong>{r.score ?? '—'}</strong>
-                  </td>
-                  <td>{r.tab_leave_count ?? 0}</td>
-                  <td>{fmt(r.submitted_at || r.started_at)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        <p className="legal">
-          SMART-TKA tidak berafiliasi dengan Kemendikdasmen. Angka ini hasil latihan/simulasi internal, bukan prediksi
-          skor TKA resmi.
-        </p>
+
+        <div className="table-container">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Siswa</th>
+                <th>Kelas</th>
+                <th>Paket</th>
+                <th>Mapel</th>
+                <th>Skor</th>
+                <th>Pindah tab</th>
+                <th>Waktu</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r) => {
+                const p = r.package_id ? pkgMap.get(r.package_id) : null;
+                return (
+                  <tr key={r.id}>
+                    <td>{namaMap.get(r.student_id) || r.student_id.slice(0, 8)}</td>
+                    <td>{kelasSiswa.get(r.student_id) || '—'}</td>
+                    <td>{p?.title || (r.package_id ? r.package_id.slice(0, 8) : 'Latihan bebas')}</td>
+                    <td>{p?.mapel || '—'}</td>
+                    <td><strong>{r.score ?? '—'}</strong></td>
+                    <td>{r.tab_leave_count ?? 0}</td>
+                    <td style={{ color: 'var(--muted)' }}>{fmt(r.submitted_at || r.started_at)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );

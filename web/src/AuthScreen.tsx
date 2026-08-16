@@ -89,7 +89,7 @@ export function AuthScreen({ configured, busy, message, onSignIn, onSignUp }: Pr
 
           {message && <p className="auth-msg">{message}</p>}
 
-          <button className="btn auth-submit" type="submit" disabled={busy || !configured}>
+          <button className="btn btn-primary auth-submit" type="submit" disabled={busy || !configured}>
             {mode === 'daftar' ? 'Daftar' : 'Masuk'}
             <span aria-hidden> →</span>
           </button>

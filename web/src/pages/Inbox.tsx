@@ -22,24 +22,44 @@ export function Inbox({ profileId }: { profileId: string }) {
   }
 
   return (
-    <div className="placeholder">
-      <section className="card">
-        <h2>Kotak masuk</h2>
-        {err && <p className="auth-msg">{err}</p>}
-        {rows.length === 0 && <p>Belum ada pengumuman.</p>}
+    <div className="dashboard-page">
+      <header className="page-header" style={{ marginBottom: 20 }}>
+        <p className="page-subtitle">Pengumuman dan tugas</p>
+        <h1 className="page-title">Kotak Masuk</h1>
+      </header>
+
+      {err && (
+        <div className="banner banner-danger" style={{ marginBottom: 16 }}>
+          <p className="banner-text">{err}</p>
+        </div>
+      )}
+
+      {rows.length === 0 && (
+        <div className="empty-state">
+          <div className="empty-state-icon">📭</div>
+          <h3 className="empty-state-title">Belum ada pengumuman</h3>
+          <p className="empty-state-text">Pengumuman dari guru akan muncul di sini.</p>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {rows.map((m) => (
-          <article key={m.id} className="card" style={{ marginTop: 12, boxShadow: 'none' }}>
-            <strong>{m.title}</strong>
-            {m.requires_ack && <span className="chip chip-sedang" style={{ marginLeft: 8 }}>Wajib</span>}
-            <p className="meta">{m.body}</p>
+          <div key={m.id} className="card" style={{ display: 'flex', alignItems: 'flex-start', gap: 14, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 650 }}>{m.title}</h3>
+                {m.requires_ack && <span className="badge badge-warn">Wajib</span>}
+              </div>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--muted)', lineHeight: 1.5 }}>{m.body}</p>
+            </div>
             {m.requires_ack && !acked[m.id] && (
-              <button className="btn" type="button" style={{ maxWidth: 200, marginTop: 8 }} onClick={() => ack(m.id)}>
+              <button className="continue-btn" type="button" style={{ flexShrink: 0 }} onClick={() => ack(m.id)}>
                 Saya sudah baca
               </button>
             )}
-          </article>
+          </div>
         ))}
-      </section>
+      </div>
     </div>
   );
 }

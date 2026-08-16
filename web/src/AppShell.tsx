@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { insforge, type AppProfile } from './lib/insforge';
 
 export type Tab =
   | 'beranda'
@@ -94,22 +95,109 @@ const Icons = {
       <circle cx="12" cy="7" r="4" />
     </svg>
   ),
+  search: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  ),
+  bell: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  ),
 };
+
+type NotifRow = {
+  id: string;
+  title: string;
+  body: string;
+  priority: string;
+  requires_ack: boolean;
+  created_at?: string;
+};
+
+function timeAgo(iso: string | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (mins < 1) return '<1m';
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  if (h < 24) return `${h}j`;
+  const days = Math.floor(h / 24);
+  return `${days}h`;
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
 
 export function AppShell({
   tab,
   onTab,
   name,
   role,
+  profile,
   children,
+  headerExtra,
 }: {
   tab: Tab;
   onTab: (t: Tab) => void;
   name: string;
   role: string;
+  profile: AppProfile;
   children: React.ReactNode;
+  headerExtra?: React.ReactNode;
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [rows, setRows] = useState<NotifRow[]>([]);
+
+  useEffect(() => {
+    void (async () => {
+      const { data: anData, error: anErr } = await insforge.database
+        .from('announcements')
+        .select('id, title, body, priority, requires_ack, created_at');
+      if (anErr) {
+        const fallback = await insforge.database
+          .from('announcements')
+          .select('id, title, body, priority, requires_ack');
+        if (fallback.error) return;
+        const anns = (fallback.data || []) as NotifRow[];
+        const { data: ackData } = await insforge.database
+          .from('announcement_acks')
+          .select('announcement_id')
+          .eq('profile_id', profile.id);
+        const acked = new Set(((ackData || []) as { announcement_id: string }[]).map((a) => a.announcement_id));
+        setRows(anns.filter((a) => !acked.has(a.id)));
+        return;
+      }
+      const anns = (anData || []) as NotifRow[];
+
+      const { data: ackData } = await insforge.database
+        .from('announcement_acks')
+        .select('announcement_id')
+        .eq('profile_id', profile.id);
+      const acked = new Set(((ackData || []) as { announcement_id: string }[]).map((a) => a.announcement_id));
+
+      const unread = anns.filter((a) => !acked.has(a.id));
+      unread.sort((a, b) => new Date(b.created_at ?? '').getTime() - new Date(a.created_at ?? '').getTime());
+      setRows(unread);
+    })();
+  }, [profile.id]);
+
+  async function ackNotif(id: string) {
+    await insforge.database.from('announcement_acks').insert({
+      announcement_id: id,
+      profile_id: profile.id,
+    });
+    setRows((prev) => prev.filter((r) => r.id !== id));
+  }
 
   const items: { id: Tab; label: string }[] = [];
   if (role === 'orang_tua') {
@@ -143,13 +231,18 @@ export function AppShell({
     return IconComponent ? IconComponent(isActive) : null;
   };
 
+  const initials = getInitials(name);
+
   return (
     <div className={`shell ${isDesktopRole ? 'shell-desktop' : 'shell-mobile'} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       {isDesktopRole ? (
         <>
           <aside className="shell-sidebar">
             <div className="shell-sidebar-header">
-              {!sidebarCollapsed && <strong className="brand">SMART-TKA</strong>}
+              <strong className="brand">
+                <span className="brand-icon">TKA</span>
+                <span>SMART-TKA</span>
+              </strong>
               <button
                 type="button"
                 className="sidebar-toggle"
@@ -177,10 +270,59 @@ export function AppShell({
               })}
             </nav>
             <span className="shell-user">
-              {sidebarCollapsed ? name.charAt(0).toUpperCase() : `${name} · ${role}`}
+              {sidebarCollapsed ? initials : `${name} · ${role}`}
             </span>
           </aside>
-          <main className="shell-main">{children}</main>
+           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+             <header className="shell-header">
+               <div className="shell-header-right">
+                 {headerExtra}
+                 <div className="header-action-group">
+                   <button
+                     type="button"
+                     className="header-icon-btn"
+                     title="Kotak masuk"
+                     onClick={() => setNotifOpen(!notifOpen)}
+                     aria-expanded={notifOpen}
+                   >
+                     <Icons.bell />
+                    <span className="header-badge">{rows.length}</span>
+                   </button>
+                   {notifOpen && (
+                     <div className="notif-dropdown">
+                       {rows.length === 0 ? (
+                         <button type="button" className="notif-empty">
+                           <span className="notif-text">Kotak masuk kosong</span>
+                         </button>
+                       ) : (
+                         rows.map((n) => (
+                           <div key={n.id} className="notif-item">
+                             <div className="notif-item-main">
+                               <span className="notif-sender">{n.title}</span>
+                               <span className="notif-text">{n.body.slice(0, 80)}{n.body.length > 80 ? '…' : ''}</span>
+                               <span className="notif-time">{timeAgo(n.created_at)}</span>
+                             </div>
+                             <button
+                               type="button"
+                               className="notif-remove"
+                               title="Tandai sudah dibaca"
+                               onClick={() => ackNotif(n.id)}
+                             >
+                               ✕
+                             </button>
+                           </div>
+                         ))
+                       )}
+                     </div>
+                    )}
+                   <button type="button" className="header-avatar" title={name}>
+                     {initials}
+                   </button>
+                 </div>
+               </div>
+             </header>
+            <main className="shell-main">{children}</main>
+          </div>
         </>
       ) : (
         <>
@@ -202,6 +344,17 @@ export function AppShell({
             </span>
           </header>
           <main className="shell-main-mobile">{children}</main>
+          <nav className="shell-mobile-nav">
+            {items.slice(0, 5).map((i) => {
+              const isActive = tab === i.id;
+              return (
+                <button key={i.id} className={isActive ? 'on' : ''} type="button" onClick={() => onTab(i.id)}>
+                  <span className="nav-icon-mobile">{getIcon(i.id, isActive)}</span>
+                  <span>{i.label}</span>
+                </button>
+              );
+            })}
+          </nav>
         </>
       )}
     </div>

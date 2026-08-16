@@ -172,7 +172,7 @@ export default function App() {
   const name = profile.full_name || email || 'Pengguna';
 
   return (
-    <AppShell tab={tab} onTab={setTab} name={name} role={profile.role}>
+     <AppShell tab={tab} onTab={setTab} name={name} role={profile.role} profile={profile}>
       {tab === 'beranda' && profile.role === 'orang_tua' && <Ortu me={profile} />}
       {tab === 'beranda' && profile.role !== 'orang_tua' && <Home name={name} profile={profile} onTab={setTab} />}
       {tab === 'latihan' && (
@@ -184,7 +184,7 @@ export default function App() {
       {tab === 'paket' && <PaketGuru profile={profile} />}
       {tab === 'kelas' && <Kelas profile={profile} />}
       {tab === 'pengumuman' && <Pengumuman profile={profile} />}
-      {tab === 'laporan' && <Laporan me={profile} />}
+      {tab === 'laporan' && <Laporan me={profile} onTab={setTab} />}
       {tab === 'admin' && <Admin me={profile} />}
       {tab === 'profil' && <Profil profile={profile} email={email} onOut={onSignOut} />}
     </AppShell>

@@ -78,9 +78,9 @@ export function Practice({
 
   if (err && phase === 'pilih') {
     return (
-      <div className="placeholder">
+      <div className="dashboard-page">
         <section className="card">
-          <p className="auth-msg">{err}</p>
+          <p style={{ color: 'var(--danger)', margin: 0 }}>{err}</p>
         </section>
       </div>
     );
@@ -88,29 +88,30 @@ export function Practice({
 
   if (phase === 'pilih') {
     return (
-      <div className="placeholder">
-        <section className="card">
-          <h2>Latihan</h2>
-          <p className="type-lab">Maksimal {MAX} soal. Pembahasan setelah kunci. Skor masuk laporan (bukan TKA resmi).</p>
-          <label>
-            Mapel
-            <select className="sel-input" value={mapel} onChange={(e) => setMapel(e.target.value)}>
+      <div className="dashboard-page">
+        <section className="card" style={{ maxWidth: 520 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onHome}>← Beranda</button>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Latihan Bebas</h2>
+          </div>
+          <p style={{ color: 'var(--muted)', fontSize: 14, margin: '0 0 20px' }}>
+            Maksimal {MAX} soal. Pembahasan setelah kunci. Skor masuk laporan (bukan TKA resmi).
+          </p>
+          <div className="form-group">
+            <label className="form-label">Mapel</label>
+            <select className="input" value={mapel} onChange={(e) => setMapel(e.target.value)}>
               <option value="">Semua mapel</option>
               {mapels.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
+                <option key={m} value={m}>{m}</option>
               ))}
             </select>
-          </label>
-          <p className="type-lab" style={{ marginTop: 12 }}>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 20px' }}>
             Tersedia {mapel ? pool.filter((x) => x.mapel === mapel).length : pool.length} soal
             {jenjang ? ` · jenjang ${jenjang}` : ''}
           </p>
-          {err && <p className="auth-msg">{err}</p>}
-          <button className="btn" type="button" style={{ marginTop: 16, maxWidth: 220 }} onClick={mulai}>
-            Mulai
-          </button>
+          {err && <p style={{ color: 'var(--danger)', fontSize: 13, margin: '0 0 12px' }}>{err}</p>}
+          <button className="btn btn-primary" type="button" style={{ maxWidth: 200 }} onClick={mulai}>Mulai Latihan</button>
         </section>
       </div>
     );
@@ -118,23 +119,19 @@ export function Practice({
 
   if (phase === 'done') {
     return (
-      <div className="placeholder">
-        <section className="card">
-          <h2>Sesi selesai</h2>
-          <p className="type-hm" style={{ color: 'var(--teal)' }}>
-            {skor ?? 0} <small style={{ fontSize: 16 }}>/ 100</small>
+      <div className="dashboard-page">
+        <section className="card" style={{ maxWidth: 520, textAlign: 'center' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700 }}>Sesi Selesai</h2>
+          <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 16px' }}>Skor internal SMART-TKA, bukan prediksi TKA resmi.</p>
+          <div style={{ fontSize: 56, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.03em', lineHeight: 1.1, margin: '0 0 4px' }}>
+            {skor ?? 0}<small style={{ fontSize: 22, fontWeight: 500, color: 'var(--muted)' }}>/100</small>
+          </div>
+          <p style={{ color: 'var(--muted)', fontSize: 14, margin: '0 0 24px' }}>
+            {benar} benar dari {jawab || items.length} dijawab
           </p>
-          <p className="type-lab">
-            {benar} benar dari {jawab || items.length} dijawab. Bukan prediksi Tes Kemampuan Akademik resmi.
-          </p>
-          {err && <p className="auth-msg">{err}</p>}
-          <div className="login-actions">
-            <button className="btn" type="button" onClick={() => setPhase('pilih')}>
-              Latihan lagi
-            </button>
-            <button className="btn btn-ghost" type="button" onClick={onHome}>
-              Beranda
-            </button>
+          <div className="btn-group" style={{ justifyContent: 'center' }}>
+            <button className="btn btn-primary" type="button" onClick={() => setPhase('pilih')}>Latihan Lagi</button>
+            <button className="btn btn-ghost" type="button" onClick={onHome}>Beranda</button>
           </div>
         </section>
       </div>
@@ -143,13 +140,11 @@ export function Practice({
 
   if (items.length === 0) {
     return (
-      <div className="placeholder">
-        <section className="card">
-          <h2>Latihan</h2>
-          <p>Belum ada soal. Guru membuat di menu Soal.</p>
-          <button className="btn" type="button" onClick={onHome} style={{ marginTop: 16, maxWidth: 200 }}>
-            Beranda
-          </button>
+      <div className="dashboard-page">
+        <section className="card" style={{ maxWidth: 520, textAlign: 'center' }}>
+          <h2 style={{ margin: '0 0 8px' }}>Latihan</h2>
+          <p style={{ color: 'var(--muted)', margin: '0 0 20px' }}>Belum ada soal. Guru membuat di menu Soal.</p>
+          <button className="btn btn-primary" type="button" onClick={onHome}>Beranda</button>
         </section>
       </div>
     );
@@ -157,11 +152,29 @@ export function Practice({
 
   const item = items[i];
   return (
-    <div className="board" style={{ maxWidth: 740, paddingTop: 8 }}>
-      <p className="type-lab">
-        {item.mapel} · {i + 1} / {items.length}
-      </p>
-      <section className="card">
+    <div className="dashboard-page">
+      {/* Compact top nav */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onHome}>← Beranda</button>
+          <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 500 }}>
+            {item?.mapel} · {i + 1} / {items.length}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="timer-lab" style={{ fontSize: 10 }}>Soal</div>
+          <div style={{ background: 'var(--canvas)', borderRadius: 8, padding: '4px 10px', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+            {i + 1}/{items.length}
+          </div>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ width: '100%', height: 4, background: 'var(--canvas)', borderRadius: 999, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ width: `${((i + 1) / items.length) * 100}%`, height: '100%', background: 'var(--accent)', borderRadius: 999, transition: 'width 0.3s ease' }} />
+      </div>
+
+      <section className="card" style={{ maxWidth: 720 }}>
         <ItemPlayer
           key={item.id}
           item={item}
@@ -172,14 +185,25 @@ export function Practice({
             if (ok) setBenar((n) => n + 1);
           }}
         />
-        <button
-          className="btn btn-ghost"
-          type="button"
-          style={{ marginTop: 16 }}
-          onClick={() => (i >= items.length - 1 ? void selesai() : setI(i + 1))}
-        >
-          {i >= items.length - 1 ? 'Selesai & simpan skor' : 'Soal berikutnya'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'space-between' }}>
+          <button className="btn btn-ghost" type="button" disabled={i === 0} onClick={() => setI((x) => x - 1)}>
+            ← Sebelumnya
+          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn btn-ghost" type="button" onClick={() => { setJawab((n) => n + 1); setI((x) => x + 1); }}>
+              Lewati
+            </button>
+            {i >= items.length - 1 ? (
+              <button className="btn btn-primary" type="button" onClick={() => void selesai()}>
+                Selesai & Simpan
+              </button>
+            ) : (
+              <button className="btn btn-primary" type="button" onClick={() => setI((x) => x + 1)}>
+                Berikutnya →
+              </button>
+            )}
+          </div>
+        </div>
       </section>
     </div>
   );

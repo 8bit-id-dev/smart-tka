@@ -731,7 +731,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                                                 <button
                                                   type="button"
                                                   className="collapsible-subheader"
-                                                  style={{ background: 'var(--teal-soft)' }}
+                                                  style={{ background: 'var(--accent-soft)' }}
                                                   onClick={() => setOpenDiff((m) => ({ ...m, [diffKey]: !isOpenDiffLocal }))}
                                                 >
                                                   <span className="badge" style={{ color: diffColor }}>

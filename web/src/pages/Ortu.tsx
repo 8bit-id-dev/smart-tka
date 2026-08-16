@@ -79,12 +79,18 @@ export function Ortu({ me }: { me: AppProfile }) {
   }
 
   return (
-    <div className="placeholder">
-      <section className="card">
-        <h2>Anak</h2>
-        <p>Pantau kesiapan anak di SMART-TKA. Anda tidak mengerjakan soal atas nama anak. Bukan prediksi Tes Kemampuan Akademik resmi.</p>
+    <div className="dashboard-page">
+      <header className="page-header" style={{ marginBottom: 20 }}>
+        <p className="page-subtitle">Pantau kesiapan anak</p>
+        <h1 className="page-title">Anak</h1>
+      </header>
 
-        <form onSubmit={taut} className="auth-form">
+      <section className="card" style={{ marginBottom: 20 }}>
+        <p style={{ fontSize: 14, color: 'var(--muted)', margin: '0 0 20px' }}>
+          Anda tidak mengerjakan soal atas nama anak. Bukan prediksi Tes Kemampuan Akademik resmi.
+        </p>
+
+        <form onSubmit={taut} className="auth-form" style={{ maxWidth: 400 }}>
           <label>
             Kode taut dari anak (6 digit)
             <input
@@ -95,12 +101,12 @@ export function Ortu({ me }: { me: AppProfile }) {
               autoComplete="one-time-code"
             />
           </label>
-          <button className="btn" type="submit" disabled={busy || code.length < 6}>
+          <button className="btn btn-primary" type="submit" disabled={busy || code.length < 6}>
             Tautkan
           </button>
         </form>
         {msg && <p className="legal">{msg}</p>}
-        {loadErr && <p className="auth-msg">{loadErr}</p>}
+        {loadErr && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{loadErr}</p>}
       </section>
 
       {anak.length === 0 ? (
@@ -116,7 +122,7 @@ export function Ortu({ me }: { me: AppProfile }) {
               <p className="meta" style={{ margin: '0 0 12px' }}>
                 {a.jenjang || 'Jenjang belum diisi'}
               </p>
-              <p style={{ fontSize: 32, fontWeight: 700, color: 'var(--teal)', margin: 0 }}>
+              <p style={{ fontSize: 32, fontWeight: 700, color: 'var(--accent)', margin: 0 }}>
                 {a.rata == null ? '—' : `${Math.round(a.rata)}%`}
               </p>
               <p className="type-lab">

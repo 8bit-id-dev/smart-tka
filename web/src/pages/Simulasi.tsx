@@ -127,23 +127,42 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
 
   if (phase === 'list') {
     return (
-      <div className="placeholder">
-        <section className="card">
-          <h2>Simulasi & paket</h2>
-          {err && <p className="auth-msg">{err}</p>}
-          {pkgs.length === 0 && <p>Belum ada paket. Guru membuat di menu Paket.</p>}
+      <div className="dashboard-page">
+        <header className="page-header" style={{ marginBottom: 20 }}>
+          <p className="page-subtitle">Ujian lengkap dengan timer</p>
+          <h1 className="page-title">Simulasi TKA</h1>
+        </header>
+        {err && (
+          <div className="banner banner-danger" style={{ marginBottom: 16 }}>
+            <p className="banner-text">{err}</p>
+          </div>
+        )}
+        {pkgs.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">📦</div>
+            <h3 className="empty-state-title">Belum ada paket</h3>
+            <p className="empty-state-text">Guru membuat paket di menu Paket.</p>
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {pkgs.map((p) => (
-            <article key={p.id} className="card" style={{ marginTop: 12, boxShadow: 'none' }}>
-              <strong>{p.title}</strong>
-              <p className="meta">
-                {p.kind} · {p.mapel} · {p.item_count} soal · {p.discuss_after_each ? 'latihan' : 'kunci setelah selesai'}
-              </p>
-              <button className="btn" type="button" style={{ maxWidth: 200 }} onClick={() => mulai(p)}>
-                Mulai
-              </button>
-            </article>
+            <div key={p.id} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 650 }}>{p.title}</h3>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)' }}>
+                  {p.kind} · {p.mapel} · {p.item_count} soal · {p.discuss_after_each ? 'Pembahasan langsung' : 'Kunci setelah selesai'}
+                </p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                  <span className="badge badge-info">{p.kind}</span>
+                  <span className="badge badge-neutral">{p.mapel}</span>
+                  <span className="badge badge-neutral">{p.item_count} soal</span>
+                  {p.duration_sec && <span className="badge badge-neutral">{Math.floor(p.duration_sec / 60)} mnt</span>}
+                </div>
+              </div>
+              <button className="continue-btn" type="button" onClick={() => mulai(p)}>Mulai Simulasi</button>
+            </div>
           ))}
-        </section>
+        </div>
       </div>
     );
   }
@@ -151,23 +170,18 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   if (phase === 'hasil' && pkg) {
     const benar = items.filter((it) => ans[it.id]?.correct).length;
     return (
-      <div className="placeholder">
-        <section className="card">
-          <h2>Selesai: {pkg.title}</h2>
-          <p className="type-lab">Skor internal SMART-TKA, bukan prediksi TKA resmi.</p>
-          <p className="type-hm" style={{ color: 'var(--teal)' }}>
-            {skor ?? 0} <small style={{ fontSize: 16 }}>/ 100</small> · {benar}/{items.length} benar
-          </p>
-          {err && <p className="auth-msg">{err}</p>}
-          {items.map((it) => (
-            <div key={it.id} className="bahas" style={{ marginTop: 12 }}>
-              <p>{it.stem}</p>
-              <p>{it.rationale}</p>
-            </div>
-          ))}
-          <button className="btn" type="button" style={{ marginTop: 16, maxWidth: 200 }} onClick={() => setPhase('list')}>
-            Daftar paket
-          </button>
+      <div className="dashboard-page">
+        <section className="card" style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center', padding: '32px 24px' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700 }}>Selesai: {pkg.title}</h2>
+          <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 20px' }}>Skor internal SMART-TKA, bukan prediksi TKA resmi.</p>
+          <div style={{ fontSize: 56, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.03em', lineHeight: 1, margin: '0 0 8px' }}>
+            {skor ?? 0}<small style={{ fontSize: 22, fontWeight: 500, color: 'var(--muted)' }}>/100</small>
+          </div>
+          <p style={{ color: 'var(--muted)', fontSize: 14, margin: '0 0 24px' }}>{benar}/{items.length} benar</p>
+          {err && <p style={{ color: 'var(--warn)', fontSize: 13, margin: '0 0 16px' }}>{err}</p>}
+          <div className="btn-group" style={{ justifyContent: 'center' }}>
+            <button className="btn btn-primary" type="button" onClick={() => setPhase('list')}>Daftar Paket</button>
+          </div>
         </section>
       </div>
     );
@@ -175,20 +189,30 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
 
   const item = items[i];
   return (
-    <div className="board" style={{ maxWidth: 800, paddingTop: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span className="type-lab">
-          {pkg?.title} · {i + 1}/{items.length}
-        </span>
-        <div>
-          <div className="timer-lab">Waktu</div>
-          <div className="timer">
-            {mm}:{ss}
-          </div>
+    <div className="dashboard-page">
+      {/* Compact top nav */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 500 }}>{pkg?.title}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="timer-lab" style={{ fontSize: 10 }}>Waktu</div>
+          <div className="timer">{mm}:{ss}</div>
         </div>
       </div>
-      {err && <p className="auth-msg">{err}</p>}
-      <section className="card" style={{ marginTop: 12 }}>
+
+      {/* Progress bar */}
+      <div style={{ width: '100%', height: 4, background: 'var(--canvas)', borderRadius: 999, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ width: `${((i + 1) / items.length) * 100}%`, height: '100%', background: 'var(--accent)', borderRadius: 999, transition: 'width 0.3s ease' }} />
+      </div>
+
+      {err && (
+        <div className="banner banner-warn" style={{ marginBottom: 16 }}>
+          <p className="banner-text">{err}</p>
+        </div>
+      )}
+
+      <section className="card" style={{ maxWidth: 800 }}>
         {item && (
           <ItemPlayer
             key={item.id}
@@ -198,19 +222,21 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
             onUpdate={(info) => setAns((m) => ({ ...m, [item.id]: info }))}
           />
         )}
-        <div className="login-actions">
-          <button className="btn-ghost btn" type="button" disabled={i === 0} onClick={() => setI((x) => x - 1)}>
-            Sebelumnya
+        <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'space-between' }}>
+          <button className="btn btn-ghost" type="button" disabled={i === 0} onClick={() => setI((x) => x - 1)}>
+            ← Sebelumnya
           </button>
-          {i < items.length - 1 ? (
-            <button className="btn" type="button" onClick={() => setI((x) => x + 1)}>
-              Selanjutnya
-            </button>
-          ) : (
-            <button className="btn" type="button" onClick={() => void kumpulkan()}>
-              Kumpulkan
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: 10 }}>
+            {i < items.length - 1 ? (
+              <button className="btn btn-primary" type="button" onClick={() => setI((x) => x + 1)}>
+                Selanjutnya →
+              </button>
+            ) : (
+              <button className="btn btn-primary" type="button" onClick={() => void kumpulkan()}>
+                Kumpulkan
+              </button>
+            )}
+          </div>
         </div>
       </section>
     </div>

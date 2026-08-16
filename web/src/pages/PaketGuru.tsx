@@ -335,7 +335,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                   alignItems: 'flex-start',
                   gap: 6,
                   cursor: 'pointer',
-                  backgroundColor: picked.includes(it.id) ? 'var(--teal-soft)' : undefined,
+                  backgroundColor: picked.includes(it.id) ? 'var(--accent-soft)' : undefined,
                 }}
               >
                 <div className="field-row" style={{ width: '100%', margin: 0, gap: 6, padding: 0 }}>

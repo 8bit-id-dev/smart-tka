@@ -74,74 +74,90 @@ export function Profil({
     setExp(until);
   }
 
+  const initials = (profile.full_name || email || 'U').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
+
   return (
-    <div className="placeholder">
-      <section className="card">
-        <h2>Profil</h2>
-        <p className="type-lab">Data dari InsForge · public.profiles</p>
+    <div className="dashboard-page">
+      <header className="page-header" style={{ marginBottom: 20 }}>
+        <p className="page-subtitle">Data akun Anda</p>
+        <h1 className="page-title">Profil</h1>
+      </header>
 
-        <dl className="profil-list">
-          <div>
-            <dt>Nama</dt>
-            <dd>{profile.full_name || '—'}</dd>
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {/* Avatar + info */}
+        <div className="card" style={{ textAlign: 'center', minWidth: 200, flex: '1 1 260px' }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: 20, background: 'var(--accent)', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 28, fontWeight: 700, margin: '0 auto 12px',
+          }}>
+            {initials}
           </div>
-          <div>
-            <dt>Email</dt>
-            <dd>{email || '—'}</dd>
-          </div>
-          <div>
-            <dt>Peran</dt>
-            <dd>
-              <span className="chip chip-ok">{profile.role}</span>
-            </dd>
-          </div>
-          <div>
-            <dt>Jenjang</dt>
-            <dd>{jenjang}</dd>
-          </div>
-          <div>
-            <dt>ID profil</dt>
-            <dd className="mono">{profile.id}</dd>
-          </div>
-          <div>
-            <dt>User ID Auth</dt>
-            <dd className="mono">{profile.user_id}</dd>
-          </div>
-        </dl>
+          <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700 }}>{profile.full_name || 'Pengguna'}</h2>
+          <span className="badge badge-info" style={{ marginBottom: 16 }}>{profile.role}</span>
 
-        {profile.role === 'siswa' && (
-          <div className="hint-panel" style={{ marginTop: 24 }}>
-            <p className="type-lab">Taut orang tua</p>
-            <p style={{ margin: '0 0 12px' }}>
-              Buat kode 6 digit. Orang tua memasukkan kode ini di menu Anak. Berlaku 24 jam. Bukan prediksi skor TKA resmi.
+          <div style={{ textAlign: 'left', marginTop: 8 }}>
+            <dl className="profil-list" style={{ margin: 0 }}>
+              <div>
+                <dt>Email</dt>
+                <dd style={{ fontSize: 14 }}>{email || '—'}</dd>
+              </div>
+              <div>
+                <dt>Jenjang</dt>
+                <dd style={{ fontSize: 14 }}>{jenjang}</dd>
+              </div>
+              <div>
+                <dt>ID Profil</dt>
+                <dd className="mono">{profile.id}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {profile.role === 'siswa' && (
+            <div className="card">
+              <h3 className="card-title" style={{ marginBottom: 8 }}>Taut Orang Tua</h3>
+              <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                Buat kode 6 digit. Orang tua memasukkan kode ini di menu Anak. Berlaku 24 jam.
+              </p>
+              {code && exp && (
+                <div style={{
+                  background: 'var(--accent-soft)', borderRadius: 12, padding: 16,
+                  textAlign: 'center', marginBottom: 12,
+                }}>
+                  <p style={{ fontSize: 32, fontWeight: 800, letterSpacing: '0.15em',                   color: 'var(--accent)', margin: '0 0 4px' }}>
+                    {code}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
+                    Kadaluarsa {new Date(exp).toLocaleString('id-ID')}
+                  </p>
+                </div>
+              )}
+              <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void buatKode()}>
+                {code ? 'Buat kode baru' : 'Buat kode taut'}
+              </button>
+              {ortu.length > 0 && (
+                <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 12 }}>
+                  Tertaut: {ortu.map((o) => o.nama).join(', ')}
+                </p>
+              )}
+              {msg && <p className="legal" style={{ marginTop: 8 }}>{msg}</p>}
+            </div>
+          )}
+
+          <div className="card">
+            <h3 className="card-title" style={{ marginBottom: 12 }}>Keluar</h3>
+            <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 16px' }}>
+              Keluar dari akun Anda di perangkat ini.
             </p>
-            {code && exp && (
-              <p style={{ fontSize: 28, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--teal)', margin: '0 0 8px' }}>
-                {code}
-              </p>
-            )}
-            {exp && (
-              <p className="meta" style={{ margin: '0 0 12px' }}>
-                Kadaluarsa {new Date(exp).toLocaleString('id-ID')}
-              </p>
-            )}
-            <button className="btn" type="button" disabled={busy} onClick={() => void buatKode()}>
-              {code ? 'Buat kode baru' : 'Buat kode taut'}
+            <button className="btn btn-danger" type="button" onClick={onOut} style={{ maxWidth: 200 }}>
+              Keluar (Sign Out)
             </button>
-            {ortu.length > 0 && (
-              <p className="meta" style={{ marginTop: 12 }}>
-                Tertaut: {ortu.map((o) => o.nama).join(', ')}
-              </p>
-            )}
-            {msg && <p className="legal">{msg}</p>}
           </div>
-        )}
-
-        <button className="btn" type="button" onClick={onOut} style={{ marginTop: 24, maxWidth: 220 }}>
-          Keluar
-        </button>
-        <p className="legal">Tidak berafiliasi dengan Kemendikdasmen.</p>
-      </section>
+        </div>
+      </div>
     </div>
   );
 }
