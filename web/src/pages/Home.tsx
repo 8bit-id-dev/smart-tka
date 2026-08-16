@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
 import type { Tab } from '../AppShell';
+import { Icons } from '../AppShell';
 
 type SubjectCard = { id: string; name: string; domain: string; count: number; difficulty: string; progress: number; icon: string; iconClass: string };
 
@@ -98,13 +99,13 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
   const chartLabels = chartRange === 'mingguan' ? CHART_LABELS_WEEKLY : CHART_LABELS_MONTHLY;
 
   if (staf) {
-    const pintas: { id: Tab; t: string; d: string; icon: string }[] = [
-      { id: 'soal', t: 'Soal', d: 'Tulis atau draf AI', icon: 'P' },
-      { id: 'paket', t: 'Paket', d: 'Rakit latihan / ujian', icon: 'K' },
-      { id: 'kelas', t: 'Kelas', d: 'Siswa, pindah, kenaikan', icon: 'S' },
-      { id: 'laporan', t: 'Laporan', d: 'Skor & cetak PDF', icon: 'L' },
+    const pintas: { id: Tab; t: string; d: string; detail: string; icon: React.ReactNode }[] = [
+      { id: 'soal', t: 'Soal', d: 'Tulis atau draf AI', detail: 'Buat, edit, dan kelola soal TKA', icon: Icons.soal(true) },
+      { id: 'paket', t: 'Paket', d: 'Rakit latihan / ujian', detail: 'Rakit dan atur paket latihan UTK', icon: Icons.paket(true) },
+      { id: 'kelas', t: 'Kelas', d: 'Siswa, pindah, kenaikan', detail: 'Kelola anggota dan kenaikan kelas', icon: Icons.kelas(true) },
+      { id: 'laporan', t: 'Laporan', d: 'Skor & cetak PDF', detail: 'Lihat rekap skor dan ekspor PDF', icon: Icons.laporan(true) },
     ];
-    if (['admin', 'kepsek'].includes(profile.role)) pintas.push({ id: 'admin', t: 'Admin', d: 'Impor user & assignment', icon: 'A' });
+    if (['admin', 'kepsek'].includes(profile.role)) pintas.push({ id: 'admin', t: 'Admin', d: 'Impor user & assignment', detail: 'Kelola pengguna dan assignment sekolah', icon: Icons.admin(true) });
     return (
       <div className="dashboard-page">
         <header className="page-header">
@@ -121,7 +122,8 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
                 <div className="quick-icon">{p.icon}</div>
                 <div className="quick-info">
                   <h3>{p.t}</h3>
-                  <p>{p.d}</p>
+                  <p className="quick-desc">{p.d}</p>
+                  <p className="quick-detail">{p.detail}</p>
                 </div>
               </article>
             ))}

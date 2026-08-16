@@ -109,6 +109,8 @@ const Icons = {
   ),
 };
 
+export { Icons };
+
 type NotifRow = {
   id: string;
   title: string;
