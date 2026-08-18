@@ -84,11 +84,16 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     let q = insforge.database
       .from('items')
       .select('id, item_type, mapel, materi, jenjang, difficulty, stem, stimulus, choices, correct_key, rationale, status, created_at')
-      .eq('author_id', profile.id)
       .neq('status', 'retired')
       .order('created_at', { ascending: false });
-    if (isGuru && mySubjects.length > 0) {
-      q = q.in('mapel', mySubjects);
+    if (isGuru) {
+      if (mySubjects.length > 0) {
+        q = q.in('mapel', mySubjects);
+      } else {
+        q = q.eq('author_id', profile.id);
+      }
+    } else {
+      q = q.eq('author_id', profile.id);
     }
     const { data, error } = await q;
     if (error) setErr(error.message);
@@ -264,10 +269,14 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
       setErr('Profil Anda belum punya school_id. Minta admin menautkan sekolah.');
       return;
     }
-    if (!mapel.trim()) {
-      setErr('Pilih mapel dulu. Jika daftar kosong, kelola mapel atau jalankan SQL 011.');
-      return;
-    }
+     if (!mapel.trim()) {
+       setErr('Pilih mapel dulu. Jika daftar kosong, kelola mapel atau jalankan SQL 011.');
+       return;
+     }
+     if (isGuru && mySubjects.length > 0 && !mySubjects.includes(mapel)) {
+       setErr(`Anda tidak mengajar "${mapel}". Hubungi admin untuk assignment mata pelajaran.`);
+       return;
+     }
     if (!stem.trim() || !rationale.trim()) {
       setErr('Pertanyaan dan pembahasan wajib diisi.');
       return;

@@ -85,7 +85,7 @@ body { margin: 0; background: var(--canvas); min-height: 100vh; overflow-x: hidd
   padding: 0 16px;
   overflow-x: hidden;
 }
-.dashboard-page.student-dashboard { max-width: 430px; }
+.dashboard-page.student-dashboard { max-width: 100%; }
 @media (min-width: 768px) {
   .dashboard-page { max-width: 768px; padding: 0 20px; }
   .dashboard-page.student-dashboard { max-width: 768px; }
@@ -1656,21 +1656,7 @@ pre.debug {
 }
 
 /* Mobile-first: top bar for siswa/orang_tua */
-.shell-mobile { display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; overflow-x: hidden; }
-.shell-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
-  padding: 10px 16px;
-  height: var(--header-h);
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--card-border);
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
+.shell-mobile { display: flex; flex-direction: column; max-width: 100%; margin: 0; overflow-x: hidden; }
 .shell-bar-left { display: flex; align-items: center; gap: 8px; }
 .shell-bar-right { display: flex; align-items: center; gap: 8px; }
 .app-logo-wrapper { display: flex; align-items: center; gap: 6px; }
@@ -1699,10 +1685,53 @@ pre.debug {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 999;
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Anti-cheat warning modal */
+.cheat-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 24px;
+}
+.cheat-modal {
+  background: var(--card);
+  border: 2px solid var(--danger);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+.cheat-modal-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--danger);
+}
+.cheat-modal-text {
+  margin: 0 0 8px;
+  fontSize: 14px;
+  color: var(--ink);
+}
+.cheat-modal-sub {
+  margin: 0 0 20px;
+  fontSize: 13px;
+  color: var(--muted);
+  fontWeight: 500;
 }
 .mobile-menu {
   background: var(--card);
@@ -1774,6 +1803,9 @@ pre.debug {
   .shell-mobile-nav { display: flex; }
   .shell-mobile .shell-bar { display: none; }
   .shell-main-mobile { padding: 16px 14px 80px; }
+/* Siswa: bottombar selalu muncul di semua lebar */
+.shell-mobile .shell-mobile-nav { display: flex !important; }
+.shell-mobile .shell-main { flex: 1; overflow-y: auto; }
 }
 
 /* Subtabs - horizontal single row */

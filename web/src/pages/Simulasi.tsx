@@ -14,6 +14,8 @@ type Pkg = {
   duration_sec: number | null;
   discuss_after_each: boolean;
   shuffle?: boolean;
+  use_ai_selection?: boolean;
+  jumlah_soal_soal?: number | null;
 };
 
 type Ans = { answer: string; correct: boolean };
@@ -31,12 +33,15 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   const [skor, setSkor] = useState<number | null>(null);
   const [listExpanded, setListExpanded] = useState(true);
   const [bookmarked, setBookmarked] = useState<Set<string>>(new Set());
+  const [cheatCount, setCheatCount] = useState(0);
+  const [showCheatWarning, setShowCheatWarning] = useState(false);
+  const [cheatMessage, setCheatMessage] = useState('');
 
   useEffect(() => {
     (async () => {
       const { data, error } = await insforge.database
         .from('packages')
-        .select('id, title, kind, mapel, item_count, duration_sec, discuss_after_each, shuffle');
+        .select('id, title, kind, mapel, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal');
       if (error) setErr(error.message);
       else setPkgs((data || []) as Pkg[]);
     })();
@@ -56,6 +61,92 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     }, 1000);
     return () => clearInterval(t);
   }, [phase, pkg]);
+
+  /* Anti-cheat: fullscreen + tab-exit detection */
+  useEffect(() => {
+    if (phase !== 'run') return;
+
+    async function enterFullscreen() {
+      try {
+        const doc = window.document;
+        const docEl = doc.documentElement;
+        const fs = docEl.requestFullscreen || (docEl as any).webkitRequestFullscreen || (doc as any).msRequestFullscreen;
+        if (fs) await fs.call(docEl);
+      } catch {
+        /* fullscreen may be blocked by browser policy */
+      }
+    }
+    void enterFullscreen();
+
+    function handleExit() {
+      const exitFs = () => {
+        try { (window.document as any).exitFullscreen?.(); } catch { /* noop */ }
+        try { (window.document as any).webkitCancelFullScreen?.(); } catch { /* noop */ }
+      };
+      exitFs();
+
+      document.body.style.userSelect = 'normal';
+      document.onselectstart = null;
+      document.oncontextmenu = null;
+      document.onkeydown = null;
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        setCheatCount((c) => {
+          const next = c + 1;
+          if (next >= 3) {
+            void kumpulkan();
+          } else {
+            setCheatMessage('Anda keluar dari tab simulasi. SISA 2x lagi akan otomatis mengirimkan jawaban.');
+            setShowCheatWarning(true);
+          }
+          return next;
+        });
+      }
+    }
+
+    function handleBlur() {
+      setCheatCount((c) => {
+        const next = c + 1;
+        if (next >= 3) {
+          void kumpulkan();
+        } else {
+          setCheatMessage('Jendela simulasi kehilangan fokus. Sisa 2x lagi akan otomatis mengirimkan jawaban.');
+          setShowCheatWarning(true);
+        }
+        return next;
+      });
+    }
+
+    function handleContextMenu(e: MouseEvent) {
+      e.preventDefault();
+      return false;
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey && (e.key === 't' || e.key === 'r' || e.key === 'n' || e.key === 'w' || e.key === 'l')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setCheatMessage('Shortcut dilarang saat simulasi berlangsung.');
+        setShowCheatWarning(true);
+        return false;
+      }
+    }
+
+    document.body.style.userSelect = 'none';
+    document.onselectstart = () => false;
+    document.oncontextmenu = handleContextMenu;
+    document.onkeydown = handleKeyDown;
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      handleExit();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [phase]);
 
   async function mulai(p: Pkg) {
     setErr('');
@@ -80,6 +171,9 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     }
     const map = new Map(((its || []) as DbItem[]).map((x) => [x.id, x]));
     let ordered = ids.map((id) => map.get(id)).filter(Boolean) as DbItem[];
+    if (p.use_ai_selection && p.jumlah_soal_soal && p.jumlah_soal_soal > 0 && p.jumlah_soal_soal < ordered.length) {
+      ordered = acakList(ordered).slice(0, p.jumlah_soal_soal);
+    }
     if (p.shuffle) ordered = acakList(ordered);
     const shuffled = ordered.map(acakOpsi);
     setItems(shuffled);
@@ -95,7 +189,13 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     setPhase('run');
   }
 
-  async function kumpulkan() {
+   async function kumpulkan() {
+    try { (document as any).exitFullscreen?.(); } catch { /* noop */ }
+    document.body.style.userSelect = 'normal';
+    document.onselectstart = null;
+    document.oncontextmenu = null;
+    document.onkeydown = null;
+
     if (!pkg || items.length === 0) {
       setPhase('hasil');
       return;
@@ -183,6 +283,9 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
                   <span className="badge badge-neutral">{p.mapel}</span>
                   <span className="badge badge-neutral">{p.item_count} soal</span>
                   {p.duration_sec && <span className="badge badge-neutral">{Math.floor(p.duration_sec / 60)} mnt</span>}
+                  {p.use_ai_selection && p.jumlah_soal_soal && (
+                    <span className="badge badge-neutral">AI: {p.jumlah_soal_soal}/siswa</span>
+                  )}
                 </div>
               </div>
               <button className="continue-btn" type="button" onClick={() => mulai(p)}>Mulai Simulasi</button>
@@ -228,8 +331,9 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   }
 
   return (
-    <div className="dashboard-page">
-      {/* Compact top nav */}
+    <>
+      <div className="dashboard-page">
+        {/* Compact top nav */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 500 }}>{pkg?.title}</span>
@@ -338,5 +442,22 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
         </div>
       </section>
     </div>
+    {showCheatWarning && (
+      <div className="cheat-modal-backdrop" onClick={() => setShowCheatWarning(false)}>
+        <div className="cheat-modal" onClick={(e) => e.stopPropagation()}>
+          <h3 className="cheat-modal-title">⚠ Peringatan Penting</h3>
+          <p className="cheat-modal-text">{cheatMessage}</p>
+          <p className="cheat-modal-sub">
+            {cheatCount >= 3
+              ? 'Simulasi otomatis dikumpulkan. Jangan keluar dari tab selama ujian.'
+              : `Pelanggaran: ${cheatCount} dari 3. Keluar lagi akan mengirimkan otomatis.`}
+          </p>
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowCheatWarning(false)}>
+            Kembali ke simulasi
+          </button>
+        </div>
+      </div>
+    )}
+      </>
   );
 }
