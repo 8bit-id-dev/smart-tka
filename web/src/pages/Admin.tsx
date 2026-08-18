@@ -6,7 +6,9 @@ type UserRow = AppProfile;
 type ClassRow = { id: string; name: string; jenjang: string; invite_code?: string };
 type PkgRow = { id: string; title: string; mapel: string; kind: string };
 type AsgRow = { id: string; package_id: string; class_id: string; due_at: string | null };
+type TSubjRow = { profile_id: string; subject: string; is_active: boolean };
 type CS = { class_id: string; profile_id: string };
+type MapelRow = { id: string; name: string };
 type CsvRow = {
   email: string;
   password: string;
@@ -41,6 +43,10 @@ export function Admin({ me }: { me: AppProfile }) {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [openUsers, setOpenUsers] = useState(false);
   const [openAsg, setOpenAsg] = useState(false);
+  const [openTs, setOpenTs] = useState(false);
+  const [manageTs, setManageTs] = useState<string | null>(null);
+  const [tsMap, setTsMap] = useState<Record<string, TSubjRow[]>>({});
+  const [mapelList, setMapelList] = useState<MapelRow[]>([]);
   const [openRole, setOpenRole] = useState<Record<string, boolean>>({});
   const [openKelas, setOpenKelas] = useState<Record<string, boolean>>({});
 
@@ -60,6 +66,9 @@ export function Admin({ me }: { me: AppProfile }) {
     if (!a.error) setAsgs((a.data || []) as AsgRow[]);
     const m = await insforge.database.from('class_students').select('class_id, profile_id');
     if (!m.error) setAnggota((m.data || []) as CS[]);
+
+    const ml = await insforge.database.from('mapels').select('id, name');
+    if (!ml.error) setMapelList((ml.data || []) as MapelRow[]);
   }
 
   async function toggleActiveUser(id: string, currentIsActive: boolean) {
@@ -75,8 +84,60 @@ export function Admin({ me }: { me: AppProfile }) {
     }
   }
 
-  function urutNama(a: UserRow, b: UserRow) {
+   function urutNama(a: UserRow, b: UserRow) {
     return (a.full_name || '').localeCompare(b.full_name || '', 'id', { sensitivity: 'base' });
+  }
+
+  function isSubjectAssigned(pid: string, subject: string): boolean {
+    return !!tsMap[pid]?.some((r) => r.subject === subject && r.is_active);
+  }
+
+  async function loadTs() {
+    const { data } = await insforge.database
+      .from('teacher_subjects')
+      .select('profile_id, subject, is_active')
+      .order('profile_id')
+      .order('subject');
+    const map: Record<string, TSubjRow[]> = {};
+    for (const r of (data || []) as TSubjRow[]) {
+      if (!map[r.profile_id]) map[r.profile_id] = [];
+      map[r.profile_id].push(r);
+    }
+    setTsMap(map);
+  }
+
+  async function toggleSubject(pid: string, subject: string, currentlyAssigned: boolean) {
+    setErr('');
+    setOk('');
+    if (currentlyAssigned) {
+      const { error } = await insforge.database
+        .from('teacher_subjects')
+        .delete()
+        .eq('profile_id', pid)
+        .eq('subject', subject);
+      if (error) {
+        setErr('Gagal hapus assignment: ' + error.message);
+        return;
+      }
+      setTsMap((prev) => ({
+        ...prev,
+        [pid]: prev[pid]?.filter((r) => r.subject !== subject) || [],
+      }));
+      setOk(`Mapel ${subject} dicabut dari guru.`);
+    } else {
+      const { error } = await insforge.database
+        .from('teacher_subjects')
+        .insert({ profile_id: pid, school_id: me.school_id, subject });
+      if (error) {
+        setErr('Gagal assign mapel: ' + error.message);
+        return;
+      }
+      setTsMap((prev) => ({
+        ...prev,
+        [pid]: [...(prev[pid] || []), { profile_id: pid, subject, is_active: true }],
+      }));
+      setOk(`Guru kini bisa akses soal ${subject}.`);
+    }
   }
 
   function barisUser(u: UserRow) {
@@ -115,6 +176,16 @@ export function Admin({ me }: { me: AppProfile }) {
           </dd>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {u.role === 'guru' && (
+            <button
+              type="button"
+              className="btn-ghost btn"
+              style={{ maxWidth: 130, fontSize: 13 }}
+              onClick={() => setManageTs(manageTs === u.id ? null : u.id)}
+            >
+              {manageTs === u.id ? 'Tutup mapel' : 'Kelola Mapel'}
+            </button>
+          )}
           <button
             type="button"
             className="btn-ghost btn"
@@ -128,6 +199,36 @@ export function Admin({ me }: { me: AppProfile }) {
             Hapus
           </button>
         </div>
+       {manageTs === u.id && u.role === 'guru' && (
+          <div style={{ marginTop: 10, marginBottom: 8, padding: '8px 0 0', borderBottom: '1px solid var(--card-border)' }}>
+            <span className="type-lab" style={{ fontSize: 11, marginBottom: 6, display: 'block' }}>Mata pelajaran yang diajarkan:</span>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {mapelList
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' }))
+                .map((m) => {
+                  const assigned = isSubjectAssigned(u.id, m.name);
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className="chip-pick"
+                      style={{
+                        fontSize: 11,
+                        padding: '4px 8px',
+                        backgroundColor: assigned ? 'var(--accent-soft)' : 'rgba(255,255,255,0.04)',
+                        color: assigned ? 'var(--accent)' : 'var(--muted)',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => void toggleSubject(u.id, m.name, assigned)}
+                    >
+                      {assigned ? '✓ ' : ''}{m.name}
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -145,6 +246,7 @@ export function Admin({ me }: { me: AppProfile }) {
 
   useEffect(() => {
     void load();
+    void loadTs();
   }, []);
 
   async function createUser(e: React.FormEvent) {
@@ -630,6 +732,81 @@ export function Admin({ me }: { me: AppProfile }) {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      <div className="collapsible-section" style={{ marginTop: 24 }}>
+        <button type="button" className="collapsible-header" onClick={() => setOpenTs((v) => !v)} aria-expanded={openTs}>
+          <h2 className="collapsible-title" style={{ margin: 0 }}>
+            Mapel Guru
+          </h2>
+          <span className="collapsible-toggle">{openTs ? '▲' : '▼'}</span>
+        </button>
+        {openTs && (
+          <div className="collapsible-content">
+            <p className="type-lab">Tetapkan mata pelajaran yang diajarkan oleh setiap guru. Guru hanya bisa membuat/mengelola soal untuk mapel yang diassign di sini.</p>
+
+            {users.filter((u) => u.role === 'guru').length === 0 && (
+              <p className="type-lab">Belum ada guru di sekolah ini.</p>
+            )}
+
+            {users.filter((u) => u.role === 'guru').length > 0 && mapelList.length === 0 && (
+              <p className="type-lab">Belum ada mapel di sekolah. Tambahkan melalui menu Kelas → Kurikulum.</p>
+            )}
+
+            {users.filter((u) => u.role === 'guru').length > 0 && mapelList.length > 0 && (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Guru</th>
+                      {mapelList
+                        .slice()
+                        .sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' }))
+                        .map((m) => (
+                          <th key={m.id} style={{ fontSize: 11, padding: '6px 8px' }}>{m.name}</th>
+                        ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users
+                      .filter((u) => u.role === 'guru')
+                      .sort(urutNama)
+                      .map((u) =>
+                        u.role === 'guru' ? (
+                          <tr key={u.id}>
+                            <td style={{ fontSize: 13, fontWeight: 600 }}>{u.full_name || '—'}</td>
+                            {mapelList
+                              .slice()
+                              .sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' }))
+                              .map((m) => {
+                                const assigned = !!tsMap[u.id]?.some((r) => r.subject === m.name && r.is_active);
+                                return (
+                                  <td key={m.id} style={{ textAlign: 'center', padding: '4px 6px' }}>
+                                    <button
+                                      type="button"
+                                      className="btn-ghost btn"
+                                      style={{
+                                        fontSize: 10,
+                                        padding: '2px 6px',
+                                        backgroundColor: assigned ? 'var(--accent-soft)' : undefined,
+                                        color: assigned ? 'var(--accent)' : undefined,
+                                      }}
+                                      onClick={() => void toggleSubject(u.id, m.name, assigned)}
+                                    >
+                                      {assigned ? '✓' : '+'}
+                                    </button>
+                                  </td>
+                                );
+                              })}
+                          </tr>
+                        ) : null
+                      )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>

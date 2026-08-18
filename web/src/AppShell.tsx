@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { insforge, type AppProfile } from './lib/insforge';
+import { XpReward } from './components/XpReward';
 
 export type Tab =
   | 'beranda'
   | 'latihan'
   | 'simulasi'
   | 'inbox'
+  | 'leaderboard'
   | 'soal'
   | 'paket'
   | 'kelas'
@@ -89,10 +91,19 @@ const Icons = {
       <circle cx="12" cy="7" r="4" />
     </svg>
   ),
-  anak: (filled: boolean) => (
+   anak: (filled: boolean) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
+    </svg>
+  ),
+  leaderboard: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 16V5a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2z" />
+      <path d="M12 12h.01M16 16h.01M8 8h.01M8 12h.01" />
+      <path d="M6 22h12" />
+      <circle cx="6" cy="18" r="2" />
+      <circle cx="18" cy="18" r="2" />
     </svg>
   ),
   search: () => (
@@ -110,6 +121,8 @@ const Icons = {
 };
 
 export { Icons };
+
+type GamifProfile = { xp: number; level: number; streak_current: number; streak_best: number };
 
 type NotifRow = {
   id: string;
@@ -156,42 +169,53 @@ export function AppShell({
   children: React.ReactNode;
   headerExtra?: React.ReactNode;
 }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [rows, setRows] = useState<NotifRow[]>([]);
+  const [gp, setGp] = useState<GamifProfile | null>(null);
 
   useEffect(() => {
     void (async () => {
-      const { data: anData, error: anErr } = await insforge.database
-        .from('announcements')
-        .select('id, title, body, priority, requires_ack, created_at');
-      if (anErr) {
-        const fallback = await insforge.database
+      const { data, error } = await insforge.database
+        .from('gamification_profiles')
+        .select('xp, level, streak_current, streak_best')
+        .eq('profile_id', profile.id)
+        .single();
+      if (!error && data) setGp(data as GamifProfile);
+    })();
+  }, [profile.id]);
+
+  useEffect(() => {
+      void (async () => {
+        const { data: anData, error: anErr } = await insforge.database
           .from('announcements')
-          .select('id, title, body, priority, requires_ack');
-        if (fallback.error) return;
-        const anns = (fallback.data || []) as NotifRow[];
+          .select('id, title, body, priority, requires_ack, created_at');
+        if (anErr) {
+          const fallback = await insforge.database
+            .from('announcements')
+            .select('id, title, body, priority, requires_ack');
+          if (fallback.error) return;
+          const anns = (fallback.data || []) as NotifRow[];
+          const { data: ackData } = await insforge.database
+            .from('announcement_acks')
+            .select('announcement_id')
+            .eq('profile_id', profile.id);
+          const acked = new Set(((ackData || []) as { announcement_id: string }[]).map((a) => a.announcement_id));
+          setRows(anns.filter((a) => !acked.has(a.id)));
+          return;
+        }
+        const anns = (anData || []) as NotifRow[];
+
         const { data: ackData } = await insforge.database
           .from('announcement_acks')
           .select('announcement_id')
           .eq('profile_id', profile.id);
         const acked = new Set(((ackData || []) as { announcement_id: string }[]).map((a) => a.announcement_id));
-        setRows(anns.filter((a) => !acked.has(a.id)));
-        return;
-      }
-      const anns = (anData || []) as NotifRow[];
 
-      const { data: ackData } = await insforge.database
-        .from('announcement_acks')
-        .select('announcement_id')
-        .eq('profile_id', profile.id);
-      const acked = new Set(((ackData || []) as { announcement_id: string }[]).map((a) => a.announcement_id));
-
-      const unread = anns.filter((a) => !acked.has(a.id));
-      unread.sort((a, b) => new Date(b.created_at ?? '').getTime() - new Date(a.created_at ?? '').getTime());
-      setRows(unread);
-    })();
-  }, [profile.id]);
+        const unread = anns.filter((a) => !acked.has(a.id));
+        unread.sort((a, b) => new Date(b.created_at ?? '').getTime() - new Date(a.created_at ?? '').getTime());
+        setRows(unread);
+      })();
+    }, [profile.id]);
 
   async function ackNotif(id: string) {
     await insforge.database.from('announcement_acks').insert({
@@ -201,9 +225,57 @@ export function AppShell({
     setRows((prev) => prev.filter((r) => r.id !== id));
   }
 
+  const handleXpAwarded = useCallback(async (xp: number) => {
+    if (role !== 'siswa') return null;
+
+    const before = { ...(gp ?? { level: 1, xp: 0 }) };
+
+    try {
+      await insforge.database.rpc('award_xp', { p_profile: profile.id, p_xp: xp });
+    } catch {
+      return null;
+    }
+
+    const { data: gpData } = await insforge.database
+      .from('gamification_profiles')
+      .select('xp, level, streak_current, streak_best')
+      .eq('profile_id', profile.id)
+      .single();
+
+    if (gpData) {
+      setGp(gpData as GamifProfile);
+    }
+
+    const newLevel = (gpData as GamifProfile | null)?.level ?? before.level;
+    const result: { levelUp?: { old: number; new: number }; newAchievement?: { title: string; icon: string } } = {};
+
+    if (newLevel > before.level) {
+      result.levelUp = { old: before.level, new: newLevel };
+    }
+
+    if (xp > 0 || result.levelUp) {
+      void insforge.database
+        .from('user_achievements')
+        .select('!*')
+        .eq('profile_id', profile.id)
+        .order('earned_at', { ascending: false })
+        .limit(1);
+    }
+
+    return result;
+  }, [profile.id, gp, role]);
+
   const items: { id: Tab; label: string }[] = [];
   if (role === 'orang_tua') {
     items.push({ id: 'beranda', label: 'Anak' }, { id: 'profil', label: 'Profil' });
+  } else if (role === 'siswa') {
+    items.push(
+      { id: 'beranda', label: 'Beranda' },
+      { id: 'latihan', label: 'Latihan' },
+      { id: 'simulasi', label: 'Simulasi' },
+      { id: 'inbox', label: 'Kotak Masuk' },
+      { id: 'leaderboard', label: 'Peringkat' },
+    );
   } else {
     items.push(
       { id: 'beranda', label: 'Beranda' },
@@ -211,16 +283,13 @@ export function AppShell({
       { id: 'simulasi', label: 'Simulasi' },
       { id: 'inbox', label: 'Kotak Masuk' },
     );
-    if (['guru', 'admin', 'konten'].includes(role)) {
-      items.push(
-        { id: 'soal', label: 'Soal' },
-        { id: 'paket', label: 'Paket' },
-        { id: 'kelas', label: 'Kelas' },
-        { id: 'pengumuman', label: 'Pengumuman' },
-        { id: 'laporan', label: 'Laporan' }
-      );
-    }
-    if (role === 'kepsek' || role === 'siswa') items.push({ id: 'laporan', label: 'Laporan' });
+    items.push(
+      { id: 'soal', label: 'Soal' },
+      { id: 'paket', label: 'Paket' },
+      { id: 'kelas', label: 'Kelas' },
+      { id: 'pengumuman', label: 'Pengumuman' },
+      { id: 'laporan', label: 'Laporan' }
+    );
     if (['admin', 'kepsek'].includes(role)) items.push({ id: 'admin', label: 'Admin' });
     items.push({ id: 'profil', label: 'Profil' });
   }
@@ -236,44 +305,36 @@ export function AppShell({
   const initials = getInitials(name);
 
   return (
-    <div className={`shell ${isDesktopRole ? 'shell-desktop' : 'shell-mobile'} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      {isDesktopRole ? (
-        <>
-          <aside className="shell-sidebar">
-            <div className="shell-sidebar-header">
-              <strong className="brand">
-                <span className="brand-icon">TKA</span>
-                <span>SMART-TKA</span>
-              </strong>
-              <button
-                type="button"
-                className="sidebar-toggle"
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              >
-                {sidebarCollapsed ? '»' : '«'}
-              </button>
-            </div>
-            <nav className="shell-nav">
-              {items.map((i) => {
-                const isActive = tab === i.id;
-                return (
-                  <button
-                    key={i.id}
-                    className={isActive ? 'on' : ''}
-                    type="button"
-                    onClick={() => onTab(i.id)}
-                    title={sidebarCollapsed ? i.label : undefined}
-                  >
-                    <span className="nav-icon">{getIcon(i.id, isActive)}</span>
-                    {!sidebarCollapsed && <span className="nav-label">{i.label}</span>}
-                  </button>
-                );
+     <div className={`shell ${isDesktopRole ? 'shell-desktop sidebar-collapsed' : 'shell-mobile'}`}>
+       {isDesktopRole ? (
+         <>
+           <aside className="shell-sidebar">
+             <div className="shell-sidebar-header">
+               <strong className="brand">
+                 <span className="brand-icon">TKA</span>
+                 <span>SMART-TKA</span>
+               </strong>
+             </div>
+             <nav className="shell-nav">
+               {items.map((i) => {
+                 const isActive = tab === i.id;
+                 return (
+                   <button
+                     key={i.id}
+                     className={isActive ? 'on' : ''}
+                     type="button"
+                     onClick={() => onTab(i.id)}
+                     title={i.label}
+                   >
+                     <span className="nav-icon">{getIcon(i.id, isActive)}</span>
+                     <span className="nav-label">{i.label}</span>
+                   </button>
+                 );
               })}
             </nav>
-            <span className="shell-user">
-              {sidebarCollapsed ? initials : `${name} · ${role}`}
-            </span>
+             <span className="shell-user">
+               {initials}
+             </span>
           </aside>
            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
              <header className="shell-header">
@@ -319,6 +380,7 @@ export function AppShell({
                     )}
                    <button type="button" className="header-avatar" title={name}>
                      {initials}
+                     {gp && role === 'siswa' && <span className="level-badge">L{gp.level}</span>}
                    </button>
                  </div>
                </div>
@@ -359,6 +421,7 @@ export function AppShell({
           </nav>
         </>
       )}
+      {role === 'siswa' && <XpReward onXpAwarded={handleXpAwarded} />}
     </div>
   );
 }

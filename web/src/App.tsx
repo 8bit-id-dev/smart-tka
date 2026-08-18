@@ -5,6 +5,7 @@ import { Home } from './pages/Home';
 import { Practice } from './pages/Practice';
 import { Simulasi } from './pages/Simulasi';
 import { Inbox } from './pages/Inbox';
+import { Leaderboard } from './pages/Leaderboard';
 import { Profil } from './pages/Profil';
 import { Onboarding } from './pages/Onboarding';
 import { SoalGuru } from './pages/SoalGuru';
@@ -179,7 +180,8 @@ export default function App() {
         <Practice schoolId={profile.school_id} studentId={profile.id} jenjang={profile.jenjang} onHome={() => setTab('beranda')} />
       )}
       {tab === 'simulasi' && <Simulasi schoolId={profile.school_id} studentId={profile.id} />}
-      {tab === 'inbox' && <Inbox profileId={profile.id} />}
+       {tab === 'inbox' && <Inbox profileId={profile.id} />}
+       {tab === 'leaderboard' && <Leaderboard me={profile} />}
       {tab === 'soal' && <SoalGuru profile={profile} />}
       {tab === 'paket' && <PaketGuru profile={profile} />}
       {tab === 'kelas' && <Kelas profile={profile} />}

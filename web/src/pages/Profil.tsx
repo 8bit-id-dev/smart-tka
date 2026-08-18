@@ -29,7 +29,10 @@ export function Profil({
   const [exp, setExp] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoErr, setPhotoErr] = useState('');
   const [ortu, setOrtu] = useState<{ parent_id: string; nama: string }[]>([]);
+  const [photoUrl, setPhotoUrl] = useState(profile.photo_url || '');
 
   useEffect(() => {
     if (profile.role !== 'siswa') return;
@@ -76,6 +79,56 @@ export function Profil({
 
   const initials = (profile.full_name || email || 'U').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
 
+  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setPhotoErr('Hanya file gambar (jpg, png, gif) yang diperbolehkan.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setPhotoErr('Ukuran maksimal 2 MB.');
+      return;
+    }
+    setPhotoLoading(true);
+    setPhotoErr('');
+    const ext = file.type.split('/')[1];
+    const path = `${profile.id}.${ext}`;
+    try {
+      const { error, data } = await insforge.storage.from('profile-photos').upload(path, file);
+      if (error) {
+        setPhotoErr(error.message);
+      } else {
+        const url = (data as { url?: string })?.url || (data as { publicUrl?: string })?.publicUrl || '';
+        setPhotoUrl(url);
+        await insforge.database.from('profiles').update({ photo_url: url }).eq('id', profile.id);
+      }
+    } catch (e) {
+      setPhotoErr(e instanceof Error ? e.message : 'Upload gagal.');
+    }
+    setPhotoLoading(false);
+    e.target.value = '';
+  }
+
+  async function deletePhoto() {
+    if (!photoUrl) return;
+    setPhotoLoading(true);
+    setPhotoErr('');
+    const fname = photoUrl.substring(photoUrl.lastIndexOf('/') + 1);
+    try {
+      const { error } = await insforge.storage.from('profile-photos').remove(fname);
+      if (error) {
+        setPhotoErr(error.message);
+      } else {
+        setPhotoUrl('');
+        await insforge.database.from('profiles').update({ photo_url: null }).eq('id', profile.id);
+      }
+    } catch (e) {
+      setPhotoErr(e instanceof Error ? e.message : 'Hapus gagal.');
+    }
+    setPhotoLoading(false);
+  }
+
   return (
     <div className="dashboard-page">
       <header className="page-header" style={{ marginBottom: 20 }}>
@@ -85,23 +138,50 @@ export function Profil({
 
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* Avatar + info */}
-        <div className="card" style={{ textAlign: 'center', minWidth: 200, flex: '1 1 260px' }}>
-          <div style={{
-            width: 72, height: 72, borderRadius: 20, background: 'var(--accent)', color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 28, fontWeight: 700, margin: '0 auto 12px',
-          }}>
-            {initials}
-          </div>
-          <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700 }}>{profile.full_name || 'Pengguna'}</h2>
-          <span className="badge badge-info" style={{ marginBottom: 16 }}>{profile.role}</span>
+         <div className="card" style={{ textAlign: 'center', minWidth: 200, flex: '1 1 260px' }}>
+           <div style={{
+             width: 72, height: 72, borderRadius: 20,
+             background: photoUrl ? undefined : 'var(--accent)', color: '#fff',
+             display: 'flex', alignItems: 'center', justifyContent: 'center',
+             fontSize: 28, fontWeight: 700, margin: '0 auto 12px',
+             overflow: 'hidden', objectFit: 'cover',
+             border: photoUrl ? '2px solid var(--accent-soft)' : 'none',
+           }}>
+             {photoUrl ? <img src={photoUrl} alt="Foto profil" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} /> : initials}
+           </div>
+           <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12 }}>
+             <button type="button" className="btn" style={{ fontSize: 12, padding: '4px 10px', cursor: 'pointer' }} title="Ganti foto">
+               {photoLoading ? '…' : (photoUrl ? 'Ganti' : 'Upload')}
+               <input type="file" accept="image/*" hidden onChange={(e) => void uploadPhoto(e)} disabled={photoLoading} />
+             </button>
+             {photoUrl && (
+               <button type="button" className="btn" style={{ fontSize: 12, padding: '4px 10px', cursor: 'pointer' }} onClick={() => void deletePhoto()} disabled={photoLoading} title="Hapus foto">
+                 Hapus
+               </button>
+             )}
+           </div>
+           {photoErr && <p className="legal" style={{ color: '#f85149', marginTop: 4 }}>{photoErr}</p>}
+           <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700 }}>{profile.full_name || 'Pengguna'}</h2>
+           <span className="badge badge-info" style={{ marginBottom: 16 }}>{profile.role}</span>
 
           <div style={{ textAlign: 'left', marginTop: 8 }}>
             <dl className="profil-list" style={{ margin: 0 }}>
-              <div>
-                <dt>Email</dt>
-                <dd style={{ fontSize: 14 }}>{email || '—'}</dd>
-              </div>
+             <div>
+               <dt>Email</dt>
+               <dd style={{ fontSize: 14 }}>
+                 {email ? (() => {
+                   const atIdx = email.indexOf('@');
+                   return atIdx > 0 ? (
+                     <>
+                       <span style={{ display: 'block' }}>{email.slice(0, atIdx)}</span>
+                       <span style={{ display: 'block' }}>{email.slice(atIdx)}</span>
+                     </>
+                   ) : (
+                     email
+                   );
+                 })() : '—'}
+               </dd>
+             </div>
               <div>
                 <dt>Jenjang</dt>
                 <dd style={{ fontSize: 14 }}>{jenjang}</dd>

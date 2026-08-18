@@ -65,20 +65,43 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   const [openTipe, setOpenTipe] = useState<Record<string, boolean>>({});
   const [openDiff, setOpenDiff] = useState<Record<string, boolean>>({});
 
-  async function load() {
+  const [mySubjects, setMySubjects] = useState<string[]>([]);
+  const isGuru = profile.role === 'guru';
+
+  async function loadMySubjects() {
+    if (!isGuru) return;
     const { data, error } = await insforge.database
+      .from('teacher_subjects')
+      .select('subject')
+      .eq('profile_id', profile.id)
+      .eq('is_active', true);
+    if (!error && data) {
+      setMySubjects((data as { subject: string }[]).map((r) => r.subject));
+    }
+  }
+
+  async function load() {
+    let q = insforge.database
       .from('items')
       .select('id, item_type, mapel, materi, jenjang, difficulty, stem, stimulus, choices, correct_key, rationale, status, created_at')
       .eq('author_id', profile.id)
       .neq('status', 'retired')
       .order('created_at', { ascending: false });
+    if (isGuru && mySubjects.length > 0) {
+      q = q.in('mapel', mySubjects);
+    }
+    const { data, error } = await q;
     if (error) setErr(error.message);
     else setList((data || []) as ItemRow[]);
   }
 
   useEffect(() => {
-    void load();
+    void loadMySubjects();
   }, [profile.id]);
+
+  useEffect(() => {
+    void load();
+  }, [profile.id, mySubjects.length]);
 
   function resetForm() {
     setEditingId(null);
@@ -373,6 +396,11 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
         </button>
       </nav>
 
+      {subTab === 'buat' && isGuru && mySubjects.length === 0 && (
+        <div className="banner banner-danger" style={{ margin: '16px 0' }}>
+          <p className="banner-text">Anda belum memiliki mata pelajaran yang diassign. Hubungi admin untuk menambahkan Anda ke mata pelajaran yang diajarkan.</p>
+        </div>
+      )}
       {subTab === 'buat' && (
         <form onSubmit={simpan} className="form-container">
           <div className="card">
@@ -416,20 +444,49 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
               </div>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <KurikulumCrud
-                profile={profile}
-                jenjang={jenjang}
-                pilihMapelId={mapelId}
-                pilihMateriId={materiId}
-                onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
+             <div style={{ marginBottom: 20 }}>
+               {isGuru ? (
+                 <div>
+                   <label className="form-label">Mapel</label>
+                   {mySubjects.length === 0 ? (
+                     <p className="type-lab" style={{ marginTop: 4 }}>
+                       Anda belum memiliki mapel yang diassign. Hubungi admin untuk menambahkan mapel.
+                     </p>
+                   ) : (
+                     <select
+                       className="select"
+                       value={mapel}
+                       onChange={(e) => {
+                         const selected = mySubjects.find((s) => s === e.target.value) || '';
+                         setMapel(e.target.value);
+                         setMapelId(selected ? selected : '');
+                       }}
+                     >
+                       <option value="">— pilih mapel —</option>
+                       {mySubjects
+                         .slice()
+                         .sort((a, b) => a.localeCompare(b, 'id', { numeric: true, sensitivity: 'base' }))
+                         .map((s) => (
+                           <option key={s} value={s}>{s}</option>
+                         ))}
+                     </select>
+                   )}
+                 </div>
+               ) : (
+                 <KurikulumCrud
+                   profile={profile}
+                   jenjang={jenjang}
+                   pilihMapelId={mapelId}
+                   pilihMateriId={materiId}
+                   onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
                   setMapelId(mp?.id || '');
                   setMateriId(mt?.id || '');
                   setMapel(mp?.name || '');
                   setMateri(mt?.name || '');
                 }}
               />
-            </div>
+            )}
+          </div>
 
             <div className="form-group">
               <label className="form-label">Tipe Soal</label>

@@ -73,7 +73,19 @@ export function Practice({
       submitted_at: new Date().toISOString(),
       score: nilai,
     });
-    if (error) setErr('Sesi selesai. Skor belum ke laporan: ' + error.message);
+    if (error) {
+      setErr('Sesi selesai. Skor belum ke laporan: ' + error.message);
+    } else {
+      const xpEarned = benar * 5 + jawab * 2;
+      if (xpEarned > 0) {
+        const showXp = (window as any).__showXpReward;
+        if (showXp) {
+          showXp(xpEarned, 'Latihan');
+        } else {
+          await insforge.database.rpc('award_xp', { p_profile: studentId, p_xp: xpEarned });
+        }
+      }
+    }
   }
 
   if (err && phase === 'pilih') {

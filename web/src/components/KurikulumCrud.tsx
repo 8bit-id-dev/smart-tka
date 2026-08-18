@@ -8,12 +8,14 @@ export function KurikulumCrud({
   onPilih,
   pilihMapelId,
   pilihMateriId,
+  allowedSubjects,
 }: {
   profile: AppProfile;
   jenjang: string;
   pilihMapelId: string;
   pilihMateriId: string;
   onPilih: (mapel: MapelRow | null, materi: MateriRow | null) => void;
+  allowedSubjects?: string[];
 }) {
   const [mapels, setMapels] = useState<MapelRow[]>([]);
   const [materis, setMateris] = useState<MateriRow[]>([]);
@@ -51,13 +53,16 @@ export function KurikulumCrud({
       return;
     }
     setErr('');
-    setMapels(m.rows);
-    const still = m.rows.find((r) => r.id === pilihMapelId);
+    const displayed = allowedSubjects
+      ? m.rows.filter((r) => allowedSubjects.includes(r.name))
+      : m.rows;
+    setMapels(displayed);
+    const still = displayed.find((r) => r.id === pilihMapelId);
     if (still) {
       await muatMateri(still.id);
-    } else if (m.rows[0]) {
-      const mats = await muatMateri(m.rows[0].id);
-      onPilih(m.rows[0], mats[0] || null);
+    } else if (displayed[0]) {
+      const mats = await muatMateri(displayed[0].id);
+      onPilih(displayed[0], mats[0] || null);
     } else {
       setMateris([]);
       onPilih(null, null);

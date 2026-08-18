@@ -119,6 +119,20 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
       locked_at: new Date().toISOString(),
     }));
     await insforge.database.from('attempt_answers').insert(rows);
+
+    const xpEarned = Math.round(nilai * 2) + 20;
+    if (xpEarned > 0) {
+      const showXp = (window as any).__showXpReward;
+      if (showXp) {
+        showXp(xpEarned, 'Simulasi');
+      } else {
+        try {
+          await insforge.database.rpc('award_xp', { p_profile: studentId, p_xp: xpEarned });
+        } catch {
+          /* XP award best-effort */
+        }
+      }
+    }
   }
 
   const mm = String(Math.floor(sisa / 60)).padStart(2, '0');
