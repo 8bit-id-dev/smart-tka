@@ -1660,7 +1660,7 @@ pre.debug {
 .shell-bar-left { display: flex; align-items: center; gap: 8px; }
 .shell-bar-right { display: flex; align-items: center; gap: 8px; }
 .app-logo-wrapper { display: flex; align-items: center; gap: 6px; }
-.app-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; border: 2px solid var(--ink); border-radius: 8px; box-sizing: border-box; }
+.app-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; border: 2px solid var(--card-border); border-radius: 8px; box-sizing: border-box; }
 .hamburger-btn {
   width: 36px; height: 36px;
   border-radius: var(--radius-sm);
