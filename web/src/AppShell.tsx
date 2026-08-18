@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { insforge, type AppProfile } from './lib/insforge';
 import { XpReward } from './components/XpReward';
+import AppIcon from './assets/smart.png';
 
 export type Tab =
   | 'beranda'
@@ -130,6 +131,13 @@ const Icons = {
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
   ),
+  menu: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  ),
 };
 
 export { Icons };
@@ -182,6 +190,7 @@ export function AppShell({
   headerExtra?: React.ReactNode;
 }) {
   const [notifOpen, setNotifOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [rows, setRows] = useState<NotifRow[]>([]);
   const [gp, setGp] = useState<GamifProfile | null>(null);
 
@@ -403,53 +412,76 @@ export function AppShell({
       ) : (
         <>
           <header className="shell-bar">
-             <strong className="brand">SMART-TKA</strong>
-             <nav className="shell-nav">
-               {items.map((i) => {
-                 const isActive = tab === i.id;
-                 return (
-                   <button key={i.id} className={isActive ? 'on' : ''} type="button" onClick={() => onTab(i.id)}>
-                     <span className="nav-icon-mobile">{getIcon(i.id, isActive)}</span>
-                     <span>{i.label}</span>
-                   </button>
-                 );
-               })}
-             </nav>
-             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-               <button
-                 type="button"
-                 className="header-icon-btn"
-                 title="Kotak masuk"
-                 onClick={() => setNotifOpen(!notifOpen)}
-               >
-                 {Icons.inbox(true)}
-                 {rows.length > 0 && <span className="header-badge">{rows.length}</span>}
-               </button>
-               {notifOpen && (
-                 <div className="notif-dropdown" style={{ position: 'fixed', top: 48, right: 12, minWidth: 280 }}>
-                   {rows.length === 0 ? (
-                     <button type="button" className="notif-empty">
-                       <span className="notif-text">Kotak masuk kosong</span>
-                     </button>
-                   ) : (
-                     rows.map((n) => (
-                       <div key={n.id} className="notif-item">
-                         <div className="notif-item-main">
-                           <span className="notif-sender">{n.title}</span>
-                           <span className="notif-text">{n.body.slice(0, 80)}{n.body.length > 80 ? '…' : ''}</span>
-                           <span className="notif-time">{timeAgo(n.created_at)}</span>
-                         </div>
-                         <button type="button" className="notif-remove" title="Tandai sudah dibaca" onClick={() => ackNotif(n.id)}>✕</button>
-                       </div>
-                     ))
-                   )}
-                 </div>
-               )}
-               <span className="shell-user">
-                 {name} · {role}
-               </span>
-             </div>
-           </header>
+            <div className="shell-bar-left">
+              <div className="app-logo-wrapper">
+                <img src={AppIcon} alt="SMART-TKA" className="app-logo" />
+                <strong className="brand">SMART-TKA</strong>
+              </div>
+              <button
+                type="button"
+                className="hamburger-btn"
+                title="Menu"
+                onClick={() => setMenuOpen(true)}
+              >
+                {Icons.menu()}
+              </button>
+            </div>
+            <div className="shell-bar-right">
+              <button
+                type="button"
+                className="header-icon-btn"
+                title="Notifikasi"
+                onClick={() => setNotifOpen(!notifOpen)}
+                aria-expanded={notifOpen}
+              >
+                {Icons.bell()}
+                {rows.length > 0 && <span className="header-badge">{rows.length}</span>}
+              </button>
+              {notifOpen && (
+                <div className="notif-dropdown">
+                  {rows.length === 0 ? (
+                    <button type="button" className="notif-empty">
+                      <span className="notif-text">Kotak masuk kosong</span>
+                    </button>
+                  ) : (
+                    rows.map((n) => (
+                      <div key={n.id} className="notif-item">
+                        <div className="notif-item-main">
+                          <span className="notif-sender">{n.title}</span>
+                          <span className="notif-text">{n.body.slice(0, 80)}{n.body.length > 80 ? '…' : ''}</span>
+                          <span className="notif-time">{timeAgo(n.created_at)}</span>
+                        </div>
+                        <button type="button" className="notif-remove" title="Hapus notifikasi" onClick={() => ackNotif(n.id)}>✕</button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+              <span className="shell-user">
+                {name} · {role}
+              </span>
+            </div>
+          </header>
+          {menuOpen && (
+            <div className="mobile-menu-backdrop" onClick={() => setMenuOpen(false)}>
+              <nav className="mobile-menu" onClick={(e) => e.stopPropagation()}>
+                {items.map((i) => {
+                  const isActive = tab === i.id;
+                  return (
+                    <button
+                      key={i.id}
+                      type="button"
+                      className={isActive ? 'on' : ''}
+                      onClick={() => { onTab(i.id); setMenuOpen(false); }}
+                    >
+                      <span className="nav-icon-mobile">{getIcon(i.id, isActive)}</span>
+                      <span>{i.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          )}
           <main className="shell-main-mobile">{children}</main>
           <nav className="shell-mobile-nav">
             {items.slice(0, 5).map((i) => {

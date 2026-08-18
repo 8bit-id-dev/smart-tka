@@ -313,31 +313,6 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         </div>
       </div>
 
-      <div className="section">
-        <div className="card">
-          <h3 className="card-title" style={{ marginBottom: 14 }}>Analisis Kemampuan</h3>
-          {Object.keys(subjectStats).length === 0 ? (
-            <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
-          ) : (
-            Object.entries(subjectStats).map(([mapel, v]) => {
-              const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
-              const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
-              const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : pct >= 50 ? 'analysis-bar-tag-improve' : 'analysis-bar-tag-improve';
-              return (
-                <div key={mapel} className="analysis-bar-row">
-                  <span className="analysis-bar-label">{mapel}</span>
-                  <div className="analysis-bar-track">
-                    <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="analysis-bar-pct">{pct}%</span>
-                  <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
       {gp && <GamifQuickView profile={gp} />}
 
       <div className="stats-row">
@@ -368,86 +343,106 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         </div>
       </div>
 
-      <div className="grid-2 student-grid">
-        <div className="col">
-          <div className="section">
-            <h2 className="section-title">Latihan TKA</h2>
-            {pkgs.filter((p) => p.kind === 'latihan').length === 0 ? (
-              <p className="type-lab">Belum ada paket latihan tersedia.</p>
-            ) : (
-              <div className="subject-hscroll">
-                {pkgs.filter((p) => p.kind === 'latihan').slice(0, 8).map((p) => (
-                  <div key={p.id} className="subject-card" onClick={() => onTab('latihan')}>
-                    <div className="subject-card-header">
-                      <div className={`subject-icon ${SUBJECT_COLORS[p.mapel] || 'subject-icon-other'}`}>
-                        {SUBJECT_ICONS[p.mapel] || '📚'}
-                      </div>
-                      <div className="subject-meta">
-                        <h4>{p.mapel || p.title}</h4>
-                        <p>{p.item_count || 0} soal</p>
-            {photoErr && <div className="avatar-error">{photoErr}</div>}
+      {recMapel && recMapel.akurasi < 70 && (
+        <div className="section">
+          <div className="rec-card">
+            <div className="rec-icon">💡</div>
+            <div className="rec-info">
+              <h3>Perkuat kemampuan {recMapel.name}</h3>
+              <p>Akurasi Anda di {recMapel.name} adalah {recMapel.akurasi}%. Lanjutkan latihan untuk meningkatkan pemahaman.</p>
+            </div>
+            <button className="continue-btn" type="button" onClick={() => onTab('latihan')}>Mulai Latihan</button>
           </div>
         </div>
-                    <button className="continue-btn" type="button" style={{ width: '100%' }}>Mulai</button>
+      )}
+
+      <div className="section">
+        <div className="card">
+          <h3 className="card-title" style={{ marginBottom: 14 }}>Analisis Kemampuan</h3>
+          {Object.keys(subjectStats).length === 0 ? (
+            <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
+          ) : (
+            Object.entries(subjectStats).map(([mapel, v]) => {
+              const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+              const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
+              const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : pct >= 50 ? 'analysis-bar-tag-improve' : 'analysis-bar-tag-improve';
+              return (
+                <div key={mapel} className="analysis-bar-row">
+                  <span className="analysis-bar-label">{mapel}</span>
+                  <div className="analysis-bar-track">
+                    <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="section">
-            <div className="featured-card">
-              <div className="section-header" style={{ marginBottom: 8 }}>
-                <h2 className="section-title" style={{ margin: 0 }}>Simulasi TKA</h2>
-                <span className="badge badge-success">Aktif</span>
-              </div>
-              <div className="featured-grid">
-                <div className="featured-stat">
-                  <p className="featured-stat-label">Jumlah Soal</p>
-                  <p className="featured-stat-value">{simulasiPkg?.item_count || 35}</p>
+                  <span className="analysis-bar-pct">{pct}%</span>
+                  <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
                 </div>
-                <div className="featured-stat">
-                  <p className="featured-stat-label">Durasi</p>
-                  <p className="featured-stat-value">90 mnt</p>
-                </div>
-                <div className="featured-stat">
-                  <p className="featured-stat-label">Skor Terakhir</p>
-                  <p className="featured-stat-value">{lastSimScore || '—'}</p>
-                </div>
-                <div className="featured-stat">
-                  <p className="featured-stat-label">Skor Terbaik</p>
-                  <p className="featured-stat-value">{lastSimScore || '—'}</p>
-                </div>
-              </div>
-              <button className="continue-btn" type="button" style={{ width: '100%' }} onClick={() => onTab('simulasi')}>
-                Mulai Simulasi
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="col">
-          <div className="section">
-            <div className="chart-card">
-              <h3 className="card-title" style={{ margin: '0 0 8px' }}>Statistik Belajar</h3>
-              <div className="chart-svg-wrap">
-                <SimpleLineChart data={chartData.data} labels={chartData.labels} />
-              </div>
-            </div>
-          </div>
-
-          {recMapel && recMapel.akurasi < 70 && (
-            <div className="section">
-              <div className="rec-card">
-                <div className="rec-icon">💡</div>
-                <div className="rec-info">
-                  <h3>Perkuat kemampuan {recMapel.name}</h3>
-                  <p>Akurasi Anda di {recMapel.name} adalah {recMapel.akurasi}%. Lanjutkan latihan untuk meningkatkan pemahaman.</p>
-                </div>
-                <button className="continue-btn" type="button" onClick={() => onTab('latihan')}>Mulai Latihan</button>
-              </div>
-            </div>
+              );
+            })
           )}
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="section-header">
+          <h2 className="section-title">Latihan TKA</h2>
+        </div>
+        {pkgs.filter((p) => p.kind === 'latihan').length === 0 ? (
+          <p className="type-lab">Belum ada paket latihan tersedia.</p>
+        ) : (
+          <div className="subject-hscroll">
+            {pkgs.filter((p) => p.kind === 'latihan').slice(0, 8).map((p) => (
+              <div key={p.id} className="subject-card" onClick={() => onTab('latihan')}>
+                <div className="subject-card-header">
+                  <div className={`subject-icon ${SUBJECT_COLORS[p.mapel] || 'subject-icon-other'}`}>
+                    {SUBJECT_ICONS[p.mapel] || '📚'}
+                  </div>
+                  <div className="subject-meta">
+                    <h4>{p.mapel || p.title}</h4>
+                    <p>{p.item_count || 0} soal</p>
+                  </div>
+                </div>
+                <button className="continue-btn" type="button" style={{ width: '100%' }}>Mulai</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="section">
+        <div className="featured-card">
+          <div className="section-header" style={{ marginBottom: 8 }}>
+            <h2 className="section-title" style={{ margin: 0 }}>{simulasiPkg?.title || 'Simulasi TKA'}</h2>
+            <span className="badge badge-success">Aktif</span>
+          </div>
+          <div className="featured-grid">
+            <div className="featured-stat">
+              <p className="featured-stat-label">Jumlah Soal</p>
+              <p className="featured-stat-value">{simulasiPkg?.item_count || 35}</p>
+            </div>
+            <div className="featured-stat">
+              <p className="featured-stat-label">Durasi</p>
+              <p className="featured-stat-value">90 mnt</p>
+            </div>
+            <div className="featured-stat">
+              <p className="featured-stat-label">Skor Terakhir</p>
+              <p className="featured-stat-value">{lastSimScore || '—'}</p>
+            </div>
+            <div className="featured-stat">
+              <p className="featured-stat-label">Skor Terbaik</p>
+              <p className="featured-stat-value">{lastSimScore || '—'}</p>
+            </div>
+          </div>
+          <button className="continue-btn" type="button" style={{ width: '100%' }} onClick={() => onTab('simulasi')}>
+            Mulai Simulasi
+          </button>
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="chart-card">
+          <h3 className="card-title" style={{ margin: '0 0 8px' }}>Grafik Perkembangan</h3>
+          <div className="chart-svg-wrap">
+            <SimpleLineChart data={chartData.data} labels={chartData.labels} />
+          </div>
         </div>
       </div>
     </div>
