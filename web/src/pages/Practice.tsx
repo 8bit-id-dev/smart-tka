@@ -30,7 +30,7 @@ export function Practice({
   const [jawab, setJawab] = useState(0);
   const [answered, setAnswered] = useState<Set<number>>(new Set());
   const [doubted, setDoubted] = useState<Set<number>>(new Set());
-  const [listExpanded, setListExpanded] = useState(true);
+  const [listExpanded, setListExpanded] = useState(false);
   const [bookmarked, setBookmarked] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export function Practice({
     setJawab(0);
     setSkor(null);
     setPhase('run');
-    setListExpanded(true);
+    setListExpanded(false);
   }
 
   async function selesai() {

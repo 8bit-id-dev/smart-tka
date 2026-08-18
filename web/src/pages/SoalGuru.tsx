@@ -482,18 +482,24 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                    )}
                  </div>
                ) : (
-                 <KurikulumCrud
-                   profile={profile}
-                   jenjang={jenjang}
-                   pilihMapelId={mapelId}
-                   pilihMateriId={materiId}
-                   onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
-                  setMapelId(mp?.id || '');
-                  setMateriId(mt?.id || '');
-                  setMapel(mp?.name || '');
-                  setMateri(mt?.name || '');
-                }}
-              />
+                  <KurikulumCrud
+                    profile={profile}
+                    jenjang={jenjang}
+                    pilihMapelId={mapelId}
+                    pilihMateriId={materiId}
+                    allowedSubjects={mySubjects}
+                    isAdmin={profile.role !== 'guru'}
+                    onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
+                      if (isGuru && mp && !mySubjects.includes(mp.name)) {
+                        setErr(`Anda tidak mengajar "${mp.name}". Hubungi admin untuk assignment.`);
+                        return;
+                      }
+                      setMapelId(mp?.id || '');
+                      setMateriId(mt?.id || '');
+                      setMapel(mp?.name || '');
+                      setMateri(mt?.name || '');
+                    }}
+                  />
             )}
           </div>
 

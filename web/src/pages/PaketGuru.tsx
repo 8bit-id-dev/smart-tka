@@ -51,6 +51,8 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [jumlahSoal, setJumlahSoal] = useState(10);
   const [selectedMateris, setSelectedMateris] = useState<Set<string>>(new Set());
   const [materiJumlahMap, setMateriJumlahMap] = useState<Record<string, number>>({});
+  const [mySubjects, setMySubjects] = useState<string[]>([]);
+  const isGuru = profile.role === 'guru';
 
   const discuss = kind === 'latihan';
   const durationSec = kind === 'latihan' ? (menit > 0 ? menit * 60 : null) : Math.max(5, menit) * 60;
@@ -67,6 +69,18 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   useEffect(() => {
     void load();
   }, [profile.id]);
+
+  useEffect(() => {
+    if (!isGuru) return;
+    void (async () => {
+      const { data, error } = await insforge.database
+        .from('teacher_subjects')
+        .select('subject')
+        .eq('profile_id', profile.id)
+        .eq('is_active', true);
+      if (!error && data) setMySubjects((data as { subject: string }[]).map((r) => r.subject));
+    })();
+  }, [profile.id, isGuru]);
 
   useEffect(() => {
     if (!mapel) {
@@ -313,7 +327,13 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                 jenjang={jenjang}
                 pilihMapelId={mapelId}
                 pilihMateriId={materiId}
+                allowedSubjects={isGuru ? mySubjects : undefined}
+                isAdmin={profile.role !== 'guru'}
                 onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
+                  if (isGuru && mp && !mySubjects.includes(mp.name)) {
+                    setErr(`Anda tidak mengajar "${mp.name}". Hubungi admin untuk assignment.`);
+                    return;
+                  }
                   setMapelId(mp?.id || '');
                   setMateriId(mt?.id || '');
                   setMapel(mp?.name || '');

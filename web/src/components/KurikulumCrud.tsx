@@ -9,6 +9,7 @@ export function KurikulumCrud({
   pilihMapelId,
   pilihMateriId,
   allowedSubjects,
+  isAdmin = false,
 }: {
   profile: AppProfile;
   jenjang: string;
@@ -16,6 +17,7 @@ export function KurikulumCrud({
   pilihMateriId: string;
   onPilih: (mapel: MapelRow | null, materi: MateriRow | null) => void;
   allowedSubjects?: string[];
+  isAdmin?: boolean;
 }) {
   const [mapels, setMapels] = useState<MapelRow[]>([]);
   const [materis, setMateris] = useState<MateriRow[]>([]);
@@ -172,7 +174,6 @@ export function KurikulumCrud({
   }
 
   const mapelAktif = mapels.find((m) => m.id === pilihMapelId) || null;
-  const materiAktif = materis.find((m) => m.id === pilihMateriId) || null;
 
   return (
     <div>
@@ -231,54 +232,59 @@ export function KurikulumCrud({
       )}
 
       <button type="button" className="link" onClick={() => setOpen((v) => !v)} style={{ margin: '8px 0 12px' }}>
-        {open ? '▲ Tutup kelola mapel & materi' : '▼ Kelola mapel & materi (tambah/ubah/hapus)'}
+        {open ? '▲ Tutup' : '▼'} {isAdmin ? 'Kelola mapel & materi' : 'Kelola materi'}
       </button>
 
       {open && (
         <div style={{ marginBottom: 12 }}>
-          <p className="type-lab" style={{ marginBottom: 8 }}>
-            Jenjang {jenjang}
-            {mapelAktif ? ` · ${mapelAktif.name}` : ''}
-            {materiAktif ? ` · ${materiAktif.name}` : ''}
-          </p>
-          <div className="hint-panel">
-            <span className="hint-kicker">{editMapel ? 'Ubah mapel' : 'Mapel baru'}</span>
-            <div className="hint-row">
-              <input type="text" className="input" value={namaMapel} onChange={(e) => setNamaMapel(e.target.value)} placeholder="Contoh: Fisika" />
-              <button className="btn" type="button" onClick={() => void simpanMapel()}>
-                {editMapel ? 'Simpan' : 'Tambah'}
-              </button>
-              {editMapel && (
-                <button className="btn btn-ghost" type="button" onClick={() => { setEditMapel(null); setNamaMapel(''); }}>
-                  Batal
+          {isAdmin && (
+            <div className="hint-panel">
+              <span className="hint-kicker">{editMapel ? 'Ubah mapel' : 'Mapel baru'}</span>
+              <div className="hint-row">
+                <input type="text" className="input" value={namaMapel} onChange={(e) => setNamaMapel(e.target.value)} placeholder="Contoh: Fisika" />
+                <button className="btn" type="button" onClick={() => void simpanMapel()}>
+                  {editMapel ? 'Simpan' : 'Tambah'}
                 </button>
-              )}
+                {editMapel && (
+                  <button className="btn btn-ghost" type="button" onClick={() => { setEditMapel(null); setNamaMapel(''); }}>
+                    Batal
+                  </button>
+                )}
+              </div>
+              <ul className="chip-list">
+                {mapels.map((m) => (
+                  <li key={m.id} className={m.id === pilihMapelId ? 'on' : ''}>
+                    <button type="button" className="link" onClick={() => onPilih(m, null)}>
+                      {m.name}
+                    </button>
+                    <button
+                      type="button"
+                      className="link"
+                      onClick={() => {
+                        setEditMapel(m);
+                        setNamaMapel(m.name);
+                        onPilih(m, null);
+                      }}
+                    >
+                      ubah
+                    </button>
+                    <button type="button" className="link" onClick={() => hapusMapel(m.id)}>
+                      hapus
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="chip-list">
-              {mapels.map((m) => (
-                <li key={m.id} className={m.id === pilihMapelId ? 'on' : ''}>
-                  <button type="button" className="link" onClick={() => onPilih(m, null)}>
-                    {m.name}
-                  </button>
-                  <button
-                    type="button"
-                    className="link"
-                    onClick={() => {
-                      setEditMapel(m);
-                      setNamaMapel(m.name);
-                      onPilih(m, null);
-                    }}
-                  >
-                    ubah
-                  </button>
-                  <button type="button" className="link" onClick={() => hapusMapel(m.id)}>
-                    hapus
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="hint-panel" style={{ marginTop: 10 }}>
+          )}
+          {!mapels.length && !err && isAdmin && (
+            <p className="type-lab">
+              Belum ada mapel untuk jenjang {jenjang}.{' '}
+              <button type="button" className="link" onClick={() => void salinDefault()}>
+                Isi daftar TKA default
+              </button>
+            </p>
+          )}
+          <div className="hint-panel" style={{ marginTop: isAdmin ? 10 : 0 }}>
             <span className="hint-kicker">{editMateri ? 'Ubah materi' : 'Materi baru'}</span>
             <p className="hint-note">Untuk mapel: {mapelAktif?.name || 'pilih mapel di atas'}</p>
             <div className="hint-row">
@@ -288,7 +294,7 @@ export function KurikulumCrud({
                 value={namaMateri}
                 onChange={(e) => setNamaMateri(e.target.value)}
                 placeholder="Contoh: Turunan"
-                disabled={!pilihMapelId}
+                disabled={!pilihMapelId || (!isAdmin && !allowedSubjects?.includes(mapelAktif?.name || ''))}
               />
               <button className="btn" type="button" disabled={!pilihMapelId} onClick={() => void simpanMateri()}>
                 {editMateri ? 'Simpan' : 'Tambah'}

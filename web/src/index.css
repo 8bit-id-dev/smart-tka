@@ -1929,13 +1929,40 @@ pre.debug {
 .bs-btns { display: flex; gap: 8px; }
 .bs-btns .choice { flex: 1; justify-content: center; }
 .bs-row.answered { background: var(--accent-soft); border-radius: 11px; padding: 12px; }
-.choice.sel { border-color: var(  --accent); box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12); background: var(--accent-soft); }
+.choice.sel { border-color: var(--accent); border-width: 2px; box-shadow: 0 0 0 3px var(--accent-soft); background: var(--accent-soft); }
+.choice.sel .box.on { background: var(--accent); }
+.choice.bs.sel { background: var(--accent); color: #fff; border-color: var(--accent); border-width: 2px; }
 .choice.bs.sel { background: var(--accent); color: #fff; border-color: var(--accent); }
 .choice.ok { background: var(--success-bg); border-color: #b7ddc6; }
 .choice.bad { background: var(--danger-bg); border-color: #f0c4c0; }
 .choice:disabled { cursor: default; }
-.bahas { margin-top: 16px; padding: 14px 16px; border-radius: 11px; background: var(--canvas); overflow-wrap: break-word; word-wrap: break-word; white-space: normal; }
-.bahas p.type-lab { overflow-wrap: break-word; word-break: break-word; }
+.bahas {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 11px;
+  background: var(--canvas);
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+.bahas *,
+.bahas p,
+.bahas span,
+.bahas strong,
+.bahas div,
+.bahas li,
+.bahas ul,
+.bahas ol {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+.bahas p.type-lab { overflow-wrap: break-word; word-break: break-word; max-width: 100%; }
 .bahas.ok { background: var(--success-bg); }
 
 /* Constrain tables & math display within question cards */
@@ -1960,6 +1987,12 @@ pre.debug {
   .math-display {
     overflow-x: auto;
     padding: 4px 0;
+    max-width: 100%;
+  }
+  .math-inline {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
   }
   katex {
     max-width: 100%;
@@ -1967,6 +2000,11 @@ pre.debug {
   }
   katex display {
     overflow-x: auto;
+  }
+  pre, code {
+    overflow-x: auto;
+    max-width: 100%;
+    font-size: 12px;
   }
 }
 

@@ -31,7 +31,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   const [ans, setAns] = useState<Record<string, Ans>>({});
   const [doubted, setDoubted] = useState<Set<string>>(new Set());
   const [skor, setSkor] = useState<number | null>(null);
-  const [listExpanded, setListExpanded] = useState(true);
+  const [listExpanded, setListExpanded] = useState(false);
   const [bookmarked, setBookmarked] = useState<Set<string>>(new Set());
   const [cheatCount, setCheatCount] = useState(0);
   const [showCheatWarning, setShowCheatWarning] = useState(false);
@@ -185,11 +185,11 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
       if (isBookmarked(studentId, it.id)) saved.add(it.id);
     });
     setBookmarked(saved);
-    setListExpanded(true);
+    setListExpanded(false);
     setPhase('run');
   }
 
-   async function kumpulkan() {
+  async function kumpulkan() {
     try { (document as any).exitFullscreen?.(); } catch { /* noop */ }
     document.body.style.userSelect = 'normal';
     document.onselectstart = null;
