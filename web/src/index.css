@@ -85,14 +85,13 @@ body { margin: 0; background: var(--canvas); min-height: 100vh; overflow-x: hidd
   padding: 0 16px;
   overflow-x: hidden;
 }
-.dashboard-page.student-dashboard { max-width: 100%; }
-@media (min-width: 768px) {
-  .dashboard-page { max-width: 768px; padding: 0 20px; }
-  .dashboard-page.student-dashboard { max-width: 768px; }
+.dashboard-page.student-dashboard { max-width: 1200px; }
+@media (max-width: 767px) {
+  .dashboard-page.student-dashboard { max-width: 100%; }
 }
 @media (min-width: 1024px) {
   .dashboard-page { max-width: 1024px; }
-  .dashboard-page.student-dashboard { max-width: 1024px; }
+  .dashboard-page.student-dashboard { max-width: 1200px; }
 }
 
 /* === Student Dashboard (mobile-first) === */
@@ -1450,7 +1449,7 @@ pre.debug {
   gap: 2px;
 }
 .xp-toast-amount { display: block; font-size: 14px; }
-.xp-toast-label { font-size: 11px; color: #aaa; }
+.xp-toast-label { font-size: 11px; color: var(--muted-light); }
 .xp-toast-confetti {
   position: absolute;
   top: -4px;
@@ -1801,7 +1800,7 @@ pre.debug {
 }
 @media (max-width: 768px) {
   .shell-mobile-nav { display: flex; }
-  .shell-mobile .shell-bar { display: none; }
+  .shell-mobile .shell-bar { display: flex; }
   .shell-main-mobile { padding: 16px 14px 80px; }
 /* Siswa: bottombar selalu muncul di semua lebar */
 .shell-mobile .shell-mobile-nav { display: flex !important; }
@@ -2380,9 +2379,9 @@ html.dark {
   --muted: #8a8a8a;
   --muted-light: #6a6a6a;
   --outline: #2a2a2a;
-  --accent: #000000;
-  --accent-soft: #2a2a2a;
-  --accent-hover: #333333;
+  --accent: #ffd43b;
+  --accent-soft: rgba(255, 212, 59, 0.15);
+  --accent-hover: #fec94a;
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
   --shadow: 0 4px 12px rgba(0,0,0,0.4);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
