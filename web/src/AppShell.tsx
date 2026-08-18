@@ -214,16 +214,18 @@ export function AppShell({
   headerExtra?: React.ReactNode;
 }) {
   const [notifOpen, setNotifOpen] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(['guru', 'admin'].includes(role) ? 'light' : 'dark');
   const [rows, setRows] = useState<NotifRow[]>([]);
   const [gp, setGp] = useState<GamifProfile | null>(null);
 
+  const isLightOnlyRole = ['guru', 'admin'].includes(role);
+
   useEffect(() => {
     const saved = localStorage.getItem('smart_tka_theme') as 'dark' | 'light' | null;
-    const initial = saved || 'dark';
+    const initial = isLightOnlyRole ? 'light' : (saved || 'dark');
     setTheme(initial);
     document.documentElement.classList.toggle('dark', initial === 'dark');
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     void (async () => {
@@ -457,14 +459,16 @@ export function AppShell({
               </div>
             </div>
             <div className="shell-bar-right">
-              <button
-                type="button"
-                className="header-icon-btn"
-                title="Tema gelap/terang"
-                onClick={toggleTheme}
-              >
-                {theme === 'dark' ? Icons.moon() : Icons.sun()}
-              </button>
+              {!isLightOnlyRole && (
+                <button
+                  type="button"
+                  className="header-icon-btn"
+                  title="Tema gelap/terang"
+                  onClick={toggleTheme}
+                >
+                  {theme === 'dark' ? Icons.moon() : Icons.sun()}
+                </button>
+              )}
               <button
                 type="button"
                 className="header-icon-btn"

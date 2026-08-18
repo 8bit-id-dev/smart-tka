@@ -196,6 +196,19 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     setOk('');
     setBusy(true);
 
+    if (isGuru && mySubjects.length > 0) {
+      const { data: existing, error: e1 } = await insforge.database
+        .from('items')
+        .select('mapel')
+        .eq('id', id)
+        .single();
+      if (!existing || e1 || !mySubjects.includes(existing.mapel)) {
+        setErr('Soal ini bukan dari mata pelajaran yang Anda ajar.');
+        setBusy(false);
+        return;
+      }
+    }
+
     // Optimistically remove from UI list immediately
     setList((prev) => prev.filter((item) => item.id !== id));
 
@@ -324,6 +337,18 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     let errorObj = null;
 
     if (editingId) {
+      if (isGuru && mySubjects.length > 0) {
+        const { data: existing, error: e1 } = await insforge.database
+          .from('items')
+          .select('mapel')
+          .eq('id', editingId)
+          .single();
+        if (e1 || !existing || !mySubjects.includes(existing.mapel)) {
+          setErr('Anda tidak diizinkan mengubah soal dari mata pelajaran ini.');
+          setBusy(false);
+          return;
+        }
+      }
       const { error } = await insforge.database
         .from('items')
         .update({
@@ -487,7 +512,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                     jenjang={jenjang}
                     pilihMapelId={mapelId}
                     pilihMateriId={materiId}
-                    allowedSubjects={mySubjects}
+                    allowedSubjects={isGuru ? mySubjects : undefined}
                     isAdmin={profile.role !== 'guru'}
                     onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
                       if (isGuru && mp && !mySubjects.includes(mp.name)) {

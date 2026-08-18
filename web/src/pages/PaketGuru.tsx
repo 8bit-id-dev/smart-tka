@@ -116,6 +116,10 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   }
 
   async function muatPaket(p: Pkg) {
+    if (isGuru && mySubjects.length > 0 && !mySubjects.includes(p.mapel)) {
+      setErr(`Paket "${p.title}" adalah untuk mapel "${p.mapel}" yang tidak lagi Anda ajar.`);
+      return;
+    }
     setEditId(p.id);
     setTitle(p.title);
     setKind(p.kind as (typeof KINDS)[number]['id']);
