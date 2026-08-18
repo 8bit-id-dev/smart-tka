@@ -278,11 +278,23 @@ export function Laporan({ me, onTab }: { me: AppProfile; onTab?: (t: Tab) => voi
 
   async function load() {
     setErr('');
+    let subjects: string[] = [];
+    if (me.role === 'guru') {
+      const { data: tsData } = await insforge.database
+        .from('teacher_subjects')
+        .select('subject')
+        .eq('profile_id', me.id)
+        .eq('is_active', true);
+      if (tsData) subjects = (tsData as { subject: string }[]).map((r) => r.subject);
+    }
     const a = await insforge.database.from('attempts').select('id, package_id, student_id, status, score, started_at, submitted_at, tab_leave_count');
     if (a.error) setErr(a.error.message.includes('does not exist') ? 'Tabel attempts belum ada.' : a.error.message);
     else setRows((a.data || []) as Attempt[]);
 
-    const p = await insforge.database.from('packages').select('id, title, mapel, kind');
+    const p = await insforge.database
+      .from('packages')
+      .select('id, title, mapel, kind')
+      .in('mapel', subjects.length > 0 ? subjects : ['___none___']);
     if (!p.error) setPkgs((p.data || []) as Pkg[]);
     const pr = await insforge.database.from('profiles').select('id, full_name').eq('role', 'siswa');
     if (!pr.error) setProfs((pr.data || []) as Prof[]);

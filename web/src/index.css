@@ -1929,10 +1929,8 @@ pre.debug {
 .bs-btns { display: flex; gap: 8px; }
 .bs-btns .choice { flex: 1; justify-content: center; }
 .bs-row.answered { background: var(--accent-soft); border-radius: 11px; padding: 12px; }
-.choice.sel { border-color: var(--accent); border-width: 2px; box-shadow: 0 0 0 3px var(--accent-soft); background: var(--accent-soft); }
-.choice.sel .box.on { background: var(--accent); }
-.choice.bs.sel { background: var(--accent); color: #fff; border-color: var(--accent); border-width: 2px; }
-.choice.bs.sel { background: var(--accent); color: #fff; border-color: var(--accent); }
+.choice.sel { background: var(--accent); color: #fff; border-color: var(--accent); border-width: 2px; }
+.choice.sel .box.on { background: var(--accent-soft); }
 .choice.ok { background: var(--success-bg); border-color: #b7ddc6; }
 .choice.bad { background: var(--danger-bg); border-color: #f0c4c0; }
 .choice:disabled { cursor: default; }
@@ -2366,3 +2364,37 @@ pre.debug {
 .kelas-card .kelas-meta { display: flex; align-items: center; gap: 2px; justify-content: space-between; font-size: 8px; }
 .kelas-card .kelas-badge-jenjang { font-size: 7px; text-transform: uppercase; font-weight: 700; color: var(--ink-light); background: var(--canvas); border: 1px solid var(--outline); border-radius: 3px; padding: 0 2px; }
 .kelas-card .kelas-badge-siswa { font-size: 8px; color: var(--muted); font-weight: 500; }
+/* Dark mode support */
+:root {
+  --danger: #d32f2f;
+  --danger-bg: #ffebee;
+  --success-bg: #e8f5e9;
+  --warn: #ed6c02;
+}
+html.dark {
+  --canvas: #121212;
+  --card: #1a1a1a;
+  --card-border: #2a2a2a;
+  --ink: #e8e6e3;
+  --ink-light: #b8b6b1;
+  --muted: #8a8a8a;
+  --muted-light: #6a6a6a;
+  --outline: #2a2a2a;
+  --accent: #000000;
+  --accent-soft: #2a2a2a;
+  --accent-hover: #333333;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+}
+html.dark .shell-bar { background: rgba(18, 18, 18, 0.9); border-bottom-color: #2a2a2a; }
+html.dark .shell-mobile-nav { background: var(--card); border-top-color: #2a2a2a; }
+html.dark .shell-mobile-nav button { color: var(--muted); }
+html.dark .shell-mobile-nav button.on { color: var(--accent); }
+html.dark .mobile-menu-backdrop { background: rgba(0, 0, 0, 0.6); }
+html.dark .shell-user { color: var(--muted-light); }
+html.dark .header-icon-btn { color: var(--ink); }
+html.dark .continue-btn { background: var(--accent); color: #fff; }
+html.dark .notif-dropdown { background: var(--card); border-color: var(--card-border); }
+html.dark .notif-item { border-bottom-color: var(--card-border); }
+.theme-toggle { transition: opacity 0.2s; }

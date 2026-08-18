@@ -139,9 +139,27 @@ const Icons = {
       <line x1="3" y1="18" x2="21" y2="18" />
     </svg>
   ),
-  bookmark: (filled = false) => (
+   bookmark: (filled = false) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  ),
+  sun: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="19" x2="3" y2="19" />
+      <line x1="21" y1="5" x2="23" y2="5" />
+    </svg>
+  ),
+  moon: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   ),
 };
@@ -196,9 +214,16 @@ export function AppShell({
   headerExtra?: React.ReactNode;
 }) {
   const [notifOpen, setNotifOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [rows, setRows] = useState<NotifRow[]>([]);
   const [gp, setGp] = useState<GamifProfile | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('smart_tka_theme') as 'dark' | 'light' | null;
+    const initial = saved || 'dark';
+    setTheme(initial);
+    document.documentElement.classList.toggle('dark', initial === 'dark');
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -249,10 +274,17 @@ export function AppShell({
       announcement_id: id,
       profile_id: profile.id,
     });
-    setRows((prev) => prev.filter((r) => r.id !== id));
-  }
+     setRows((prev) => prev.filter((r) => r.id !== id));
+   }
 
-  const handleXpAwarded = useCallback(async (xp: number) => {
+   function toggleTheme() {
+     const next = theme === 'dark' ? 'light' : 'dark';
+     setTheme(next);
+     localStorage.setItem('smart_tka_theme', next);
+     document.documentElement.classList.toggle('dark', next === 'dark');
+   }
+
+   const handleXpAwarded = useCallback(async (xp: number) => {
     if (role !== 'siswa') return null;
 
     const before = { ...(gp ?? { level: 1, xp: 0 }) };
@@ -423,16 +455,16 @@ export function AppShell({
                 <img src={AppIcon} alt="SMART-TKA" className="app-logo" />
                 <strong className="brand">SMART-TKA</strong>
               </div>
-              <button
-                type="button"
-                className="hamburger-btn"
-                title="Menu"
-                onClick={() => setMenuOpen(true)}
-              >
-                {Icons.menu()}
-              </button>
             </div>
             <div className="shell-bar-right">
+              <button
+                type="button"
+                className="header-icon-btn"
+                title="Tema gelap/terang"
+                onClick={toggleTheme}
+              >
+                {theme === 'dark' ? Icons.moon() : Icons.sun()}
+              </button>
               <button
                 type="button"
                 className="header-icon-btn"
@@ -476,26 +508,6 @@ export function AppShell({
               </span>
             </div>
           </header>
-          {menuOpen && (
-            <div className="mobile-menu-backdrop" onClick={() => setMenuOpen(false)}>
-              <nav className="mobile-menu" onClick={(e) => e.stopPropagation()}>
-                {items.map((i) => {
-                  const isActive = tab === i.id;
-                  return (
-                    <button
-                      key={i.id}
-                      type="button"
-                      className={isActive ? 'on' : ''}
-                      onClick={() => { onTab(i.id); setMenuOpen(false); }}
-                    >
-                      <span className="nav-icon-mobile">{getIcon(i.id, isActive)}</span>
-                      <span>{i.label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-          )}
           <main className="shell-main-mobile">{children}</main>
           <nav className="shell-mobile-nav">
             {items.slice(0, 5).map((i) => {
