@@ -68,7 +68,11 @@ export function Admin({ me }: { me: AppProfile }) {
     if (!m.error) setAnggota((m.data || []) as CS[]);
 
     const ml = await insforge.database.from('mapels').select('id, name');
-    if (!ml.error) setMapelList((ml.data || []) as MapelRow[]);
+    if (!ml.error && ml.data) {
+      const raw = ml.data as { id: string; name: string }[];
+      const deduped = [...new Map(raw.map((m) => [m.name, m])).values()];
+      setMapelList(deduped as MapelRow[]);
+    }
   }
 
   async function toggleActiveUser(id: string, currentIsActive: boolean) {

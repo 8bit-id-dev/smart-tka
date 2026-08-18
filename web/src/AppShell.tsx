@@ -112,6 +112,18 @@ const Icons = {
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
   ),
+  edit: (filled = false) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 3.5a2.52 2.52 0 0 1 3.5 3.5L12 17l-4 1 1-4 10.5-10.5z" />
+    </svg>
+  ),
+  x: (filled = false) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  ),
   bell: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -391,22 +403,53 @@ export function AppShell({
       ) : (
         <>
           <header className="shell-bar">
-            <strong className="brand">SMART-TKA</strong>
-            <nav className="shell-nav">
-              {items.map((i) => {
-                const isActive = tab === i.id;
-                return (
-                  <button key={i.id} className={isActive ? 'on' : ''} type="button" onClick={() => onTab(i.id)}>
-                    <span className="nav-icon-mobile">{getIcon(i.id, isActive)}</span>
-                    <span>{i.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-            <span className="shell-user">
-              {name} · {role}
-            </span>
-          </header>
+             <strong className="brand">SMART-TKA</strong>
+             <nav className="shell-nav">
+               {items.map((i) => {
+                 const isActive = tab === i.id;
+                 return (
+                   <button key={i.id} className={isActive ? 'on' : ''} type="button" onClick={() => onTab(i.id)}>
+                     <span className="nav-icon-mobile">{getIcon(i.id, isActive)}</span>
+                     <span>{i.label}</span>
+                   </button>
+                 );
+               })}
+             </nav>
+             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+               <button
+                 type="button"
+                 className="header-icon-btn"
+                 title="Kotak masuk"
+                 onClick={() => setNotifOpen(!notifOpen)}
+               >
+                 {Icons.inbox(true)}
+                 {rows.length > 0 && <span className="header-badge">{rows.length}</span>}
+               </button>
+               {notifOpen && (
+                 <div className="notif-dropdown" style={{ position: 'fixed', top: 48, right: 12, minWidth: 280 }}>
+                   {rows.length === 0 ? (
+                     <button type="button" className="notif-empty">
+                       <span className="notif-text">Kotak masuk kosong</span>
+                     </button>
+                   ) : (
+                     rows.map((n) => (
+                       <div key={n.id} className="notif-item">
+                         <div className="notif-item-main">
+                           <span className="notif-sender">{n.title}</span>
+                           <span className="notif-text">{n.body.slice(0, 80)}{n.body.length > 80 ? '…' : ''}</span>
+                           <span className="notif-time">{timeAgo(n.created_at)}</span>
+                         </div>
+                         <button type="button" className="notif-remove" title="Tandai sudah dibaca" onClick={() => ackNotif(n.id)}>✕</button>
+                       </div>
+                     ))
+                   )}
+                 </div>
+               )}
+               <span className="shell-user">
+                 {name} · {role}
+               </span>
+             </div>
+           </header>
           <main className="shell-main-mobile">{children}</main>
           <nav className="shell-mobile-nav">
             {items.slice(0, 5).map((i) => {

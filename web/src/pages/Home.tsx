@@ -2,30 +2,36 @@ import { useEffect, useMemo, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
 import type { Tab } from '../AppShell';
 import { Icons } from '../AppShell';
+import { GamifQuickView } from '../components/GamifQuickView';
 
-type SubjectCard = { id: string; name: string; domain: string; count: number; difficulty: string; progress: number; icon: string; iconClass: string };
+type AttemptRow = { score: number | null; status: string; submitted_at: string | null; package_id: string | null };
+type AARow = { item_id: string; is_correct: boolean; items: { mapel: string }[] };
+type PkgRow = { id: string; title: string; mapel: string; kind: string; item_count: number };
+type ClassRow = { id: string; name: string; jenjang: string };
+type GpRow = { xp: number; level: number; streak_current: number; streak_best: number };
 
-const SUBJECTS: SubjectCard[] = [
-  { id: 'math', name: 'Matematika', domain: 'Bilangan & Aljabar', count: 120, difficulty: 'Sedang', progress: 68, icon: '∑', iconClass: 'subject-icon-math' },
-  { id: 'indo', name: 'Bahasa Indonesia', domain: 'Tata bahasa & bacaan', count: 85, difficulty: 'Mudah', progress: 82, icon: 'Aa', iconClass: 'subject-icon-indo' },
-  { id: 'inggris', name: 'Bahasa Inggris', domain: 'Vocabulary & grammar', count: 60, difficulty: 'Sedang', progress: 45, icon: 'Ab', iconClass: 'subject-icon-inggris' },
-  { id: 'ipa', name: 'IPA', domain: 'Sains & alam', count: 40, difficulty: 'Sulit', progress: 30, icon: '⚗', iconClass: 'subject-icon-other' },
-  { id: 'ips', name: 'IPS', domain: 'Sejarah & geografi', count: 35, difficulty: 'Sedang', progress: 55, icon: '🌏', iconClass: 'subject-icon-other' },
-];
+const SUBJECT_ICONS: Record<string, string> = {
+  'Matematika': '∑',
+  'Bahasa Indonesia': 'Aa',
+  'Bahasa Inggris': 'Ab',
+  'IPA': '⚗',
+  'IPS': '🌏',
+};
+const SUBJECT_COLORS: Record<string, string> = {
+  'Matematika': 'subject-icon-math',
+  'Bahasa Indonesia': 'subject-icon-indo',
+  'Bahasa Inggris': 'subject-icon-inggris',
+};
 
-const ANALYSIS_DOMAINS = [
-  { name: 'Bilangan', pct: 75, tag: 'Kuat', tagClass: 'analysis-bar-tag-strong' },
-  { name: 'Aljabar', pct: 40, tag: 'Perlu ditingkatkan', tagClass: 'analysis-bar-tag-improve' },
-  { name: 'Geometri', pct: 60, tag: 'Cukup', tagClass: 'analysis-bar-tag-improve' },
-  { name: 'Data & Peluang', pct: 85, tag: 'Kuat', tagClass: 'analysis-bar-tag-strong' },
-];
+const JENJANG_LABEL: Record<string, string> = {
+  sd: 'SD', smp: 'SMP', sma: 'SMA', smk: 'SMK',
+  paket_a: 'Paket A', paket_b: 'Paket B', paket_c: 'Paket C',
+};
 
-const CHART_DATA_WEEKLY = [30, 45, 60, 35, 70, 55, 80];
-const CHART_DATA_MONTHLY = [20, 35, 50, 45, 60, 55, 70, 65, 80, 75, 85, 90];
-const CHART_LABELS_WEEKLY = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-const CHART_LABELS_MONTHLY = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-
-function SimpleLineChart({ data, labels, color = '#000000' }: { data: number[]; labels: string[]; color?: string }) {
+function SimpleLineChart({ data, labels, color = 'var(--accent)' }: { data: number[]; labels: string[]; color?: string }) {
+  if (!data.length) {
+    return <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', padding: '20px 0' }}>Belum ada data aktivitas.</p>;
+  }
   const w = 600;
   const h = 160;
   const pad = { top: 10, right: 10, bottom: 24, left: 10 };
@@ -59,44 +65,175 @@ function SimpleLineChart({ data, labels, color = '#000000' }: { data: number[]; 
 
 export function Home({ name, profile, onTab }: { name: string; profile: AppProfile; onTab: (t: Tab) => void }) {
   const staf = ['guru', 'admin', 'kepsek', 'konten'].includes(profile.role);
-  const [stats, setStats] = useState({ soalDikerjakan: 0, jawabanBenar: 0, akurasi: 0, rataSkor: 0, simulasiSelesai: 0 });
-  const [chartTab, setChartTab] = useState<'aktivitas' | 'soal' | 'skor'>('aktivitas');
-  const [chartRange, setChartRange] = useState<'mingguan' | 'bulanan' | 'semester'>('mingguan');
-  const [filterMapel, setFilterMapel] = useState('Semua');
+  const isSiswa = profile.role === 'siswa';
+
+  const [attempts, setAttempts] = useState<AttemptRow[]>([]);
+  const [aa, setAa] = useState<AARow[]>([]);
+  const [pkgs, setPkgs] = useState<PkgRow[]>([]);
+  const [myClass, setMyClass] = useState<ClassRow | null>(null);
+  const [gp, setGp] = useState<GpRow | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (staf) return;
+    if (!isSiswa) return;
     void (async () => {
-      const { data, error } = await insforge.database
+      setLoading(true);
+
+      const att = await insforge.database
         .from('attempts')
-        .select('score, status')
+        .select('id, score, status, submitted_at, package_id')
         .eq('student_id', profile.id);
-      if (error) return;
-      const rows = ((data || []) as { score: number | null; status: string }[]).filter(
-        (r) => r.status === 'submitted' && r.score != null,
-      );
-      if (rows.length === 0) {
-        setStats({ soalDikerjakan: 0, jawabanBenar: 0, akurasi: 0, rataSkor: 0, simulasiSelesai: 0 });
-        return;
-      }
-      const avg = Math.round((rows.reduce((s, r) => s + Number(r.score), 0) / rows.length) * 10) / 10;
-      setStats({
-        soalDikerjakan: rows.length * 10,
-        jawabanBenar: Math.round(rows.length * 6.5),
-        akurasi: Math.round((rows.length * 6.5) / (rows.length * 10) * 100),
-        rataSkor: avg,
-        simulasiSelesai: Math.floor(rows.length * 0.4),
+      if (!att.error) setAttempts((att.data || []) as AttemptRow[]);
+
+      const pk = await insforge.database
+        .from('packages')
+        .select('id, title, mapel, kind, item_count')
+        .order('kind')
+        .order('mapel')
+        .limit(50);
+      if (!pk.error) setPkgs((pk.data || []) as PkgRow[]);
+
+      void Promise.all([
+        insforge.database
+          .from('class_students')
+          .select('class_id, classes!inner(id, name, jenjang)')
+          .eq('profile_id', profile.id)
+          .limit(1),
+        insforge.database
+          .from('gamification_profiles')
+          .select('xp, level, streak_current, streak_best')
+          .eq('profile_id', profile.id)
+          .single(),
+      ]).then(([clsRes, gpRes]) => {
+        if (!clsRes.error && clsRes.data && (clsRes.data as any[]).length > 0) {
+          const first = (clsRes.data as any[])[0];
+          setMyClass(first.classes as ClassRow);
+        }
+        if (!gpRes.error && gpRes.data) setGp(gpRes.data as GpRow);
       });
+
+      setLoading(false);
     })();
-  }, [profile.id, staf]);
+  }, [profile.id, isSiswa]);
+
+  useEffect(() => {
+    if (!isSiswa || !attempts.length) return;
+    void (async () => {
+      const ids = attempts.map((a) => a.package_id).filter(Boolean);
+      if (!ids.length) return;
+      const { data } = await insforge.database
+        .from('attempt_answers')
+        .select('item_id, is_correct, items!inner(mapel)')
+        .in('attempt_id', ids)
+        .limit(1000);
+      if (data) setAa(data as AARow[]);
+    })();
+  }, [attempts.length, isSiswa]);
+
+  const stats = useMemo(() => {
+    const submitted = attempts.filter((a) => a.status === 'submitted' && a.score != null);
+    const soalDikerjakan = aa.length;
+    const jawabanBenar = aa.filter((a) => a.is_correct).length;
+    const akurasi = soalDikerjakan > 0 ? Math.round((jawabanBenar / soalDikerjakan) * 100) : 0;
+    const rataSkor = submitted.length > 0
+      ? Math.round((submitted.reduce((s, r) => s + Number(r.score), 0) / submitted.length) * 10) / 10
+      : 0;
+    return { soalDikerjakan, jawabanBenar, akurasi, rataSkor, simulasiSelesai: submitted.length };
+  }, [attempts, aa]);
 
   const chartData = useMemo(() => {
-    if (chartRange === 'mingguan') return CHART_DATA_WEEKLY;
-    if (chartRange === 'bulanan') return CHART_DATA_MONTHLY;
-    return CHART_DATA_MONTHLY.map(v => Math.min(100, v + Math.floor(Math.random() * 10 - 5)));
-  }, [chartRange]);
+    const submitted = attempts
+      .filter((a) => a.status === 'submitted' && a.score != null && a.submitted_at)
+      .sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime())
+      .slice(0, 7)
+      .reverse();
+    const data = submitted.map((a) => Number(a.score));
+    const labels = submitted.map((a) => new Date(a.submitted_at!).toLocaleDateString('id-ID', { weekday: 'short' }));
+    return { data, labels };
+  }, [attempts]);
 
-  const chartLabels = chartRange === 'mingguan' ? CHART_LABELS_WEEKLY : CHART_LABELS_MONTHLY;
+  const subjectStats = useMemo(() => {
+    const byMapel: Record<string, { total: number; correct: number }> = {};
+    for (const a of aa) {
+      const mapel = Array.isArray(a.items) && a.items[0]?.mapel
+        ? a.items[0].mapel
+        : 'Lainnya';
+      if (!byMapel[mapel]) byMapel[mapel] = { total: 0, correct: 0 };
+      byMapel[mapel].total += 1;
+      if (a.is_correct) byMapel[mapel].correct += 1;
+    }
+    return byMapel;
+  }, [aa]);
+
+  const recMapel = useMemo(() => {
+    const entries = Object.entries(subjectStats).map(([name, v]) => ({
+      name,
+      akurasi: v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0,
+      soal: v.total,
+    }));
+    return entries.sort((a, b) => a.akurasi - b.akurasi)[0];
+  }, [subjectStats]);
+
+  const simulasiPkg = useMemo(() => pkgs.find((p) => p.kind === 'simulasi') || pkgs[0], [pkgs]);
+  const lastSimScore = useMemo(() => {
+    const submitted = attempts.filter((a) => a.status === 'submitted' && a.score != null);
+    return submitted.length > 0 ? Math.max(...submitted.map((a) => Number(a.score))) : 0;
+  }, [attempts]);
+
+  const [photoUrl, setPhotoUrl] = useState(profile.photo_url || '');
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoErr, setPhotoErr] = useState('');
+  const avatarLetter = (profile.full_name || name || 'U').split(' ').map(p => p[0]).join('').slice(0, 1).toUpperCase();
+
+  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setPhotoErr('Hanya file gambar yang diperbolehkan.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setPhotoErr('Ukuran maksimal 2 MB.');
+      return;
+    }
+    setPhotoLoading(true);
+    setPhotoErr('');
+    const ext = file.type.split('/')[1];
+    const path = `${profile.id}.${ext}`;
+    try {
+      const { error, data } = await insforge.storage.from('profile-photos').upload(path, file);
+      if (error) {
+        setPhotoErr(error.message);
+      } else {
+        const url = (data as { url?: string })?.url || (data as { publicUrl?: string })?.publicUrl || '';
+        setPhotoUrl(url);
+        await insforge.database.from('profiles').update({ photo_url: url }).eq('id', profile.id);
+      }
+    } catch (e) {
+      setPhotoErr(e instanceof Error ? e.message : 'Upload gagal.');
+    }
+    setPhotoLoading(false);
+    e.target.value = '';
+  }
+
+  async function deletePhoto() {
+    if (!photoUrl) return;
+    setPhotoLoading(true);
+    setPhotoErr('');
+    const fname = photoUrl.substring(photoUrl.lastIndexOf('/') + 1);
+    try {
+      const { error } = await insforge.storage.from('profile-photos').remove(fname);
+      if (error) {
+        setPhotoErr(error.message);
+      } else {
+        setPhotoUrl('');
+        await insforge.database.from('profiles').update({ photo_url: null }).eq('id', profile.id);
+      }
+    } catch (e) {
+      setPhotoErr(e instanceof Error ? e.message : 'Hapus gagal.');
+    }
+    setPhotoLoading(false);
+  }
 
   if (staf) {
     const pintas: { id: Tab; t: string; d: string; detail: string; icon: React.ReactNode }[] = [
@@ -133,40 +270,76 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
     );
   }
 
-  return (
-    <div className="dashboard-page">
-      {/* Greeting */}
-      <div className="greeting-card">
-        <div>
-          <h1>Selamat datang kembali, {name.split(' ')[0]}! 👋</h1>
-          <p>Siap melanjutkan persiapan TKA hari ini?</p>
-        </div>
-        <svg className="greeting-illustration" viewBox="0 0 120 120" fill="none">
-          <circle cx="60" cy="60" r="50" fill="#f0f0f0" />
-          <circle cx="45" cy="52" r="14" fill="#000000" opacity={0.06} />
-          <circle cx="75" cy="52" r="14" fill="#000000" opacity={0.06} />
-          <path d="M45 52 L60 68 L75 52" stroke="#000000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx="42" cy="50" r="2" fill="#000000" />
-          <circle cx="72" cy="50" r="2" fill="#000000" />
-          <path d="M36 42 Q42 36 48 42" stroke="#000000" strokeWidth="2" fill="none" strokeLinecap="round" />
-          <path d="M66 42 Q72 36 78 42" stroke="#000000" strokeWidth="2" fill="none" strokeLinecap="round" />
-        </svg>
+  if (loading) {
+    return (
+      <div className="dashboard-page">
+        <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>Memuat dashboard…</div>
       </div>
+    );
+  }
 
-      {/* Continue Learning */}
-      <div className="continue-card">
-        <div className="continue-icon">∑</div>
-        <div className="continue-info">
-          <h3>Matematika — Bilangan</h3>
-          <p>10 soal tersisa · Akurasi 68%</p>
-          <div className="continue-progress">
-            <div className="continue-progress-bar" style={{ width: '68%' }} />
+  return (
+    <div className="dashboard-page student-dashboard">
+      <div className="greeting-card">
+        <div className="greeting-left">
+          <div className="avatar-wrap">
+            {photoUrl ? (
+              <img src={photoUrl} alt={name} className="avatar-img" />
+            ) : (
+              <div className="avatar-placeholder">{avatarLetter}</div>
+            )}
+            {photoLoading && <div className="avatar-overlay">Menyimpan…</div>}
+          </div>
+          <div className="avatar-actions">
+            <label className="avatar-btn" title="Ganti foto">
+              {Icons.edit(true)}
+              <input type="file" accept="image/*" onChange={uploadPhoto} style={{ display: 'none' }} />
+            </label>
+            {photoUrl && (
+              <button className="avatar-btn" title="Hapus foto" onClick={deletePhoto} disabled={photoLoading}>
+                {Icons.x(true)}
+              </button>
+            )}
+            {photoErr && <div className="avatar-error">{photoErr}</div>}
           </div>
         </div>
-        <button className="continue-btn" type="button" onClick={() => onTab('latihan')}>Lanjutkan</button>
+        <div className="greeting-text">
+          <h1>Selamat datang, {name.split(' ')[0]}!</h1>
+          {myClass ? (
+            <p className="greeting-sub">Kelas {myClass.name} · {JENJANG_LABEL[myClass.jenjang] || myClass.jenjang}</p>
+          ) : (
+            <p className="greeting-sub">Siap melanjutkan persiapan TKA hari ini?</p>
+          )}
+        </div>
       </div>
 
-      {/* Quick Stats */}
+      <div className="section">
+        <div className="card">
+          <h3 className="card-title" style={{ marginBottom: 14 }}>Analisis Kemampuan</h3>
+          {Object.keys(subjectStats).length === 0 ? (
+            <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
+          ) : (
+            Object.entries(subjectStats).map(([mapel, v]) => {
+              const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+              const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
+              const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : pct >= 50 ? 'analysis-bar-tag-improve' : 'analysis-bar-tag-improve';
+              return (
+                <div key={mapel} className="analysis-bar-row">
+                  <span className="analysis-bar-label">{mapel}</span>
+                  <div className="analysis-bar-track">
+                    <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="analysis-bar-pct">{pct}%</span>
+                  <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {gp && <GamifQuickView profile={gp} />}
+
       <div className="stats-row">
         <div className="stat-card">
           <div className="stat-icon" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>?</div>
@@ -179,7 +352,8 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
           <p className="stat-value">{stats.jawabanBenar}</p>
         </div>
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'var(--gold-soft)', color: 'var(--gold)' }}>%</div>          <p className="stat-label">Akurasi</p>
+          <div className="stat-icon" style={{ background: 'var(--gold-soft)', color: 'var(--gold)' }}>%</div>
+          <p className="stat-label">Akurasi</p>
           <p className="stat-value">{stats.akurasi}%</p>
         </div>
         <div className="stat-card">
@@ -194,46 +368,33 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         </div>
       </div>
 
-      <div className="grid-2">
+      <div className="grid-2 student-grid">
         <div className="col">
-          {/* Subject filter + Latihan TKA */}
           <div className="section">
-            <div className="section-header">
-              <h2 className="section-title">Latihan TKA</h2>
-            </div>
-            <div className="filter-tabs">
-              {['Semua', 'Matematika', 'Bahasa Indonesia', 'Bahasa Inggris', 'Lainnya'].map((m) => (
-                <button key={m} className={`filter-tab ${filterMapel === m ? 'active' : ''}`} type="button" onClick={() => setFilterMapel(m)}>
-                  {m}
-                </button>
-              ))}
-            </div>
-            <div className="subject-hscroll">
-              {SUBJECTS.filter(s => filterMapel === 'Semua' || s.name.includes(filterMapel) || (filterMapel === 'Lainnya' && !['Matematika','Bahasa Indonesia','Bahasa Inggris'].includes(s.name))).map((s) => (
-                <div key={s.id} className="subject-card">
-                  <div className="subject-card-header">
-                    <div className={`subject-icon ${s.iconClass}`}>{s.icon}</div>
-                    <div className="subject-meta">
-                      <h4>{s.name}</h4>
-                      <p>{s.domain}</p>
-                    </div>
+            <h2 className="section-title">Latihan TKA</h2>
+            {pkgs.filter((p) => p.kind === 'latihan').length === 0 ? (
+              <p className="type-lab">Belum ada paket latihan tersedia.</p>
+            ) : (
+              <div className="subject-hscroll">
+                {pkgs.filter((p) => p.kind === 'latihan').slice(0, 8).map((p) => (
+                  <div key={p.id} className="subject-card" onClick={() => onTab('latihan')}>
+                    <div className="subject-card-header">
+                      <div className={`subject-icon ${SUBJECT_COLORS[p.mapel] || 'subject-icon-other'}`}>
+                        {SUBJECT_ICONS[p.mapel] || '📚'}
+                      </div>
+                      <div className="subject-meta">
+                        <h4>{p.mapel || p.title}</h4>
+                        <p>{p.item_count || 0} soal</p>
+            {photoErr && <div className="avatar-error">{photoErr}</div>}
+          </div>
+        </div>
+                    <button className="continue-btn" type="button" style={{ width: '100%' }}>Mulai</button>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span className={`subject-badge subject-badge-${s.difficulty === 'Mudah' ? 'mudah' : s.difficulty === 'Sedang' ? 'sedang' : 'sulit'}`}>{s.difficulty}</span>
-                    <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{s.count} soal</span>
-                  </div>
-                  <div className="mini-progress">
-                    <div className="mini-progress-bar" style={{ width: `${s.progress}%` }} />
-                  </div>
-                  <button className="continue-btn" type="button" style={{ width: '100%' }} onClick={() => onTab('latihan')}>
-                    {s.progress > 0 ? 'Lanjutkan' : 'Mulai'}
-                  </button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Simulasi TKA */}
           <div className="section">
             <div className="featured-card">
               <div className="section-header" style={{ marginBottom: 8 }}>
@@ -243,7 +404,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
               <div className="featured-grid">
                 <div className="featured-stat">
                   <p className="featured-stat-label">Jumlah Soal</p>
-                  <p className="featured-stat-value">35</p>
+                  <p className="featured-stat-value">{simulasiPkg?.item_count || 35}</p>
                 </div>
                 <div className="featured-stat">
                   <p className="featured-stat-label">Durasi</p>
@@ -251,72 +412,42 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
                 </div>
                 <div className="featured-stat">
                   <p className="featured-stat-label">Skor Terakhir</p>
-                  <p className="featured-stat-value">72</p>
+                  <p className="featured-stat-value">{lastSimScore || '—'}</p>
                 </div>
                 <div className="featured-stat">
                   <p className="featured-stat-label">Skor Terbaik</p>
-                  <p className="featured-stat-value">85</p>
+                  <p className="featured-stat-value">{lastSimScore || '—'}</p>
                 </div>
               </div>
-              <button className="continue-btn" type="button" style={{ width: '100%' }} onClick={() => onTab('simulasi')}>Mulai Simulasi</button>
-            </div>
-          </div>
-
-          {/* Analisis Kemampuan */}
-          <div className="section">
-            <div className="card">
-              <h3 className="card-title" style={{ marginBottom: 14 }}>Analisis Kemampuan</h3>
-              {ANALYSIS_DOMAINS.map((d) => (
-                <div key={d.name} className="analysis-bar-row">
-                  <span className="analysis-bar-label">{d.name}</span>
-                  <div className="analysis-bar-track">
-                    <div className="analysis-bar-fill" style={{ width: `${d.pct}%` }} />
-                  </div>
-                  <span className="analysis-bar-pct">{d.pct}%</span>
-                  <span className={`analysis-bar-tag ${d.tagClass}`}>{d.tag}</span>
-                </div>
-              ))}
+              <button className="continue-btn" type="button" style={{ width: '100%' }} onClick={() => onTab('simulasi')}>
+                Mulai Simulasi
+              </button>
             </div>
           </div>
         </div>
 
         <div className="col">
-          {/* Statistik Belajar */}
           <div className="section">
             <div className="chart-card">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <div className="chart-tabs">
-                  {(['aktivitas', 'soal', 'skor'] as const).map((t) => (
-                    <button key={t} className={`chart-tab ${chartTab === t ? 'active' : ''}`} type="button" onClick={() => setChartTab(t)}>
-                      {t === 'aktivitas' ? 'Aktivitas' : t === 'soal' ? 'Soal' : 'Skor'}
-                    </button>
-                  ))}
-                </div>
-                <div className="chart-time-filter">
-                  {(['mingguan', 'bulanan', 'semester'] as const).map((r) => (
-                    <button key={r} className={`chart-time-btn ${chartRange === r ? 'active' : ''}`} type="button" onClick={() => setChartRange(r)}>
-                      {r === 'mingguan' ? 'Mingguan' : r === 'bulanan' ? 'Bulanan' : 'Semester'}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <h3 className="card-title" style={{ margin: '0 0 8px' }}>Statistik Belajar</h3>
               <div className="chart-svg-wrap">
-                <SimpleLineChart data={chartData} labels={chartLabels} />
+                <SimpleLineChart data={chartData.data} labels={chartData.labels} />
               </div>
             </div>
           </div>
 
-          {/* Rekomendasi */}
-          <div className="section">
-            <div className="rec-card">
-              <div className="rec-icon">💡</div>
-              <div className="rec-info">
-                <h3>Perkuat kemampuan Aljabar</h3>
-                <p>Akurasi Anda di Aljabar adalah 40%. Lanjutkan latihan untuk meningkatkan pemahaman.</p>
+          {recMapel && recMapel.akurasi < 70 && (
+            <div className="section">
+              <div className="rec-card">
+                <div className="rec-icon">💡</div>
+                <div className="rec-info">
+                  <h3>Perkuat kemampuan {recMapel.name}</h3>
+                  <p>Akurasi Anda di {recMapel.name} adalah {recMapel.akurasi}%. Lanjutkan latihan untuk meningkatkan pemahaman.</p>
+                </div>
+                <button className="continue-btn" type="button" onClick={() => onTab('latihan')}>Mulai Latihan</button>
               </div>
-              <button className="continue-btn" type="button" onClick={() => onTab('latihan')}>Mulai Latihan</button>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
