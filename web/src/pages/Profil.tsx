@@ -98,11 +98,13 @@ export function Profil({
       const { error, data } = await insforge.storage.from('profile-photos').upload(path, file);
       if (error) {
         setPhotoErr(error.message);
-      } else {
-        const url = (data as { url?: string })?.url || (data as { publicUrl?: string })?.publicUrl || '';
-        setPhotoUrl(url);
-        await insforge.database.from('profiles').update({ photo_url: url }).eq('id', profile.id);
+        return;
       }
+      const pubPath = (data as { path?: string })?.path || path;
+      const { data: pub } = insforge.storage.from('profile-photos').getPublicUrl(pubPath);
+      const url = pub?.publicUrl || '';
+      setPhotoUrl(url);
+      await insforge.database.from('profiles').update({ photo_url: url }).eq('id', profile.id);
     } catch (e) {
       setPhotoErr(e instanceof Error ? e.message : 'Upload gagal.');
     }
@@ -116,7 +118,7 @@ export function Profil({
     setPhotoErr('');
     const fname = photoUrl.substring(photoUrl.lastIndexOf('/') + 1);
     try {
-      const { error } = await insforge.storage.from('profile-photos').remove(fname);
+      const { error } = await insforge.storage.from('profile-photos').remove([fname]);
       if (error) {
         setPhotoErr(error.message);
       } else {
