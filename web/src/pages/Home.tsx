@@ -304,9 +304,12 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
           </div>
         </div>
         <div className="greeting-text">
-          <h1>Selamat datang, {name.split(' ')[0]}!</h1>
+          <h1>Selamat datang, {name}!</h1>
           {myClass ? (
-            <p className="greeting-sub">Kelas {myClass.name} · {JENJANG_LABEL[myClass.jenjang] || myClass.jenjang}</p>
+            <>
+              <p className="greeting-sub">Kelas {myClass.name} · {JENJANG_LABEL[myClass.jenjang] || myClass.jenjang}</p>
+              <p className="greeting-class">Kelas {myClass.name}</p>
+            </>
           ) : (
             <p className="greeting-sub">Siap melanjutkan persiapan TKA hari ini?</p>
           )}

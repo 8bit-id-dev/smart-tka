@@ -199,7 +199,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
       {item.item_type === 'pernyataan_bs' && (
         <div className="bs-list">
           {opts.map((s, idx) => (
-            <div key={idx} className="bs-row">
+            <div key={idx} className={`bs-row ${bs[idx] ? 'answered' : ''}`}>
               <p>
                 {idx + 1}. <MathText text={s} />
               </p>
@@ -338,10 +338,12 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
           <strong>{correct() ? 'Benar' : item.item_type === 'uraian' ? 'Jawaban Terkumpul' : 'Belum tepat'}.</strong>
           {typeof key === 'string' && key.trim() && item.item_type === 'uraian' && (
             <p style={{ marginTop: 4 }}>
-              <strong>Kunci Acuan Guru:</strong> {key}
+              <strong>Kunci Acuan Guru:</strong> <MathText text={key} />
             </p>
           )}
-          <p style={{ marginTop: 4 }}>{item.rationale}</p>
+          <p className="type-lab" style={{ marginTop: 4 }}>
+            Pembahasan: <MathText text={item.rationale || ''} />
+          </p>
         </div>
       )}
     </div>

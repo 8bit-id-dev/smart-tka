@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { ItemPlayer } from '../components/ItemPlayer';
 import { insforge } from '../lib/insforge';
 import { acakList, acakOpsi, type DbItem } from '../lib/soal';
+import { toggleBookmark, isBookmarked } from '../lib/bookmarks';
+import { Icons } from '../AppShell';
 
 const MAX = 10;
 
@@ -26,6 +28,10 @@ export function Practice({
   const [benar, setBenar] = useState(0);
   const [skor, setSkor] = useState<number | null>(null);
   const [jawab, setJawab] = useState(0);
+  const [answered, setAnswered] = useState<Set<number>>(new Set());
+  const [doubted, setDoubted] = useState<Set<number>>(new Set());
+  const [listExpanded, setListExpanded] = useState(true);
+  const [bookmarked, setBookmarked] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     void (async () => {
@@ -53,12 +59,19 @@ export function Practice({
       return;
     }
     setErr('');
-    setItems(acakList(rows).slice(0, MAX).map(acakOpsi));
+    const shuffled = acakList(rows).slice(0, MAX).map(acakOpsi);
+    const saved = new Set<number>();
+    shuffled.forEach((it, idx) => {
+      if (isBookmarked(studentId, it.id)) saved.add(idx);
+    });
+    setItems(shuffled);
+    setBookmarked(saved);
     setI(0);
     setBenar(0);
     setJawab(0);
     setSkor(null);
     setPhase('run');
+    setListExpanded(true);
   }
 
   async function selesai() {
@@ -163,6 +176,20 @@ export function Practice({
   }
 
   const item = items[i];
+  const currentItem = items[i];
+
+  function toggleBookmarkItem(idx: number) {
+    const it = items[idx];
+    if (!it) return;
+    const now = toggleBookmark(studentId, it.id);
+    setBookmarked((s) => {
+      const next = new Set(s);
+      if (now) next.add(idx);
+      else next.delete(idx);
+      return next;
+    });
+  }
+
   return (
     <div className="dashboard-page">
       {/* Compact top nav */}
@@ -178,36 +205,93 @@ export function Practice({
           <div style={{ background: 'var(--canvas)', borderRadius: 8, padding: '4px 10px', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
             {i + 1}/{items.length}
           </div>
+          <button
+            type="button"
+            className="header-icon-btn"
+            title={bookmarked.has(i) ? 'Hapus bookmark' : 'Simpan soal'}
+            onClick={() => toggleBookmarkItem(i)}
+            style={{ padding: 4 }}
+          >
+            {Icons.bookmark(bookmarked.has(i))}
+          </button>
         </div>
       </div>
 
       {/* Progress bar */}
       <div style={{ width: '100%', height: 4, background: 'var(--canvas)', borderRadius: 999, overflow: 'hidden', marginBottom: 16 }}>
-          <div style={{ width: `${((i + 1) / items.length) * 100}%`, height: '100%', background: 'var(--accent)', borderRadius: 999, transition: 'width 0.3s ease' }} />
+        <div style={{ width: `${((i + 1) / items.length) * 100}%`, height: '100%', background: 'var(--accent)', borderRadius: 999, transition: 'width 0.3s ease' }} />
       </div>
 
-      <section className="card" style={{ maxWidth: 720 }}>
+      {/* Question list - above card, expandable, 5 columns */}
+      <div className="question-list-container">
+        <button
+          type="button"
+          className="question-list-toggle"
+          onClick={() => setListExpanded((v) => !v)}
+          title={listExpanded ? 'Lipat daftar soal' : 'Buka daftar soal'}
+        >
+          <span className="question-list-toggle-icon">{listExpanded ? '▼' : '▶'}</span>
+          Daftar Soal
+        </button>
+        {listExpanded && (
+          <div className="question-grid">
+            {items.map((_, q) => {
+              const isAns = answered.has(q);
+              const isDoubted = doubted.has(q);
+              const cls = isDoubted ? 'q-doubted' : isAns ? 'q-answered' : 'q-unanswered';
+              const isCurrent = q === i;
+              return (
+                <button
+                  key={q}
+                  type="button"
+                  className={`q-num ${cls} ${isCurrent ? 'current' : ''} ${bookmarked.has(q) ? 'bookmarked' : ''}`}
+                  onClick={() => setI(q)}
+                >
+                  {q + 1}
+                  {bookmarked.has(q) && <span className="q-bookmark-mark">🔖</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <section className="card" style={{ maxWidth: 720, position: 'relative' }}>
         <ItemPlayer
-          key={item.id}
-          item={item}
+          key={currentItem?.id}
+          item={currentItem}
           showBahas
           hideKeys={false}
+          onUpdate={() => setAnswered((s) => new Set([...s, i]))}
           onLocked={(ok) => {
+            setAnswered((s) => new Set([...s, i]));
             setJawab((n) => n + 1);
             if (ok) setBenar((n) => n + 1);
           }}
         />
-        <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'space-between', alignItems: 'center' }}>
           <button className="btn btn-ghost" type="button" disabled={i === 0} onClick={() => setI((x) => x - 1)}>
             ← Sebelumnya
           </button>
+          <button
+            type="button"
+            className={`ragu-btn ${doubted.has(i) ? 'active' : ''}`}
+            onClick={() => {
+              setDoubted((s) => {
+                const next = new Set(s);
+                if (next.has(i)) next.delete(i);
+                else next.add(i);
+                return next;
+              });
+            }}
+            title={doubted.has(i) ? 'Hapus ragu-ragu' : 'Tandai ragu-ragu'}
+          >
+            {doubted.has(i) ? '✕ Ragu' : 'Ragu-ragu'}
+          </button>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-ghost" type="button" onClick={() => { setJawab((n) => n + 1); setI((x) => x + 1); }}>
-              Lewati
-            </button>
             {i >= items.length - 1 ? (
               <button className="btn btn-primary" type="button" onClick={() => void selesai()}>
-                Selesai & Simpan
+                Selesai &amp; Simpan
               </button>
             ) : (
               <button className="btn btn-primary" type="button" onClick={() => setI((x) => x + 1)}>

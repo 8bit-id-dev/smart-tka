@@ -49,20 +49,34 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const durationSec = kind === 'latihan' ? (menit > 0 ? menit * 60 : null) : Math.max(5, menit) * 60;
 
   async function load() {
-    const p = await insforge.database
-      .from('packages')
-      .select('id, title, kind, mapel, materi, jenjang, item_count, duration_sec, discuss_after_each, shuffle')
-      .eq('created_by', profile.id);
-    if (p.error) setErr(p.error.message);
-    else setPkgs((p.data || []) as Pkg[]);
-
-    const it = await insforge.database.from('items').select('id, stem, mapel, materi, item_type').eq('author_id', profile.id);
-    if (!it.error) setItems((it.data || []) as ItemRow[]);
+       const p = await insforge.database
+         .from('packages')
+         .select('id, title, kind, mapel, materi, jenjang, item_count, duration_sec, discuss_after_each, shuffle')
+         .eq('created_by', profile.id);
+       if (p.error) setErr(p.error.message);
+       else setPkgs((p.data || []) as Pkg[]);
   }
 
   useEffect(() => {
     void load();
   }, [profile.id]);
+
+  useEffect(() => {
+    if (!mapel) {
+      setItems([]);
+      return;
+    }
+    void (async () => {
+      const { data, error } = await insforge.database
+        .from('items')
+        .select('id, stem, mapel, materi, item_type')
+        .eq('mapel', mapel)
+        .order('mapel')
+        .order('materi');
+      if (error) setErr(error.message);
+      else setItems((data || []) as ItemRow[]);
+    })();
+  }, [mapel]);
 
   function toggle(id: string) {
     setPicked((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
@@ -188,7 +202,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     <div className="page">
       <header className="page-header">
         <h1 className="page-title">{editId ? 'Ubah paket' : 'Buat paket soal'}</h1>
-        <p className="page-subtitle">Satu paket = satu mapel. Pilih soal dari bank Anda (menu Soal).</p>
+          <p className="page-subtitle">Satu paket = satu mapel. Pilih soal dari semua bank soal sesuai mapel.</p>
       </header>
 
       {err && (
@@ -318,11 +332,11 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
 
           {items.length === 0 && (
             <div className="banner banner-warn">
-              <p className="banner-text">Belum ada soal. Buat dulu di menu Soal.</p>
+              <p className="banner-text">Pilih mapel terlebih dahku untuk melihat bank soal tersedia.</p>
             </div>
           )}
           {items.length > 0 && filteredItems.length === 0 && (
-            <p className="type-lab">Tidak ada soal yang cocup dengan filter mapel/materi ini.</p>
+            <p className="type-lab">Tidak ada soal untuk materi ini.</p>
           )}
 
           <div className="chip-pick-row">

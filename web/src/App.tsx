@@ -15,6 +15,7 @@ import { Kelas } from './pages/Kelas';
 import { Pengumuman } from './pages/Pengumuman';
 import { Ortu } from './pages/Ortu';
 import { Laporan } from './pages/Laporan';
+import { Bookmark } from './pages/Bookmark';
 import { getMyProfile, insforge, insforgeConfigured, type AppProfile } from './lib/insforge';
 import './index.css';
 
@@ -189,6 +190,7 @@ export default function App() {
       {tab === 'laporan' && <Laporan me={profile} onTab={setTab} />}
       {tab === 'admin' && <Admin me={profile} />}
       {tab === 'profil' && <Profil profile={profile} email={email} onOut={onSignOut} />}
+      {tab === 'bookmark' && <Bookmark profile={profile} onHome={() => setTab('beranda')} />}
     </AppShell>
   );
 }

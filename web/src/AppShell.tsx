@@ -15,7 +15,8 @@ export type Tab =
   | 'pengumuman'
   | 'laporan'
   | 'admin'
-  | 'profil';
+  | 'profil'
+  | 'bookmark';
 
 const Icons = {
   beranda: (filled: boolean) => (
@@ -136,6 +137,11 @@ const Icons = {
       <line x1="3" y1="6" x2="21" y2="6" />
       <line x1="3" y1="12" x2="21" y2="12" />
       <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  ),
+  bookmark: (filled = false) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   ),
 };
@@ -436,6 +442,14 @@ export function AppShell({
               >
                 {Icons.bell()}
                 {rows.length > 0 && <span className="header-badge">{rows.length}</span>}
+              </button>
+              <button
+                type="button"
+                className="header-icon-btn"
+                title="Simpan"
+                onClick={() => onTab('bookmark')}
+              >
+                {Icons.bookmark()}
               </button>
               {notifOpen && (
                 <div className="notif-dropdown">

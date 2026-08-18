@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { ItemPlayer } from '../components/ItemPlayer';
 import { insforge } from '../lib/insforge';
 import { acakList, acakOpsi, type DbItem } from '../lib/soal';
+import { toggleBookmark, isBookmarked } from '../lib/bookmarks';
+import { Icons } from '../AppShell';
 
 type Pkg = {
   id: string;
@@ -25,7 +27,10 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   const [phase, setPhase] = useState<'list' | 'run' | 'hasil'>('list');
   const [err, setErr] = useState('');
   const [ans, setAns] = useState<Record<string, Ans>>({});
+  const [doubted, setDoubted] = useState<Set<string>>(new Set());
   const [skor, setSkor] = useState<number | null>(null);
+  const [listExpanded, setListExpanded] = useState(true);
+  const [bookmarked, setBookmarked] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
@@ -76,10 +81,17 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     const map = new Map(((its || []) as DbItem[]).map((x) => [x.id, x]));
     let ordered = ids.map((id) => map.get(id)).filter(Boolean) as DbItem[];
     if (p.shuffle) ordered = acakList(ordered);
-    setItems(ordered.map(acakOpsi));
+    const shuffled = ordered.map(acakOpsi);
+    setItems(shuffled);
     setPkg(p);
     setI(0);
     setSisa(p.duration_sec && p.duration_sec > 0 ? p.duration_sec : 15 * 60);
+    const saved = new Set<string>();
+    shuffled.forEach((it) => {
+      if (isBookmarked(studentId, it.id)) saved.add(it.id);
+    });
+    setBookmarked(saved);
+    setListExpanded(true);
     setPhase('run');
   }
 
@@ -202,6 +214,19 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   }
 
   const item = items[i];
+
+  function toggleBookmarkItem(idx: number) {
+    const it = items[idx];
+    if (!it) return;
+    const now = toggleBookmark(studentId, it.id);
+    setBookmarked((s) => {
+      const next = new Set(s);
+      if (now) next.add(it.id);
+      else next.delete(it.id);
+      return next;
+    });
+  }
+
   return (
     <div className="dashboard-page">
       {/* Compact top nav */}
@@ -209,9 +234,18 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 500 }}>{pkg?.title}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div className="timer-lab" style={{ fontSize: 10 }}>Waktu</div>
           <div className="timer">{mm}:{ss}</div>
+          <button
+            type="button"
+            className="header-icon-btn"
+            title={bookmarked.has(item?.id) ? 'Hapus bookmark' : 'Simpan soal'}
+            onClick={() => toggleBookmarkItem(i)}
+            style={{ padding: 4 }}
+          >
+            {Icons.bookmark(bookmarked.has(item?.id))}
+          </button>
         </div>
       </div>
 
@@ -226,6 +260,41 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
         </div>
       )}
 
+      {/* Question list - above card, expandable, 5 columns */}
+      <div className="question-list-container">
+        <button
+          type="button"
+          className="question-list-toggle"
+          onClick={() => setListExpanded((v) => !v)}
+          title={listExpanded ? 'Lipat daftar soal' : 'Buka daftar soal'}
+        >
+          <span className={`question-list-toggle-icon ${listExpanded ? '' : 'collapsed'}`}>▼</span>
+          Daftar Soal
+        </button>
+        {listExpanded && (
+          <div className="question-grid">
+            {items.map((it, q) => {
+              const isAns = Boolean(ans[it.id]?.answer);
+              const isDoubted = doubted.has(it.id);
+              const cls = isDoubted ? 'q-doubted' : isAns ? 'q-answered' : 'q-unanswered';
+              const isCurrent = q === i;
+              const isBm = bookmarked.has(it.id);
+              return (
+                <button
+                  key={q}
+                  type="button"
+                  className={`q-num ${cls} ${isCurrent ? 'current' : ''} ${isBm ? 'bookmarked' : ''}`}
+                  onClick={() => setI(q)}
+                >
+                  {q + 1}
+                  {isBm && <span className="q-bookmark-mark">🔖</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <section className="card" style={{ maxWidth: 800 }}>
         {item && (
           <ItemPlayer
@@ -236,9 +305,24 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
             onUpdate={(info) => setAns((m) => ({ ...m, [item.id]: info }))}
           />
         )}
-        <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'space-between', alignItems: 'center' }}>
           <button className="btn btn-ghost" type="button" disabled={i === 0} onClick={() => setI((x) => x - 1)}>
             ← Sebelumnya
+          </button>
+          <button
+            type="button"
+            className={`ragu-btn ${doubted.has(item?.id) ? 'active' : ''}`}
+            onClick={() => {
+              setDoubted((s) => {
+                const next = new Set(s);
+                if (next.has(item?.id)) next.delete(item?.id);
+                else next.add(item?.id);
+                return next;
+              });
+            }}
+            title={doubted.has(item?.id) ? 'Hapus ragu-ragu' : 'Tandai ragu-ragu'}
+          >
+            {doubted.has(item?.id) ? '✕ Ragu' : 'Ragu-ragu'}
           </button>
           <div style={{ display: 'flex', gap: 10 }}>
             {i < items.length - 1 ? (
