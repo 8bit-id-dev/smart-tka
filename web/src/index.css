@@ -1300,7 +1300,7 @@ pre.debug {
 }
 
 /* Mobile-first: top bar for siswa/orang_tua */
-.shell-mobile { display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; overflow-x: hidden; }
+.shell-mobile { display: flex; flex-direction: column; max-width: 100%; margin: 0; overflow-x: hidden; }
 .shell-bar {
   display: flex;
   align-items: center;
@@ -1332,8 +1332,8 @@ pre.debug {
   align-items: center;
   justify-content: center;
 }
-.shell-mobile .shell-user { font-size: 12px; color: var(--muted-light); }
-.shell-main-mobile { padding: 24px 16px; flex: 1; min-height: 100vh; overflow-x: hidden; max-width: 430px; margin: 0 auto; }
+.shell-mobile .shell-user { font-size: 12px; color: var(--muted-light); margin-left: auto; }
+.shell-main-mobile { padding: 24px 12px; flex: 1; min-height: 100vh; overflow-x: hidden; max-width: 100%; margin: 0 auto; }
 
 /* Desktop sidebar responsive collapse */
 @media (max-width: 1024px) {
@@ -1674,8 +1674,8 @@ pre.debug {
 }
 .hamburger-btn:hover { background: var(--canvas); border-color: var(--accent); color: var(--accent); }
 .shell-mobile .shell-nav { display: none; }
-.shell-mobile .shell-user { font-size: 12px; color: var(--muted-light); }
-.shell-main-mobile { padding: 24px 16px; flex: 1; min-height: 100vh; overflow-x: hidden; max-width: 430px; margin: 0 auto; }
+.shell-mobile .shell-user { font-size: 12px; color: var(--muted-light); margin-left: auto; }
+.shell-main-mobile { padding: 24px 12px; flex: 1; min-height: 100vh; overflow-x: hidden; max-width: 100%; margin: 0 auto; }
 
 /* Mobile menu overlay */
 .mobile-menu-backdrop {
