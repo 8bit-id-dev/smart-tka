@@ -2397,3 +2397,11 @@ html.dark .continue-btn { background: var(--accent); color: #fff; }
 html.dark .notif-dropdown { background: var(--card); border-color: var(--card-border); }
 html.dark .notif-item { border-bottom-color: var(--card-border); }
 .theme-toggle { transition: opacity 0.2s; }
+.photo-menu-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.photo-menu { background: var(--card); border-radius: var(--radius); padding: 8px; min-width: 160px; box-shadow: var(--shadow-lg); border: 1px solid var(--card-border); }
+.photo-menu-item { display: block; width: 100%; text-align: left; padding: 10px 12px; border: none; background: none; color: var(--ink); border-radius: 6px; font-size: 14px; cursor: pointer; }
+.photo-menu-item:hover { background: var(--canvas); color: var(--accent); }
+.photo-menu-item:disabled { opacity: 0.5; cursor: not-allowed; }
+.photo-menu-item-danger:hover { background: rgba(211, 47, 47, 0.1); color: var(--danger); }
+.greeting-title { font-size: 14px; color: var(--accent); font-weight: 600; margin-top: 4px; display: block; }
+.seg { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--outline); background: var(--card); color: var(--ink-light); font-size: 13px; font-weight: 500; cursor: pointer; } .seg:hover { color: var(--ink); border-color: var(--accent); } .seg-active { padding: 6px 14px; border-radius: 6px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
 
 const JENJANG_LABEL: Record<string, string> = {
@@ -33,6 +33,8 @@ export function Profil({
   const [photoErr, setPhotoErr] = useState('');
   const [ortu, setOrtu] = useState<{ parent_id: string; nama: string }[]>([]);
   const [photoUrl, setPhotoUrl] = useState(profile.photo_url || '');
+  const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (profile.role !== 'siswa') return;
@@ -141,28 +143,33 @@ export function Profil({
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* Avatar + info */}
          <div className="card" style={{ textAlign: 'center', minWidth: 200, flex: '1 1 260px' }}>
-           <div style={{
-             width: 72, height: 72, borderRadius: 20,
-             background: photoUrl ? undefined : 'var(--accent)', color: '#fff',
-             display: 'flex', alignItems: 'center', justifyContent: 'center',
-             fontSize: 28, fontWeight: 700, margin: '0 auto 12px',
-             overflow: 'hidden', objectFit: 'cover',
-             border: photoUrl ? '2px solid var(--accent-soft)' : 'none',
-           }}>
-             {photoUrl ? <img src={photoUrl} alt="Foto profil" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} /> : initials}
-           </div>
-           <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12 }}>
-             <button type="button" className="btn" style={{ fontSize: 12, padding: '4px 10px', cursor: 'pointer' }} title="Ganti foto">
-               {photoLoading ? '…' : (photoUrl ? 'Ganti' : 'Upload')}
-               <input type="file" accept="image/*" hidden onChange={(e) => void uploadPhoto(e)} disabled={photoLoading} />
-             </button>
-             {photoUrl && (
-               <button type="button" className="btn" style={{ fontSize: 12, padding: '4px 10px', cursor: 'pointer' }} onClick={() => void deletePhoto()} disabled={photoLoading} title="Hapus foto">
-                 Hapus
-               </button>
-             )}
-           </div>
-           {photoErr && <p className="legal" style={{ color: '#f85149', marginTop: 4 }}>{photoErr}</p>}
+            <div style={{
+              width: 72, height: 72, borderRadius: 20,
+              background: photoUrl ? undefined : 'var(--accent)', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 28, fontWeight: 700, margin: '0 auto 12px',
+              overflow: 'hidden', objectFit: 'cover',
+              border: photoUrl ? '2px solid var(--accent-soft)' : 'none',
+              cursor: 'pointer', userSelect: 'none',
+            }} onClick={() => setPhotoMenuOpen(true)}>
+              {photoUrl ? <img src={photoUrl} alt="Foto profil" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} /> : initials}
+            </div>
+            {photoErr && <p className="legal" style={{ color: '#f85149', marginTop: 4 }}>{photoErr}</p>}
+            {photoMenuOpen && (
+              <div className="photo-menu-backdrop" onClick={() => setPhotoMenuOpen(false)}>
+                <div className="photo-menu" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" className="photo-menu-item" onClick={() => { fileInputRef.current?.click(); setPhotoMenuOpen(false); }} disabled={photoLoading}>
+                    Edit Foto
+                  </button>
+                  {photoUrl && (
+                    <button type="button" className="photo-menu-item photo-menu-item-danger" onClick={() => { void deletePhoto(); setPhotoMenuOpen(false); }} disabled={photoLoading}>
+                      Hapus Foto
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={(e) => void uploadPhoto(e)} disabled={photoLoading} />
            <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700 }}>{profile.full_name || 'Pengguna'}</h2>
            <span className="badge badge-info" style={{ marginBottom: 16 }}>{profile.role}</span>
 

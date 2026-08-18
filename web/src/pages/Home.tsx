@@ -28,6 +28,15 @@ const JENJANG_LABEL: Record<string, string> = {
   paket_a: 'Paket A', paket_b: 'Paket B', paket_c: 'Paket C',
 };
 
+function getTitle(level: number): string {
+  if (level >= 16) return 'Legenda TKA';
+  if (level >= 11) return 'Master TKA';
+  if (level >= 7) return 'Master Simulasi';
+  if (level >= 4) return 'Spesialis Materi';
+  if (level >= 2) return 'Pelajar Tekun';
+  return 'Petualuh Baru';
+}
+
 function SimpleLineChart({ data, labels, color = 'var(--accent)' }: { data: number[]; labels: string[]; color?: string }) {
   if (!data.length) {
     return <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', padding: '20px 0' }}>Belum ada data aktivitas.</p>;
@@ -305,10 +314,10 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         </div>
         <div className="greeting-text">
           <h1>Selamat datang, {name}!</h1>
+          {gp && <span className="greeting-title">[{getTitle(gp.level)} Level {gp.level}]</span>}
           {myClass ? (
             <>
               <p className="greeting-sub">Kelas {myClass.name} · {JENJANG_LABEL[myClass.jenjang] || myClass.jenjang}</p>
-              <p className="greeting-class">Kelas {myClass.name}</p>
             </>
           ) : (
             <p className="greeting-sub">Siap melanjutkan persiapan TKA hari ini?</p>

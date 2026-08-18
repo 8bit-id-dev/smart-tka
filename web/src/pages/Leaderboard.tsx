@@ -19,12 +19,32 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
+type StoreItem = {
+  id: string;
+  name: string;
+  desc: string;
+  cost: number;
+  icon: string;
+};
+
+const STORE_ITEMS: StoreItem[] = [
+  { id: 'gold_frame', name: 'Gold Frame', desc: 'Bingkai avatar emas', cost: 100, icon: '🥇' },
+  { id: 'diamond_frame', name: 'Diamond Frame', desc: 'Bingkai avatar berlian', cost: 500, icon: '💎' },
+  { id: 'master_title', name: 'Master Title', desc: 'Judul badge tambahan', cost: 200, icon: '🏆' },
+  { id: 'cosmic_theme', name: 'Cosmic Theme', desc: 'Tema cosmic', cost: 300, icon: '🌌' },
+];
+
 export function Leaderboard({ me }: { me: AppProfile }) {
   const [rows, setRows] = useState<GpRow[]>([]);
   const [myGp, setMyGp] = useState<{ xp: number; level: number; streak_current: number } | null>(null);
   const [myRank, setMyRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+  const [view, setView] = useState<'leaderboard' | 'store'>('leaderboard');
+  const [owned, setOwned] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    return JSON.parse(localStorage.getItem(`smart_tka_owned_${me.id}`) || '[]');
+  });
 
   useEffect(() => {
     void (async () => {
@@ -63,6 +83,23 @@ export function Leaderboard({ me }: { me: AppProfile }) {
     })();
   }, [me.id]);
 
+  const [storeErr, setStoreErr] = useState('');
+
+  async function buyItem(item: StoreItem) {
+    setStoreErr('');
+    if (!myGp || myGp.xp < item.cost) { setStoreErr('XP tidak cukup untuk membeli item ini.'); return; }
+    if (owned.includes(item.id)) { setStoreErr('Item sudah dimiliki.'); return; }
+    const { error } = await insforge.database
+      .from('gamification_profiles')
+      .update({ xp: myGp.xp - item.cost })
+      .eq('profile_id', me.id);
+    if (error) { setStoreErr(error.message); return; }
+    const newOwned = [...owned, item.id];
+    localStorage.setItem(`smart_tka_owned_${me.id}`, JSON.stringify(newOwned));
+    setMyGp({ ...myGp, xp: myGp.xp - item.cost });
+    setOwned(newOwned);
+  }
+
   if (loading) {
     return (
       <div className="dashboard-page">
@@ -88,12 +125,51 @@ export function Leaderboard({ me }: { me: AppProfile }) {
       <header className="page-header">
         <p className="page-subtitle">Peringkat kelas / sekolah</p>
         <h1 className="page-title">Papan Peringkat SMART-TKA</h1>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button type="button" className={view === 'leaderboard' ? 'seg-active' : 'seg'} onClick={() => setView('leaderboard')}>Peringkat</button>
+          <button type="button" className={view === 'store' ? 'seg-active' : 'seg'} onClick={() => setView('store')}>Toko</button>
+          {myGp && <span style={{ fontSize: 13, color: 'var(--muted)', marginLeft: 'auto' }}>💰 {myGp.xp} XP</span>}
+        </div>
         <p className="page-subtitle" style={{ maxWidth: 500 }}>
           Bergaullah dengan belajar rutin. XP dan level naik otomatis saat menyelesaikan latihan dan simulasi.
         </p>
       </header>
 
-      {rows.length > 0 && (
+      {view === 'store' && (
+        <section className="section">
+          <h2 style={{ fontSize: 18, fontWeight: 650, marginBottom: 12 }}>Toko Item</h2>
+          {storeErr && <div className="banner banner-danger" style={{ marginBottom: 12 }}><p className="banner-text">{storeErr}</p></div>}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
+            {STORE_ITEMS.map((item) => {
+              const isOwned = owned.includes(item.id);
+              const canAfford = !!myGp && myGp.xp >= item.cost;
+              return (
+                <div key={item.id} className="card" style={{ textAlign: 'center', padding: 16 }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>{item.icon}</div>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 650 }}>{item.name}</h3>
+                  <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 8px' }}>{item.desc}</p>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>{item.cost} XP</div>
+                  {isOwned ? (
+                    <button type="button" style={{ marginTop: 8, fontSize: 12, opacity: 0.6, cursor: 'default' }} disabled>Dimiliki</button>
+                  ) : (
+                    <button type="button" className="btn" onClick={() => void buyItem(item)} disabled={!canAfford} style={{ marginTop: 8, fontSize: 12, cursor: canAfford ? 'pointer' : 'not-allowed' }}>
+                      {canAfford ? 'Beli' : 'XP Kurang'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {owned.length > 0 && (
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
+              Item dimiliki: {owned.length} — {owned.map((id) => STORE_ITEMS.find((i) => i.id === id)?.name).filter(Boolean).join(', ')}
+            </p>
+          )}
+        </section>
+      )}
+      {view === 'leaderboard' && (
+        <>
+          {rows.length > 0 && (
         <section className="section">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
             {myRank !== null && (
@@ -164,6 +240,8 @@ export function Leaderboard({ me }: { me: AppProfile }) {
           <h3 className="empty-state-title">Belum ada peringkat</h3>
           <p className="empty-state-text">Jadilah yang pertama menyelesaikan latihan atau simulasi untuk masuk ke papan peringkat.</p>
         </div>
+      )}
+        </>
       )}
     </div>
   );
