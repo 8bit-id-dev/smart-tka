@@ -3,13 +3,14 @@ import { KurikulumCrud } from '../components/KurikulumCrud';
 import { insforge, type AppProfile } from '../lib/insforge';
 import type { MapelRow, MateriRow } from '../lib/kurikulum';
 
-type ItemRow = { id: string; stem: string; mapel: string; materi?: string | null; item_type: string };
+type ItemRow = { id: string; stem: string; mapel: string; materi?: string | null; item_type: string; difficulty?: number | null };
 type Pkg = {
   id: string;
   title: string;
   kind: string;
   mapel: string;
   materi?: string | null;
+  info?: string | null;
   jenjang: string;
   item_count: number;
   duration_sec: number | null;
@@ -19,6 +20,21 @@ type Pkg = {
   jumlah_soal_soal?: number | null;
   ai_config?: Record<string, unknown> | null;
 };
+
+const ITEM_TYPE_LABELS: Record<string, string> = {
+  pg: 'PG',
+  pg_kompleks: 'PG Kompleks',
+  uraian: 'Uraian',
+  pernyataan_bs: 'B/S',
+  mencocokkan: 'Mencocokkan',
+};
+
+const ALL_ITEM_TYPES = ['pg', 'pg_kompleks', 'uraian', 'pernyataan_bs', 'mencocokkan'];
+const DIFF_OPTS = [
+  { v: 1, label: '1 — Mudah' },
+  { v: 2, label: '2 — Sedang' },
+  { v: 3, label: '3 — Sulit' },
+] as const;
 
 const KINDS = [
   { id: 'latihan', label: 'Latihan (pembahasan langsung)' },
@@ -50,6 +66,9 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [useAiSelection, setUseAiSelection] = useState(false);
   const [jumlahSoal, setJumlahSoal] = useState(10);
   const [selectedMateris, setSelectedMateris] = useState<Set<string>>(new Set());
+  const [infoText, setInfoText] = useState('');
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
+  const [selectedDiffs, setSelectedDiffs] = useState<Set<number>>(new Set());
   const [materiJumlahMap, setMateriJumlahMap] = useState<Record<string, number>>({});
   const [mySubjects, setMySubjects] = useState<string[]>([]);
   const isGuru = profile.role === 'guru';
@@ -60,7 +79,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   async function load() {
        const p = await insforge.database
           .from('packages')
-          .select('id, title, kind, mapel, materi, jenjang, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal, ai_config')
+          .select('id, title, kind, mapel, materi, info, jenjang, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal, ai_config')
           .eq('created_by', profile.id);
         if (p.error) setErr(p.error.message);
         else setPkgs((p.data || []) as Pkg[]);
@@ -109,10 +128,13 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     setPicked([]);
     setKind('latihan');
     setMenit(15);
-    setUseAiSelection(false);
+     setUseAiSelection(false);
     setJumlahSoal(10);
     setSelectedMateris(new Set());
+    setSelectedTypes(new Set());
+    setSelectedDiffs(new Set());
     setMateriJumlahMap({});
+    setInfoText('');
   }
 
   async function muatPaket(p: Pkg) {
@@ -130,11 +152,16 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     setShuffle(p.shuffle);
     setUseAiSelection(p.use_ai_selection || false);
     setJumlahSoal(p.jumlah_soal_soal || 10);
-    if (p.ai_config && typeof p.ai_config === 'object' && p.ai_config.materi_counts) {
-      setMateriJumlahMap(p.ai_config.materi_counts as Record<string, number>);
+    if (p.ai_config && typeof p.ai_config === 'object') {
+      const cfg = p.ai_config as Record<string, unknown>;
+      if (cfg.materi_counts) setMateriJumlahMap(cfg.materi_counts as Record<string, number>);
+      const filters = cfg.filters as { item_types?: string[]; difficulties?: number[] } | undefined;
+      if (filters?.item_types) setSelectedTypes(new Set(filters.item_types));
+      if (filters?.difficulties) setSelectedDiffs(new Set(filters.difficulties));
     } else {
       setMateriJumlahMap({});
     }
+    setInfoText(p.info || '');
     const { data } = await insforge.database.from('package_items').select('item_id').eq('package_id', p.id);
     setPicked(((data || []) as { item_id: string }[]).map((r) => r.item_id));
   }
@@ -168,12 +195,14 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       return;
     }
 
+    const aiFilters = { item_types: Array.from(selectedTypes), difficulties: selectedDiffs.size > 0 ? Array.from(selectedDiffs) : undefined };
     const row = {
       school_id: profile.school_id,
       created_by: profile.id,
       kind,
       mapel,
       materi: materi || null,
+      info: infoText.trim() || null,
       jenjang,
       title: title.trim(),
       item_count: picked.length,
@@ -182,7 +211,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       discuss_after_each: discuss,
       use_ai_selection: useAiSelection,
       jumlah_soal_soal: useAiSelection ? jumlahSoal : null,
-      ai_config: useAiSelection ? { materi_counts: materiJumlahMap } : null,
+      ai_config: { materi_counts: materiJumlahMap, filters: aiFilters },
     };
 
     setOk('Menyimpan…');
@@ -236,10 +265,14 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     a.localeCompare(b, 'id', { numeric: true, sensitivity: 'base' })
   );
 
-  const filteredItems = items.filter((it) => !mapel || it.mapel === mapel).filter((it) => {
-    if (selectedMateris.size === 0) return true;
-    return it.materi ? selectedMateris.has(it.materi) : false;
-  });
+  const filteredItems = items
+    .filter((it) => !mapel || it.mapel === mapel)
+    .filter((it) => {
+      if (selectedMateris.size === 0) return true;
+      return it.materi ? selectedMateris.has(it.materi) : false;
+    })
+    .filter((it) => (selectedTypes.size === 0 ? true : selectedTypes.has(it.item_type)))
+    .filter((it) => (selectedDiffs.size === 0 ? true : it.difficulty !== null && selectedDiffs.has(Number(it.difficulty))));
 
   if (!['guru', 'admin', 'konten'].includes(profile.role)) {
     return (
@@ -413,6 +446,18 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               </div>
             </div>
           </div>
+
+          <div className="form-section">
+            <div className="form-section-title">Info paket <small className="muted" style={{ display: 'block', fontSize: 11, fontWeight: 400 }}>(opsional — ditampilkan di halaman konfirmasi sebelum mengerjakan)</small></div>
+            <textarea
+              className="input"
+              value={infoText}
+              onChange={(e) => setInfoText(e.target.value)}
+              placeholder="mis. Paket ini mencakup PG + uraian. Durasi 90 menit. Bawa kalkulator."
+              rows={3}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
         </div>
 
         <div className="form-card">
@@ -472,6 +517,62 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               </div>
             </div>
           )}
+
+          <div style={{ marginBottom: 12 }}>
+            <div className="form-section-title" style={{ fontSize: 12, marginBottom: 6 }}>Jenis soal</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {ALL_ITEM_TYPES.map((t) => {
+                const checked = selectedTypes.has(t);
+                const label = ITEM_TYPE_LABELS[t] ?? t;
+                const available = filteredItems.filter((it) => it.item_type === t).length;
+                return (
+                  <label key={t} className="chip-pick" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: available === 0 ? 0.5 : 1 }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={available === 0}
+                      onChange={(e) => {
+                        const next = new Set(selectedTypes);
+                        if (e.target.checked) next.add(t);
+                        else next.delete(t);
+                        setSelectedTypes(next);
+                      }}
+                    />
+                    <span className="type-bm" style={{ fontSize: 12 }}>{label} ({available})</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div className="form-section-title" style={{ fontSize: 12, marginBottom: 6 }}>Tingkat kesulitan</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {DIFF_OPTS.map((d) => {
+                const checked = selectedDiffs.has(d.v);
+                const available = filteredItems.filter((it) => it.difficulty === d.v).length;
+                return (
+                  <label key={d.v} className="chip-pick" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: available === 0 ? 0.5 : 1 }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={available === 0}
+                      onChange={(e) => {
+                        const next = new Set(selectedDiffs);
+                        if (e.target.checked) next.add(d.v);
+                        else next.delete(d.v);
+                        setSelectedDiffs(next);
+                      }}
+                    />
+                    <span className="type-bm" style={{ fontSize: 12 }}>{d.label} ({available})</span>
+                  </label>
+                );
+              })}
+            </div>
+            {selectedDiffs.size > 0 && (
+              <p className="input-hint" style={{ marginTop: 6 }}>Hanya soal dengan tingkat kesulitan terpilih yang dimasukkan ke paket.</p>
+            )}
+          </div>
 
           {useAiSelection && uniqueMateris.length > 0 && (
             <div style={{ marginBottom: 12 }}>

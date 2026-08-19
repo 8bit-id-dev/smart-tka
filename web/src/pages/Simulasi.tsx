@@ -10,12 +10,15 @@ type Pkg = {
   title: string;
   kind: string;
   mapel: string;
+  materi?: string | null;
+  info?: string | null;
   item_count: number;
   duration_sec: number | null;
   discuss_after_each: boolean;
   shuffle?: boolean;
   use_ai_selection?: boolean;
   jumlah_soal_soal?: number | null;
+  ai_config?: Record<string, unknown> | null;
 };
 
 type Ans = { answer: string; correct: boolean };
@@ -62,7 +65,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     (async () => {
       const { data, error } = await insforge.database
         .from('packages')
-        .select('id, title, kind, mapel, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal');
+        .select('id, title, kind, mapel, info, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal');
       if (error) setErr(error.message);
       else setPkgs((data || []) as Pkg[]);
 
@@ -439,7 +442,8 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
               <p style={{ margin: '2px 0', fontSize: 13 }}><b>Mata pelajaran:</b> {pkg.mapel}</p>
               <p style={{ margin: '2px 0', fontSize: 13 }}><b>Materi:</b> {selectedExam?.materi || pkg.mapel}</p>
               <p style={{ margin: '2px 0', fontSize: 13 }}><b>Durasi:</b> {durMin} menit</p>
-              {selectedExam?.info && <p style={{ margin: '2px 0', fontSize: 13 }}><b>Info:</b> {selectedExam.info}</p>}
+              {pkg.info && <p style={{ margin: '2px 0', fontSize: 13, lineHeight: 1.4 }}><b>Info paket:</b> {pkg.info}</p>}
+              {selectedExam?.info && <p style={{ margin: '2px 0', fontSize: 13, lineHeight: 1.4 }}><b>Info ujian:</b> {selectedExam.info}</p>}
             </div>
             {err && <p style={{ color: 'var(--warn)', fontSize: 12 }}>{err}</p>}
             <button
