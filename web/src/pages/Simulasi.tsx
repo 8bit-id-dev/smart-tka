@@ -177,6 +177,13 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     };
   }, [phase]);
 
+  useEffect(() => {
+    if (phase === 'run' && pkg) {
+      sessionStorage.setItem(`sim-${pkg.id}-draft`, JSON.stringify({ ans, i }));
+    }
+  }, [ans, i, phase, pkg]);
+
+
   async function mulai(p: Pkg, exam?: ExamSchedule) {
     setErr('');
     setAns({});
@@ -216,6 +223,14 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     setBookmarked(saved);
     setListExpanded(false);
     setPhase('run');
+    const draft = sessionStorage.getItem(`sim-${p.id}-draft`);
+    if (draft) {
+      try {
+        const d = JSON.parse(draft) as { ans?: Record<string, Ans>; i?: number };
+        if (d.ans) setAns(d.ans);
+        if (typeof d.i === 'number' && d.i > 0 && d.i < shuffled.length) setI(d.i);
+      } catch { /* noop */ }
+    }
   }
 
   async function kumpulkan() {
@@ -233,6 +248,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     const nilai = Math.round((benar / items.length) * 10000) / 100;
     setSkor(nilai);
     setPhase('hasil');
+    if (pkg && pkg.id) sessionStorage.removeItem(`sim-${pkg.id}-draft`);
 
     if (!studentId) return;
 
