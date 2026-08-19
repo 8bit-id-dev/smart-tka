@@ -19,7 +19,7 @@ export function Kelas({ profile }: { profile: AppProfile }) {
   const [siswa, setSiswa] = useState<Siswa[]>([]);
   const [anggota, setAnggota] = useState<Record<string, string[]>>({});
   const [openId, setOpenId] = useState<string | null>(null);
-  const [name, setName] = useState('Kelas 9A');
+  const [name, setName] = useState('Kelas XII.1');
   const [jenjang, setJenjang] = useState(profile.jenjang || 'sma');
   const [kode, setKode] = useState('');
   const [editId, setEditId] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export function Kelas({ profile }: { profile: AppProfile }) {
     if (error) setErr(error.message);
     else {
       setOk(`Kelas dibuat. Kode: ${code}`);
-      setName('Kelas 9A');
+      setName('Kelas XII.1');
       setKode('');
       await load();
     }
@@ -220,10 +220,12 @@ export function Kelas({ profile }: { profile: AppProfile }) {
         </div>
       )}
 
-      <form onSubmit={buat} className="form-container">
-        <div className="form-card">
-          <header className="card-header">
-            <h2 className="card-title">Buat kelas + kode</h2>
+      <div className="page-split">
+        <div className="form-sticky">
+          <form onSubmit={buat} className="form-container">
+            <div className="form-card">
+              <header className="card-header">
+                <h2 className="card-title">Buat kelas + kode</h2>
             <p className="card-subtitle">Satu siswa hanya di satu kelas. Import CSV memakai kolom kode_kelas = kode undangan ini.</p>
           </header>
 
@@ -263,6 +265,8 @@ export function Kelas({ profile }: { profile: AppProfile }) {
           </button>
         </div>
       </form>
+        </div>
+        <div>
 
       {rows.length === 0 && (
         <div className="empty-state" style={{ marginTop: 24 }}>
@@ -416,6 +420,8 @@ export function Kelas({ profile }: { profile: AppProfile }) {
           </div>
         </div>
       ))}
+        </div>
+      </div>
     </div>
   );
 }

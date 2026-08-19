@@ -333,11 +333,13 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         </div>
       )}
 
-      <form onSubmit={simpan} className="form-container">
-        <div className="form-card">
-          <header className="card-header">
-            <div>
-              <h2 className="card-title">{editId ? 'Sunting paket' : 'Identitas paket'}</h2>
+      <div className="page-split">
+        <div className="form-sticky">
+          <form onSubmit={simpan} className="form-container">
+            <div className="form-card">
+              <header className="card-header">
+                <div>
+                  <h2 className="card-title">{editId ? 'Sunting paket' : 'Identitas paket'}</h2>
               <p className="card-subtitle">Judul, jenis uji, jenjang, dan mapel/materi.</p>
             </div>
             {editId && (
@@ -704,8 +706,9 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
           </button>
         </div>
       </form>
+        </div>
 
-      <section className="form-card" style={{ marginTop: 24 }}>
+      <section className="form-card" style={{ marginTop: 0 }}>
         <header className="card-header">
           <h2 className="card-title">Paket saya ({pkgs.length})</h2>
         </header>
@@ -743,5 +746,6 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         ))}
       </section>
     </div>
+  </div>
   );
 }

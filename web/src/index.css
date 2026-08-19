@@ -48,6 +48,16 @@ body { margin: 0; background: var(--canvas); min-height: 100vh; overflow-x: hidd
 
 /* Layout */
 .page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+/* 2-panel layouts: form (kiri) | daftar (kanan), vertikal di mobile */
+.page-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+@media (min-width: 900px) {
+  .page-split { grid-template-columns: 360px 1fr; align-items: start; }
+}
+.page-split .form-sticky { position: sticky; top: 24px; }
 .page-header { margin-bottom: 24px; }
 .page-title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); margin: 0 0 4px; }
 .page-subtitle { font-size: 14px; color: var(--muted); margin: 0; }

@@ -73,11 +73,13 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
         </div>
       )}
 
-      <form onSubmit={kirim} className="form-container">
-        <div className="form-card">
-          <header className="card-header">
-            <div>
-              <h2 className="card-title">Tulis pengumuman</h2>
+      <div className="page-split">
+        <div className="form-sticky">
+        <form onSubmit={kirim} className="form-container">
+          <div className="form-card">
+            <header className="card-header">
+              <div>
+                <h2 className="card-title">Tulis pengumuman</h2>
               <p className="card-subtitle">Judul singkat dan isi lengkap pengumuman.</p>
             </div>
           </header>
@@ -121,8 +123,9 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
           </button>
         </div>
       </form>
-
-      <section className="form-card" style={{ marginTop: 24 }}>
+        </div>
+        <div>
+          <section className="form-card" style={{ marginTop: 0 }}>
         <header className="card-header">
           <h2 className="card-title">Terkirim ({rows.length})</h2>
         </header>
@@ -154,6 +157,8 @@ export function Pengumuman({ profile }: { profile: AppProfile }) {
           </article>
         ))}
       </section>
+        </div>
+      </div>
     </div>
   );
 }
