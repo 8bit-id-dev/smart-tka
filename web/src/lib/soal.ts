@@ -6,12 +6,14 @@ export type DbItem = {
   id: string;
   item_type: ItemTipe;
   mapel: string;
+  materi?: string | null;
   stem: string;
   stimulus: string | null;
   choices: unknown;
   correct_key: string;
   rationale: string;
   jenjang: string;
+  difficulty?: number | null;
 };
 
 export type MatchPairs = { kiri: string[]; kanan: string[] };

@@ -65,7 +65,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     (async () => {
       const { data, error } = await insforge.database
         .from('packages')
-        .select('id, title, kind, mapel, info, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal');
+        .select('id, title, kind, mapel, info, materi, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal');
       if (error) setErr(error.message);
       else setPkgs((data || []) as Pkg[]);
 
@@ -204,7 +204,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     }
     const { data: its, error: e2 } = await insforge.database
       .from('items')
-      .select('id, item_type, mapel, stem, stimulus, choices, correct_key, rationale, jenjang');
+      .select('id, item_type, mapel, materi, stem, stimulus, choices, correct_key, rationale, jenjang, difficulty');
     if (e2) {
       setErr(e2.message);
       return;
@@ -214,7 +214,23 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     // Deterministic shuffle/selection so resume reproduces the exact same layout (+ answers map by item_id).
     const seed = `${studentId ?? 'anon'}_${p.id}`;
     if (p.use_ai_selection && p.jumlah_soal_soal && p.jumlah_soal_soal > 0 && p.jumlah_soal_soal < ordered.length) {
-      ordered = acakListSeeded(ordered, `${seed}:sel`).slice(0, p.jumlah_soal_soal);
+      const detail = p.ai_config?.detail as Record<string, Record<string, Record<number, number>>> | undefined;
+      if (detail) {
+        // AI picks a per-student deterministic subset honoring materi x jenis soal x tingkat kesulitan.
+        let chosen: DbItem[] = [];
+        for (const [m, types] of Object.entries(detail)) {
+          for (const [t, diffs] of Object.entries(types)) {
+            for (const [d, n] of Object.entries(diffs)) {
+              if (!Number(n)) continue;
+              const pool = ordered.filter((it) => it.materi === m && it.item_type === t && Number(it.difficulty) === Number(d));
+              chosen = chosen.concat(acakListSeeded(pool, `${seed}:${m}:${t}:${d}`).slice(0, Number(n)));
+            }
+          }
+        }
+        ordered = chosen.length ? chosen : acakListSeeded(ordered, `${seed}:sel`).slice(0, p.jumlah_soal_soal);
+      } else {
+        ordered = acakListSeeded(ordered, `${seed}:sel`).slice(0, p.jumlah_soal_soal);
+      }
     }
     if (p.shuffle) ordered = acakListSeeded(ordered, `${seed}:sh`);
     const shuffled = ordered.map((it) => acakOpsiSeeded(it, `${seed}:${it.id}`));

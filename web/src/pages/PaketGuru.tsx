@@ -69,7 +69,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [infoText, setInfoText] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [selectedDiffs, setSelectedDiffs] = useState<Set<number>>(new Set());
-  const [materiJumlahMap, setMateriJumlahMap] = useState<Record<string, number>>({});
+  const [detailMap, setDetailMap] = useState<Record<string, Record<string, Record<number, number>>>>({});
   const [mySubjects, setMySubjects] = useState<string[]>([]);
   const isGuru = profile.role === 'guru';
 
@@ -133,7 +133,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     setSelectedMateris(new Set());
     setSelectedTypes(new Set());
     setSelectedDiffs(new Set());
-    setMateriJumlahMap({});
+    setDetailMap({});
     setInfoText('');
   }
 
@@ -154,12 +154,13 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     setJumlahSoal(p.jumlah_soal_soal || 10);
     if (p.ai_config && typeof p.ai_config === 'object') {
       const cfg = p.ai_config as Record<string, unknown>;
-      if (cfg.materi_counts) setMateriJumlahMap(cfg.materi_counts as Record<string, number>);
+      if (cfg.detail) setDetailMap(cfg.detail as Record<string, Record<string, Record<number, number>>>);
+      else setDetailMap({});
       const filters = cfg.filters as { item_types?: string[]; difficulties?: number[] } | undefined;
       if (filters?.item_types) setSelectedTypes(new Set(filters.item_types));
       if (filters?.difficulties) setSelectedDiffs(new Set(filters.difficulties));
     } else {
-      setMateriJumlahMap({});
+      setDetailMap({});
     }
     setInfoText(p.info || '');
     const { data } = await insforge.database.from('package_items').select('item_id').eq('package_id', p.id);
@@ -195,6 +196,25 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       return;
     }
 
+    if (useAiSelection) {
+      if (chosenTotal !== jumlahSoal) {
+        setErr(`Total soal per tingkat kesulitan (${chosenTotal}) harus sama dengan jumlah soal (${jumlahSoal}).`);
+        return;
+      }
+      for (const [m, types] of Object.entries(detailMap)) {
+        for (const [t, diffs] of Object.entries(types)) {
+          for (const [d, n] of Object.entries(diffs)) {
+            if (!n) continue;
+            const avail = filteredItems.filter((it) => it.materi === m && it.item_type === t && Number(it.difficulty) === Number(d)).length;
+            if (n > avail) {
+              setErr(`Jumlah soal (${n}) untuk ${m} / ${ITEM_TYPE_LABELS[t] || t} / kesulitan ${d} melebihi tersedia (${avail}).`);
+              return;
+            }
+          }
+        }
+      }
+    }
+
     const aiFilters = { item_types: Array.from(selectedTypes), difficulties: selectedDiffs.size > 0 ? Array.from(selectedDiffs) : undefined };
     const row = {
       school_id: profile.school_id,
@@ -211,7 +231,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       discuss_after_each: discuss,
       use_ai_selection: useAiSelection,
       jumlah_soal_soal: useAiSelection ? jumlahSoal : null,
-      ai_config: { materi_counts: materiJumlahMap, filters: aiFilters },
+      ai_config: { materi_counts: materiCounts, detail: useAiSelection ? detailMap : {}, filters: aiFilters },
     };
 
     setOk('Menyimpan…');
@@ -273,6 +293,16 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     })
     .filter((it) => (selectedTypes.size === 0 ? true : selectedTypes.has(it.item_type)))
     .filter((it) => (selectedDiffs.size === 0 ? true : it.difficulty !== null && selectedDiffs.has(Number(it.difficulty))));
+
+  // Derived: total soal per materi + total keseluruhan dari distribusi detail (materi x jenis soal x difficulty).
+  const materiCounts = Object.fromEntries(
+    Object.entries(detailMap).map(([m, types]) => [
+      m,
+      Object.values(types).reduce((a, t) => a + Object.values(t).reduce((s, n) => s + (n || 0), 0), 0),
+    ]),
+  );
+  const chosenTotal = Object.values(materiCounts).reduce((a, b) => a + b, 0);
+  const materiList = selectedMateris.size > 0 ? Array.from(selectedMateris) : uniqueMateris;
 
   if (!['guru', 'admin', 'konten'].includes(profile.role)) {
     return (
@@ -576,30 +606,59 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
 
           {useAiSelection && uniqueMateris.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <div className="form-section-title" style={{ fontSize: 12, marginBottom: 6 }}>Jumlah soal per materi (AI akan pilih acak ini untuk tiap siswa)</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {uniqueMateris.map((m) => {
-                  if (!selectedMateris.has(m) && selectedMateris.size > 0) return null;
-                  const available = filteredItems.filter((it) => it.materi === m).length;
+              <div className="form-section-title" style={{ fontSize: 12, marginBottom: 6 }}>
+                Distribusi soal (materi × jenis soal × kesulitan) — AI pilih {jumlahSoal} soal yang berbeda per siswa
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {materiList.map((m) => {
+                  const typesInMateri = [...new Set(filteredItems.filter((it) => it.materi === m).map((it) => it.item_type))].sort();
+                  const materiTotal = materiCounts[m] || 0;
                   return (
-                    <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className="type-bm" style={{ fontSize: 12, minWidth: 120 }}>{m}</span>
-                      <input
-                        type="number"
-                        className="input"
-                        style={{ width: 80 }}
-                        min={0}
-                        max={Math.max(available, 0)}
-                        value={materiJumlahMap[m] || 0}
-                        onChange={(e) => setMateriJumlahMap((cur) => ({ ...cur, [m]: Number(e.target.value) }))}
-                      />
-                      <span className="type-lab" style={{ fontSize: 11, color: 'var(--muted)' }}>({available} tersedia)</span>
+                    <div key={m} style={{ border: '1px solid var(--outline)', borderRadius: 'var(--radius-sm)', padding: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <span className="type-bm" style={{ fontSize: 12, fontWeight: 600 }}>{m}</span>
+                        <span className="type-lab" style={{ fontSize: 11 }}>total {materiTotal}</span>
+                      </div>
+                      {typesInMateri.map((t) => (
+                        <div key={t} style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 6 }}>
+                          <span className="type-bm" style={{ fontSize: 11, color: 'var(--muted)' }}>{ITEM_TYPE_LABELS[t] || t}</span>
+                          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                            {DIFF_OPTS.map((d) => {
+                              const cur = detailMap[m]?.[t]?.[d.v] || 0;
+                              const avail = filteredItems.filter((it) => it.materi === m && it.item_type === t && Number(it.difficulty) === d.v).length;
+                              return (
+                                <label key={d.v} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 64 }}>
+                                  <span className="type-lab" style={{ fontSize: 10 }}>{d.label}</span>
+                                  <input
+                                    type="number"
+                                    className="input"
+                                    style={{ width: 64 }}
+                                    min={0}
+                                    max={Math.max(avail, 0)}
+                                    value={cur}
+                                    onChange={(e) => {
+                                      const v = Math.max(0, Number(e.target.value));
+                                      const limited = Math.min(v, avail);
+                                      setDetailMap((prev) => ({
+                                        ...prev,
+                                        [m]: { ...(prev[m] || {}), [t]: { ...((prev[m] && prev[m][t]) || {}), [d.v]: limited } },
+                                      }));
+                                    }}
+                                  />
+                                  <span className="type-lab" style={{ fontSize: 10, color: 'var(--muted)' }}>({avail})</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   );
                 })}
               </div>
-              <p className="input-hint" style={{ marginTop: 6 }}>
-                Total: {Object.values(materiJumlahMap).reduce((a, b) => a + b, 0)} soal. Atur ke 0 untuk semua.
+              <p className="input-hint" style={{ marginTop: 8, fontWeight: 600 }}>
+                Total terpilih: {chosenTotal} / {jumlahSoal} soal
+                {chosenTotal !== jumlahSoal && <span style={{ color: 'var(--warn)' }}> (harus sama dengan jumlah soal)</span>}
               </p>
             </div>
           )}
