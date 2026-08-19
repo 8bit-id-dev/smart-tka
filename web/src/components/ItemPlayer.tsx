@@ -15,9 +15,17 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
   const [locked, setLocked] = useState(false);
   const [pg, setPg] = useState<string | null>(null);
   const [kom, setKom] = useState<string[]>([]);
-  const [bs, setBs] = useState<('B' | 'S' | null)[]>(() =>
-    item.item_type === 'pernyataan_bs' ? optionsOf(item).map(() => null) : [],
-  );
+  const isPernyataan = item.item_type === 'pernyataan_bs';
+  const [bs, setBs] = useState<('B' | 'S' | null)[]>(() => {
+    if (!isPernyataan) return [];
+    const o = optionsOf(item);
+    return Array.isArray(o) ? o.map(() => null) : [];
+  });
+  const [statements, setStatements] = useState<string[]>(() => {
+    if (!isPernyataan) return [];
+    const o = optionsOf(item);
+    return Array.isArray(o) ? [...o] : [];
+  });
 
   // State for matching (mencocokkan) and essay (uraian)
   const [matchAns, setMatchAns] = useState<Record<number, string>>({});
@@ -136,6 +144,17 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
     onLocked?.(correct());
   }
 
+  function pickBs(idx: number, v: 'B' | 'S') {
+    const next = bs.map((x, i) => (i === idx ? v : x));
+    setBs(next);
+    pushUpdate(pg, kom, next, matchAns, essayAns);
+  }
+
+  function addStatementRow() {
+    setStatements((prev) => [...prev, '']);
+    setBs((prev) => [...prev, null]);
+  }
+
   return (
     <div>
       {item.stimulus && (
@@ -156,7 +175,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
                 key={L}
                 type="button"
                 disabled={locked && showBahas}
-                className={`choice ${pg === L ? 'sel' : ''} ${reveal && L === key ? 'ok' : ''} ${reveal && pg === L && pg !== key ? 'bad' : ''}`}
+                className={`choice ${pg === L ? 'sel x-mark' : ''} ${reveal && L === key ? 'ok' : ''} ${reveal && pg === L && pg !== key ? 'bad' : ''}`}
                 onClick={() => {
                   setPg(L);
                   pushUpdate(L, kom, bs, matchAns, essayAns);
@@ -197,31 +216,90 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
       )}
 
       {item.item_type === 'pernyataan_bs' && (
-        <div className="bs-list">
-          {opts.map((s, idx) => (
-            <div key={idx} className={`bs-row ${bs[idx] ? 'answered' : ''}`}>
-              <p>
-                {idx + 1}. <MathText text={s} />
-              </p>
-              <div className="bs-btns">
-                {(['B', 'S'] as const).map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    disabled={locked && showBahas}
-                    className={`choice bs ${bs[idx] === v ? 'sel' : ''} ${reveal && Array.isArray(key) && key[idx] === v ? 'ok' : ''}`}
-                    onClick={() => {
-                      const next = bs.map((x, i) => (i === idx ? v : x));
-                      setBs(next);
-                      pushUpdate(pg, kom, next, matchAns, essayAns);
-                    }}
-                  >
-                    {v === 'B' ? 'Benar' : 'Salah'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+        <div style={{ marginTop: 14, overflowX: 'auto' }}>
+          <table className="pernyataan-table">
+            <thead>
+              <tr>
+                <th className="center">#</th>
+                <th>Pernyataan</th>
+                <th className="center">Benar</th>
+                <th className="center">Salah</th>
+              </tr>
+            </thead>
+            <tbody>
+              {statements.map((s, idx) => {
+                const chosen = bs[idx];
+                const rowKey = Array.isArray(key) && idx < key.length ? key[idx] : undefined;
+                const correctRow = rowKey !== undefined;
+                const isWrong = correctRow && chosen != null && chosen !== rowKey;
+                const readOnly = !s.trim() && idx < (Array.isArray(opts) ? opts.length : 0);
+                return (
+                  <tr key={idx}>
+                    <td className="center" style={{ paddingTop: 10 }}>{idx + 1}</td>
+                    <td>
+                      {reveal && readOnly ? (
+                        <MathText text={(opts[idx] as string) || ''} />
+                      ) : (
+                        <input
+                          type="text"
+                          className="input inp-sm"
+                          value={s}
+                          disabled={locked && showBahas}
+                          onChange={(e) => {
+                            setStatements((prev) => {
+                              const next = [...prev];
+                              next[idx] = e.target.value;
+                              return next;
+                            });
+                          }}
+                          placeholder={`Pernyataan ${idx + 1}`}
+                        />
+                      )}
+                      {reveal && isWrong && <span className="type-lab" style={{ color: '#dc2626', marginLeft: 6 }}>salah</span>}
+                    </td>
+                    <td className="center" style={{ paddingTop: 8 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name={`bs-${idx}`}
+                          value="B"
+                          checked={chosen === 'B'}
+                          disabled={locked && showBahas}
+                          onChange={() => pickBs(idx, 'B')}
+                        />
+                        <span>Benar</span>
+                      </label>
+                    </td>
+                    <td className="center" style={{ paddingTop: 8 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name={`bs-${idx}`}
+                          value="S"
+                          checked={chosen === 'S'}
+                          disabled={locked && showBahas}
+                          onChange={() => pickBs(idx, 'S')}
+                        />
+                        <span>Salah</span>
+                      </label>
+                    </td>
+                    {correctRow && reveal && (
+                      <td className="center" style={{ paddingTop: 8 }}>
+                        <span className={`chip ${chosen === rowKey ? 'chip-ok' : 'chip-bad'}`} style={{ fontSize: 10 }}>
+                          {chosen === rowKey ? 'benar' : chosen == null ? '-' : 'salah'}
+                        </span>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {!locked && (
+            <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={addStatementRow}>
+              + Tambah baris
+            </button>
+          )}
         </div>
       )}
 
