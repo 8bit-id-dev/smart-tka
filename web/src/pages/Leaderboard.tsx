@@ -41,10 +41,7 @@ export function Leaderboard({ me }: { me: AppProfile }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [view, setView] = useState<'leaderboard' | 'store'>('leaderboard');
-  const [owned, setOwned] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return [];
-    return JSON.parse(localStorage.getItem(`smart_tka_owned_${me.id}`) || '[]');
-  });
+  const [owned, setOwned] = useState<string[]>([]);
 
   useEffect(() => {
     void (async () => {
@@ -77,6 +74,12 @@ export function Leaderboard({ me }: { me: AppProfile }) {
       }));
       setRows(mapped);
 
+      const inv = await insforge.database
+        .from('store_inventory')
+        .select('item_id')
+        .eq('profile_id', me.id);
+      if (!inv.error && inv.data) setOwned((inv.data as { item_id: string }[]).map((r) => r.item_id));
+
       const idx = mapped.findIndex((r) => r.profile_id === me.id);
       setMyRank(idx >= 0 ? idx + 1 : null);
       setLoading(false);
@@ -89,14 +92,17 @@ export function Leaderboard({ me }: { me: AppProfile }) {
     setStoreErr('');
     if (!myGp || myGp.xp < item.cost) { setStoreErr('XP tidak cukup untuk membeli item ini.'); return; }
     if (owned.includes(item.id)) { setStoreErr('Item sudah dimiliki.'); return; }
-    const { error } = await insforge.database
+    const { error: invErr } = await insforge.database
+      .from('store_inventory')
+      .insert({ profile_id: me.id, item_id: item.id });
+    if (invErr) { setStoreErr(invErr.message); return; }
+    const { error: xpErr } = await insforge.database
       .from('gamification_profiles')
       .update({ xp: myGp.xp - item.cost })
       .eq('profile_id', me.id);
-    if (error) { setStoreErr(error.message); return; }
-    const newOwned = [...owned, item.id];
-    localStorage.setItem(`smart_tka_owned_${me.id}`, JSON.stringify(newOwned));
+    if (xpErr) { setStoreErr(xpErr.message); return; }
     setMyGp({ ...myGp, xp: myGp.xp - item.cost });
+    const newOwned = [...owned, item.id];
     setOwned(newOwned);
   }
 
