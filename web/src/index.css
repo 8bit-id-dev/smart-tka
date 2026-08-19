@@ -2405,3 +2405,4 @@ html.dark .notif-item { border-bottom-color: var(--card-border); }
 .photo-menu-item-danger:hover { background: rgba(211, 47, 47, 0.1); color: var(--danger); }
 .greeting-title { font-size: 14px; color: var(--accent); font-weight: 600; margin-top: 4px; display: block; }
 .seg { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--outline); background: var(--card); color: var(--ink-light); font-size: 13px; font-weight: 500; cursor: pointer; } .seg:hover { color: var(--ink); border-color: var(--accent); } .seg-active { padding: 6px 14px; border-radius: 6px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+html.dark .seg { color: var(--muted-light); } html.dark input[type="text"],html.dark input[type="password"] { background: var(--card); color: var(--ink); border-color: var(--outline); }
