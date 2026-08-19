@@ -112,3 +112,51 @@ export function acakOpsi(item: DbItem): DbItem {
   }
   return { ...item, choices: newOpts, correct_key };
 }
+
+/** Deterministic PRNG (mulberry32) so a student's exam layout is identical on resume. */
+export function mulberry32(seed: string): () => number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) | 0;
+  }
+  let a = h >>> 0;
+  if (a === 0) a = 1;
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t, 9)) | 0;
+    return ((t ^ (t >>> 7)) >>> 0) / 4294967296;
+  };
+}
+
+export function acakListSeeded<T>(arr: T[], seed: string): T[] {
+  const rng = mulberry32(seed);
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+export function acakOpsiSeeded(item: DbItem, seed: string): DbItem {
+  if (item.item_type === 'pernyataan_bs' || item.item_type === 'mencocokkan' || item.item_type === 'uraian') {
+    return item;
+  }
+  const opts = optionsOf(item);
+  const idxs = acakListSeeded(opts.map((_, i) => i), seed);
+  const newOpts = idxs.map((i) => opts[i]);
+  const hurufLama = idxs.map((i) => LETTERS[i]);
+  const remap = (L: string) => {
+    const pos = hurufLama.indexOf(L as (typeof LETTERS)[number]);
+    return pos >= 0 ? LETTERS[pos] : L;
+  };
+  const key = parseKey(item);
+  let correct_key = item.correct_key;
+  if (item.item_type === 'pg' || item.item_type === 'single') {
+    correct_key = remap(String(key));
+  } else if (item.item_type === 'pg_kompleks' && Array.isArray(key)) {
+    correct_key = JSON.stringify(key.map(remap).sort());
+  }
+  return { ...item, choices: newOpts, correct_key };
+}

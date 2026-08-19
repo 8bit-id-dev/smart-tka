@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ItemPlayer } from '../components/ItemPlayer';
 import { insforge } from '../lib/insforge';
-import { acakList, acakOpsi, type DbItem } from '../lib/soal';
+import { acakListSeeded, acakOpsiSeeded, type DbItem } from '../lib/soal';
 import { toggleBookmark, isBookmarked } from '../lib/bookmarks';
 import { Icons } from '../AppShell';
 
@@ -56,6 +56,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   const [schedules, setSchedules] = useState<ExamSchedule[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamSchedule | null>(null);
   const [identity, setIdentity] = useState<Identity>({ name: '', kelas: '', nisn: '', token: '' });
+  const [attemptId, setAttemptId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -207,11 +208,13 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     }
     const map = new Map(((its || []) as DbItem[]).map((x) => [x.id, x]));
     let ordered = ids.map((id) => map.get(id)).filter(Boolean) as DbItem[];
+    // Deterministic shuffle/selection so resume reproduces the exact same layout (+ answers map by item_id).
+    const seed = `${studentId ?? 'anon'}_${p.id}`;
     if (p.use_ai_selection && p.jumlah_soal_soal && p.jumlah_soal_soal > 0 && p.jumlah_soal_soal < ordered.length) {
-      ordered = acakList(ordered).slice(0, p.jumlah_soal_soal);
+      ordered = acakListSeeded(ordered, `${seed}:sel`).slice(0, p.jumlah_soal_soal);
     }
-    if (p.shuffle) ordered = acakList(ordered);
-    const shuffled = ordered.map(acakOpsi);
+    if (p.shuffle) ordered = acakListSeeded(ordered, `${seed}:sh`);
+    const shuffled = ordered.map((it) => acakOpsiSeeded(it, `${seed}:${it.id}`));
     setItems(shuffled);
     setPkg(p);
     setI(0);
@@ -231,9 +234,101 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
         if (typeof d.i === 'number' && d.i > 0 && d.i < shuffled.length) setI(d.i);
       } catch { /* noop */ }
     }
+    if (studentId) {
+      void syncAttempt(p, exam ?? null, shuffled);
+    }
+  }
+
+  /* Persist attempt + enable crash recovery.
+   * Anti-cheat: for scheduled exams we only resume a previous attempt if
+   * exam_resume_allowed() returns true (status still in_progress and the
+   * schedule window is still open). A submitted / exited attempt is never
+   * resumed, so a user cannot re-enter an already finished exam. */
+  async function syncAttempt(p: Pkg, exam: ExamSchedule | null, shuffled: DbItem[]) {
+    const examId: string | null = exam?.id ?? null;
+    let attempt: { id: string } | null = null;
+
+    if (examId && studentId) {
+      const { data: ex, error: exErr } = await insforge.database
+        .from('attempts')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('scheduled_exam_id', examId)
+        .eq('status', 'in_progress')
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!exErr && ex?.id) {
+        const { data: allowed } = await insforge.database.rpc('exam_resume_allowed', { p_attempt_id: ex.id });
+        if (allowed) {
+          attempt = { id: ex.id as string };
+        } else {
+          // An in_progress attempt exists but the schedule window is closed (or it expired):
+          // the exam cannot be started again.
+          setErr('Ujian sudah tidak dapat dilanjutkan: jadwal sudah tutup.');
+          return;
+        }
+      }
+    }
+
+    if (!attempt) {
+      const { data: ins, error: insErr } = await insforge.database
+        .from('attempts')
+        .insert({
+          package_id: p.id,
+          student_id: studentId,
+          status: 'in_progress',
+          started_at: new Date().toISOString(),
+          scheduled_exam_id: examId,
+        })
+        .select('id');
+      if (insErr) {
+        // Unique violation (23505) => another tab already created the in_progress attempt; resume it.
+        if ((insErr as any).code === '23505' && examId && studentId) {
+          const { data: ex2 } = await insforge.database
+            .from('attempts')
+            .select('id')
+            .eq('student_id', studentId)
+            .eq('scheduled_exam_id', examId)
+            .eq('status', 'in_progress')
+            .order('started_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (ex2?.id) attempt = { id: ex2.id as string };
+        }
+        if (!attempt) { setErr('Gagal membuat sesi ujian: ' + insErr.message); return; }
+      } else {
+        if (!ins?.[0]?.id) { setErr('Gagal membuat sesi ujian.'); return; }
+        attempt = { id: ins[0].id as string };
+      }
+    }
+    setAttemptId(attempt.id);
+
+    const { data: savedAns } = await insforge.database
+      .from('attempt_answers')
+      .select('item_id, answer, is_correct')
+      .eq('attempt_id', attempt.id);
+    if (savedAns && savedAns.length > 0) {
+      const restored: Record<string, Ans> = {};
+      const answeredIds: string[] = [];
+      shuffled.forEach((it) => {
+        const match = (savedAns as any[]).find((a) => a.item_id === it.id);
+        if (match) {
+          restored[it.id] = { answer: match.answer || '', correct: !!match.is_correct };
+          answeredIds.push(it.id);
+        }
+      });
+      setAns(restored);
+      if (answeredIds.length > 0 && answeredIds.length < shuffled.length) {
+        const answered = new Set(answeredIds);
+        const firstUn = shuffled.findIndex((it) => !answered.has(it.id));
+        if (firstUn >= 0) setI(firstUn);
+      }
+    }
   }
 
   async function kumpulkan() {
+    if (phase === 'hasil') return;
     try { (document as any).exitFullscreen?.(); } catch { /* noop */ }
     document.body.style.userSelect = 'normal';
     document.onselectstart = null;
@@ -252,22 +347,26 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
 
     if (!studentId) return;
 
-    const { data, error } = await insforge.database
-      .from('attempts')
-      .insert({
-        package_id: pkg.id,
-        student_id: studentId,
-        status: 'submitted',
-        submitted_at: new Date().toISOString(),
-        score: nilai,
-      })
-      .select('id');
-    if (error) {
-      setErr('Nilai dihitung, tapi belum tersimpan ke laporan: ' + error.message);
-      return;
+    let aid = attemptId;
+    if (!aid) {
+      const { data, error } = await insforge.database
+        .from('attempts')
+        .insert({
+          package_id: pkg.id,
+          student_id: studentId,
+          status: 'in_progress',
+          started_at: new Date().toISOString(),
+          scheduled_exam_id: selectedExam?.id ?? null,
+        })
+        .select('id');
+      if (error) {
+        setErr('Nilai dihitung, tapi belum tersimpan ke laporan: ' + error.message);
+        return;
+      }
+      aid = (data?.[0] as { id?: string } | undefined)?.id ?? null;
     }
-    const aid = (data?.[0] as { id?: string } | undefined)?.id;
     if (!aid) return;
+
     const rows = items.map((it) => ({
       attempt_id: aid,
       item_id: it.id,
@@ -275,7 +374,13 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
       is_correct: !!ans[it.id]?.correct,
       locked_at: new Date().toISOString(),
     }));
-    await insforge.database.from('attempt_answers').insert(rows);
+    await insforge.database.from('attempt_answers').upsert(rows, { onConflict: 'attempt_id,item_id' });
+
+    await insforge.database
+      .from('attempts')
+      .update({ status: 'submitted', submitted_at: new Date().toISOString(), score: nilai })
+      .eq('id', aid);
+    setAttemptId(null);
 
     const xpEarned = Math.round(nilai * 2) + 20;
     if (xpEarned > 0) {
@@ -340,7 +445,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
             <button
               type="button"
               className="continue-btn"
-              disabled={!identity.name || !identity.kelas || !identity.nisn || (isUjian && selectedExam?.token && !identity.token)}
+              disabled={Boolean(!identity.name || !identity.kelas || !identity.nisn || (isUjian && selectedExam?.token && !identity.token))}
               onClick={async () => {
                 setErr('');
                 if (!identity.name || !identity.kelas || !identity.nisn) { setErr('Nama, Kelas, dan NISN wajib diisi.'); return; }
@@ -570,7 +675,18 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
             item={item}
             showBahas={bahasLangsung}
             hideKeys={!bahasLangsung}
-            onUpdate={(info) => setAns((m) => ({ ...m, [item.id]: info }))}
+             onUpdate={(info) => {
+               setAns((m) => ({ ...m, [item.id]: info }));
+               if (attemptId && studentId) {
+                 void insforge.database.from('attempt_answers').upsert({
+                   attempt_id: attemptId,
+                   item_id: item.id,
+                   answer: info.answer ?? '',
+                   is_correct: !!info.correct,
+                   locked_at: new Date().toISOString(),
+                 }, { onConflict: 'attempt_id,item_id' });
+               }
+             }}
           />
         )}
         <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'space-between', alignItems: 'center' }}>

@@ -270,7 +270,7 @@ export function Laporan({ me, onTab }: { me: AppProfile; onTab?: (t: Tab) => voi
   return <LaporanGuru me={me} onTab={onTab} />;
 }
 
-function LaporanGuru({ me, onTab }: { me: AppProfile; onTab?: (t: Tab) => void }) {
+function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) => void }) {
   const [rows, setRows] = useState<Attempt[]>([]);
   const [pkgs, setPkgs] = useState<Pkg[]>([]);
   const [profs, setProfs] = useState<Prof[]>([]);
