@@ -13,6 +13,9 @@ type Attempt = {
   tab_leave_count?: number | null;
 };
 type Pkg = { id: string; title: string; mapel: string; kind: string };
+
+const UJIAN_KINDS = ['simulasi', 'ujian_kelas', 'lab_25'];
+const isUjian = (kind: string) => UJIAN_KINDS.includes(kind);
 type Prof = { id: string; full_name: string | null };
 type Cls = { id: string; name: string };
 type CS = { class_id: string; profile_id: string };
@@ -85,8 +88,8 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
     return rows.filter((r) => {
       const p = r.package_id ? pkgMap.get(r.package_id) : null;
       const kind = p ? p.kind : 'latihan';
-      if (filterKind === 'simulasi' && kind !== 'simulasi') return false;
-      if (filterKind === 'latihan' && kind === 'simulasi') return false;
+      if (filterKind === 'latihan' && isUjian(kind)) return false;
+      if (filterKind === 'ujian' && !isUjian(kind)) return false;
       return true;
     });
   }, [rows, pkgMap, filterKind]);
@@ -181,11 +184,11 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
       <section className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
           <h3 className="card-title" style={{ margin: 0 }}>Riwayat Pengerjaan</h3>
-          <select className="input" style={{ maxWidth: 200, padding: '8px 12px', fontSize: 13 }} value={filterKind} onChange={(e) => setFilterKind(e.target.value)}>
-            <option value="semua">Semua Sesi</option>
-            <option value="simulasi">Simulasi Paket</option>
-            <option value="latihan">Latihan Bebas</option>
-          </select>
+            <select className="input" style={{ maxWidth: 200, padding: '8px 12px', fontSize: 13 }} value={filterKind} onChange={(e) => setFilterKind(e.target.value)}>
+              <option value="semua">Semua Sesi</option>
+              <option value="latihan">Latihan</option>
+              <option value="ujian">Ujian (simulasi/ujian kelas)</option>
+            </select>
         </div>
 
         {loading ? (
@@ -279,6 +282,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   const [err, setErr] = useState('');
   const [fPkg, setFPkg] = useState('');
   const [fKelas, setFKelas] = useState('');
+  const [fKind, setFKIND] = useState<'semua' | 'latihan' | 'ujian'>('semua');
 
   async function load() {
     setErr('');
@@ -321,7 +325,11 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
 
   const selesai = rows.filter((r) => r.status === 'submitted' || r.score != null);
   const filtered = selesai.filter((r) => {
+    const p = r.package_id ? pkgMap.get(r.package_id) : null;
+    const kind = p ? p.kind : 'latihan';
     if (fPkg && r.package_id !== fPkg) return false;
+    if (fKind === 'latihan' && isUjian(kind)) return false;
+    if (fKind === 'ujian' && !isUjian(kind)) return false;
     if (fKelas) {
       const kid = cs.find((x) => x.profile_id === r.student_id && x.class_id === fKelas);
       if (!kid) return false;
@@ -374,6 +382,14 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
+            </select>
+          </div>
+          <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+            <label className="form-label">Jenis</label>
+            <select className="input" value={fKind} onChange={(e) => setFKIND(e.target.value as 'semua' | 'latihan' | 'ujian')}>
+              <option value="semua">Semua</option>
+              <option value="latihan">Latihan</option>
+              <option value="ujian">Ujian (simulasi/ujian kelas)</option>
             </select>
           </div>
         </div>
