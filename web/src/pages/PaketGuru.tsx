@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { KurikulumCrud } from '../components/KurikulumCrud';
 import { insforge, type AppProfile } from '../lib/insforge';
-import type { MapelRow } from '../lib/kurikulum';
 
 type ItemRow = { id: string; stem: string; mapel: string; materi?: string | null; item_type: string; difficulty?: number | null };
 type Pkg = {
@@ -58,8 +56,6 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [kind, setKind] = useState<(typeof KINDS)[number]['id']>('latihan');
   const [mapel, setMapel] = useState('');
   const [materi, setMateri] = useState('');
-  const [mapelId, setMapelId] = useState('');
-  const [materiId, setMateriId] = useState('');
   const [jenjang, setJenjang] = useState(profile.jenjang || 'sma');
   const [menit, setMenit] = useState(15);
   const [shuffle, setShuffle] = useState(true);
@@ -77,6 +73,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [selectedDiffs, setSelectedDiffs] = useState<Set<number>>(new Set());
   const [mySubjects, setMySubjects] = useState<string[]>([]);
+  const [mapelOptions, setMapelOptions] = useState<string[]>([]);
   const isGuru = profile.role === 'guru';
 
   const discuss = kind === 'latihan';
@@ -108,6 +105,24 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   }, [profile.id, isGuru]);
 
   useEffect(() => {
+    void (async () => {
+      const { data, error } = await insforge.database.from('items').select('mapel');
+      if (!error && data) {
+        setMapelOptions([...new Set((data as { mapel: string }[]).map((r) => r.mapel).filter(Boolean))].sort());
+      }
+    })();
+  }, [jenjang]);
+
+  useEffect(() => {
+    if (isGuru && mySubjects.length > 0 && !mapel) {
+      const first = mySubjects[0];
+      setMapel(first);
+      setMateri('');
+      setSelectedMateris(new Set());
+    }
+  }, [isGuru, mySubjects, mapel]);
+
+  useEffect(() => {
     if (!mapel) {
       setItems([]);
       return;
@@ -133,6 +148,8 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     setTitle('');
     setPicked([]);
     setKind('latihan');
+    setMapel('');
+    setMateri('');
     setMenit(15);
     setUseAiSelection(true);
     setActiveTypes(['pg', 'pg_kompleks', 'pernyataan_bs']);
@@ -400,35 +417,49 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
 
           <div className="form-section">
             <div className="form-section-title">Mapel <span className="req"></span></div>
-            {mapel ? (
+            <select
+              className="select"
+              value={mapel}
+              disabled={isGuru}
+              required
+              onChange={(e) => {
+                const m = e.target.value;
+                setMapel(m);
+                setMateri('');
+                setSelectedMateris(new Set());
+              }}
+            >
+              <option value="" disabled>Pilih mapel</option>
+              {(isGuru ? mySubjects : mapelOptions).map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+            {mapel && (
               <p className="input-hint">
-                {mapel}{Array.from(selectedMateris).length ? ` · ${Array.from(selectedMateris).join(', ')}` : ''}
+                {mapel}{selectedMateris.size ? ` · ${Array.from(selectedMateris).join(', ')}` : ''}
               </p>
-            ) : (
-              <p className="input-hint">Belum dipilih</p>
             )}
+
             <div className="hint-panel" style={{ marginTop: 8 }}>
-              <KurikulumCrud
-                profile={profile}
-                jenjang={jenjang}
-                pilihMapelId={mapelId}
-                pilihMateriId={materiId}
-                allowedSubjects={isGuru ? mySubjects : undefined}
-                isAdmin={profile.role !== 'guru'}
-                onPilih={(mp: MapelRow | null) => {
-                  if (isGuru && mp && !mySubjects.includes(mp.name)) {
-                    setErr(`Anda tidak mengajar "${mp.name}". Hubungi admin untuk assignment.`);
-                    return;
-                  }
-                  setMapelId(mp?.id || '');
-                  setMateriId('');
-                  setMapel(mp?.name || '');
-                  setMateri('');
-                  setSelectedMateris(new Set());
+              <div className="form-section-title" style={{ fontSize: 12, marginBottom: 6 }}>Materi (pilih satu atau lebih)</div>
+              <select
+                className="select"
+                multiple
+                style={{ minHeight: 120 }}
+                value={Array.from(selectedMateris)}
+                onChange={(e) => {
+                  const vals = Array.from(e.target.selectedOptions).map((o) => o.value);
+                  setSelectedMateris(new Set(vals));
+                  setMateri(vals.join(','));
                 }}
-            />
+                disabled={!mapel}
+              >
+                {uniqueMateris.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
 
         <div className="form-section">
           <div className="form-group">
