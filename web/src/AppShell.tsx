@@ -453,10 +453,16 @@ export function AppShell({
         <>
           <header className="shell-bar">
             <div className="shell-bar-left">
-              <div className="app-logo-wrapper">
-                <img src={AppIcon} alt="SMART-TKA" className="app-logo" />
-                <strong className="brand">SMART-TKA</strong>
-              </div>
+                <div
+                  className="app-logo-wrapper"
+                  role="button"
+                  title="Beranda"
+                  onClick={() => onTab('beranda')}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <img src={AppIcon} alt="SMART-TKA" className="app-logo" />
+                  <strong className="brand">SMART-TKA</strong>
+                </div>
             </div>
             <div className="shell-bar-right">
               {!isLightOnlyRole && (
