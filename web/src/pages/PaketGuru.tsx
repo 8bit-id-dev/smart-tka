@@ -346,7 +346,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         </div>
       )}
 
-      <div className="page-split">
+      <div className={`page-split${useAiSelection ? ' ai-only' : ''}`}>
         <div className="form-sticky">
           <form onSubmit={simpan} className="form-container">
             <div className="form-card">
@@ -546,6 +546,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
           </div>
         </div>
 
+        {!useAiSelection && (
         <div className="form-card">
           <header className="card-header">
             <h2 className="card-title">Pilih soal</h2>
@@ -708,6 +709,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             ))}
           </div>
         </div>
+        )}
 
         <div className="actions">
           <button className="btn btn-primary" type="submit" disabled={busy}>

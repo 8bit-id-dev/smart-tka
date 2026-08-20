@@ -58,6 +58,7 @@ body { margin: 0; background: var(--canvas); min-height: 100vh; overflow-x: hidd
   grid-template-columns: 1fr;
   gap: 24px;
 }
+.page-split.ai-only { grid-template-columns: 1fr; }
 @media (min-width: 900px) {
   .page-split { grid-template-columns: 360px 1fr; align-items: start; }
 }
