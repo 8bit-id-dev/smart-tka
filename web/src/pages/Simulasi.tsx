@@ -221,7 +221,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     let endsAtMs: number | null = null;
 
     if (p.use_ai_selection) {
-      const token = identity.token || `${studentId || 'anon'}_${p.id}_${Date.now()}`;
+      const token = identity.token || `${studentId || 'anon'}_${p.id}`;
       const { data, error } = await insforge.database.rpc('smart_attempt_start', {
         p_package_id: p.id,
         p_token: token,
