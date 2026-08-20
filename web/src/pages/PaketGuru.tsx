@@ -63,7 +63,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [jenjang, setJenjang] = useState(profile.jenjang || 'sma');
   const [menit, setMenit] = useState(15);
   const [shuffle, setShuffle] = useState(true);
-  const [useAiSelection, setUseAiSelection] = useState(false);
+  const [useAiSelection, setUseAiSelection] = useState(true);
   const [jumlahSoal, setJumlahSoal] = useState(10);
   const [selectedMateris, setSelectedMateris] = useState<Set<string>>(new Set());
   const [infoText, setInfoText] = useState('');
@@ -108,7 +108,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     void (async () => {
       const { data, error } = await insforge.database
         .from('items')
-        .select('id, stem, mapel, materi, item_type')
+        .select('id, stem, mapel, materi, item_type, difficulty')
         .eq('mapel', mapel)
         .order('mapel')
         .order('materi');
@@ -189,11 +189,6 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       setErr('Jumlah soal acak harus minimal 1.');
       return;
     }
-    if (useAiSelection && jumlahSoal > picked.length) {
-      setErr(`Jumlah soal (${jumlahSoal}) melebihi jumlah soal yang dipilih (${picked.length}).`);
-      return;
-    }
-
     if (useAiSelection) {
       if (jumlahSoal > filteredItems.length && filteredItems.length > 0) {
         setErr(`Jumlah soal (${jumlahSoal}) melebihi bank soal yang tersedia (${filteredItems.length}).`);
@@ -299,6 +294,12 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       .filter((it) => (selectedDiffs.size === 0 ? true : it.difficulty !== null && selectedDiffs.has(Number(it.difficulty)))),
     [itemsByMateri, selectedTypes, selectedDiffs]
   );
+
+  useEffect(() => {
+    if (useAiSelection && filteredItems.length > 0) {
+      setJumlahSoal(filteredItems.length);
+    }
+  }, [useAiSelection, filteredItems.length]);
 
   if (!['guru', 'admin', 'konten'].includes(profile.role)) {
     return (
@@ -452,7 +453,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                     checked={useAiSelection}
                     onChange={(e) => {
                       setUseAiSelection(e.target.checked);
-                      if (e.target.checked && jumlahSoal > picked.length) setJumlahSoal(picked.length);
+                      if (e.target.checked && jumlahSoal > filteredItems.length) setJumlahSoal(filteredItems.length);
                     }}
                   />
                   <label className="form-label" htmlFor="pkg-ai">
@@ -467,12 +468,12 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                       className="input"
                       style={{ width: 80 }}
                       min={1}
-                      max={Math.max(picked.length, 1)}
+                      max={Math.max(filteredItems.length, 1)}
                       value={jumlahSoal}
-                      onChange={(e) => setJumlahSoal(Math.min(Number(e.target.value), picked.length))}
+                      onChange={(e) => setJumlahSoal(Math.min(Number(e.target.value), filteredItems.length))}
                     />
                     <p className="input-hint" style={{ marginTop: 4 }}>
-                      {picked.length} soal tersedia, AI pilih {jumlahSoal} yang berbeda untuk tiap siswa.
+                      {filteredItems.length} soal tersedia, AI pilih {jumlahSoal} yang berbeda untuk tiap siswa.
                     </p>
                   </div>
                 )}
