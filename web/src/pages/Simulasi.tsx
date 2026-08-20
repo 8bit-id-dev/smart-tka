@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ItemPlayer } from '../components/ItemPlayer';
 import { insforge } from '../lib/insforge';
 import { acakListSeeded, acakOpsiSeeded, type DbItem } from '../lib/soal';
@@ -56,6 +56,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   const [showCheatWarning, setShowCheatWarning] = useState(false);
   const [cheatMessage, setCheatMessage] = useState('');
   const [subTab, setSubTab] = useState<'latihan' | 'ujian'>('latihan');
+  const fsEnteringRef = useRef(false);
   const [schedules, setSchedules] = useState<ExamSchedule[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamSchedule | null>(null);
   const [identity, setIdentity] = useState<Identity>({ name: '', kelas: '', nisn: '', token: '' });
@@ -103,10 +104,17 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
       try {
         const doc = window.document;
         const docEl = doc.documentElement;
+        fsEnteringRef.current = true;
+        const onFsChange = () => {
+          fsEnteringRef.current = false;
+          doc.removeEventListener('fullscreenchange', onFsChange);
+        };
+        doc.addEventListener('fullscreenchange', onFsChange, { once: false });
         const fs = docEl.requestFullscreen || (docEl as any).webkitRequestFullscreen || (doc as any).msRequestFullscreen;
         if (fs) await fs.call(docEl);
       } catch {
         /* fullscreen may be blocked by browser policy */
+        fsEnteringRef.current = false;
       }
     }
     void enterFullscreen();
@@ -140,6 +148,10 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     }
 
     function handleBlur() {
+      if (fsEnteringRef.current) {
+        fsEnteringRef.current = false;
+        return;
+      }
       setCheatCount((c) => {
         const next = c + 1;
         if (next >= 3) {
