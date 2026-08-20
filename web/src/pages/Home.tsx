@@ -197,7 +197,8 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
   const simulasiPkg = useMemo(
     () =>
       pkgs.find((p) => assignedPkgIds.includes(p.id) && p.kind === 'simulasi') ||
-      (assignedPkgIds.length > 0 ? pkgs.find((p) => assignedPkgIds.includes(p.id)) : undefined) ||
+      pkgs.find((p) => assignedPkgIds.includes(p.id)) ||
+      pkgs.find((p) => p.kind === 'simulasi') ||
       pkgs[0],
     [pkgs, assignedPkgIds]
   );
