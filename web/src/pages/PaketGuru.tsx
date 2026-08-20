@@ -64,7 +64,13 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [menit, setMenit] = useState(15);
   const [shuffle, setShuffle] = useState(true);
   const [useAiSelection, setUseAiSelection] = useState(true);
-  const [jumlahSoal, setJumlahSoal] = useState(10);
+  const [jumlahPerTipe, setJumlahPerTipe] = useState<Record<string, number>>(
+    ALL_ITEM_TYPES.reduce((acc, t) => ({ ...acc, [t]: 0 }), {})
+  );
+  const jumlahSoalTotal = useMemo(
+    () => Object.values(jumlahPerTipe).reduce((s, n) => s + (n || 0), 0),
+    [jumlahPerTipe]
+  );
   const [selectedMateris, setSelectedMateris] = useState<Set<string>>(new Set());
   const [infoText, setInfoText] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
@@ -127,8 +133,8 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     setPicked([]);
     setKind('latihan');
     setMenit(15);
-     setUseAiSelection(false);
-    setJumlahSoal(10);
+     setUseAiSelection(true);
+    setJumlahPerTipe(ALL_ITEM_TYPES.reduce((acc, t) => ({ ...acc, [t]: 0 }), {}));
     setSelectedMateris(new Set());
     setSelectedTypes(new Set());
     setSelectedDiffs(new Set());
@@ -149,14 +155,13 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     setMenit(p.duration_sec ? Math.round(p.duration_sec / 60) : 0);
     setShuffle(p.shuffle);
     setUseAiSelection(p.use_ai_selection || false);
-    setJumlahSoal(p.jumlah_soal_soal || 10);
     if (p.ai_config && typeof p.ai_config === 'object') {
       const cfg = p.ai_config as Record<string, unknown>;
       if (Array.isArray(cfg.materi)) setSelectedMateris(new Set(cfg.materi as string[]));
       else setSelectedMateris(p.materi ? new Set(p.materi.split(',').map((s) => s.trim()).filter(Boolean)) : new Set());
       if (Array.isArray(cfg.item_types)) setSelectedTypes(new Set(cfg.item_types as string[]));
       if (Array.isArray(cfg.difficulties)) setSelectedDiffs(new Set(cfg.difficulties as number[]));
-      if (cfg.jumlah_soal != null) setJumlahSoal(cfg.jumlah_soal as number);
+      if (cfg.jumlah_per_type && typeof cfg.jumlah_per_type === 'object') setJumlahPerTipe(cfg.jumlah_per_type as Record<string, number>);
     } else {
       setSelectedMateris(p.materi ? new Set(p.materi.split(',').map((s) => s.trim()).filter(Boolean)) : new Set());
     }
@@ -181,17 +186,24 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       setErr('Pilih mapel.');
       return;
     }
-    if (picked.length < 1) {
+    if (!useAiSelection && picked.length < 1) {
       setErr('Pilih minimal 1 soal dari bank soal.');
       return;
     }
-    if (useAiSelection && jumlahSoal < 1) {
-      setErr('Jumlah soal acak harus minimal 1.');
+    if (useAiSelection && jumlahSoalTotal < 1) {
+      setErr('Pilih minimal 1 soal melalui jenis soal di bawah.');
       return;
     }
     if (useAiSelection) {
-      if (jumlahSoal > filteredItems.length && filteredItems.length > 0) {
-        setErr(`Jumlah soal (${jumlahSoal}) melebihi bank soal yang tersedia (${filteredItems.length}).`);
+      for (const t of ALL_ITEM_TYPES) {
+        const availT = itemsByMateri.filter((it) => it.item_type === t).length;
+        if ((jumlahPerTipe[t] || 0) > availT) {
+          setErr(`Jumlah ${ITEM_TYPE_LABELS[t] || t} (${jumlahPerTipe[t]}) melebihi tersedia (${availT}).`);
+          return;
+        }
+      }
+      if (jumlahSoalTotal > filteredItems.length && filteredItems.length > 0) {
+        setErr(`Jumlah soal (${jumlahSoalTotal}) melebihi bank soal yang tersedia (${filteredItems.length}).`);
         return;
       }
     }
@@ -202,7 +214,11 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
           materi: Array.from(selectedMateris),
           item_types: Array.from(selectedTypes),
           difficulties: Array.from(selectedDiffs),
-          jumlah_soal: jumlahSoal,
+          jumlah_soal: jumlahSoalTotal,
+          jumlah_per_type: ALL_ITEM_TYPES.reduce(
+            (acc, t) => ({ ...acc, [t]: jumlahPerTipe[t] || 0 }),
+            {} as Record<string, number>
+          ),
           jenjang,
         }
       : null;
@@ -216,12 +232,12 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       info: infoText.trim() || null,
       jenjang,
       title: title.trim(),
-      item_count: picked.length,
+      item_count: useAiSelection ? jumlahSoalTotal : picked.length,
       duration_sec: durationSec,
       shuffle,
       discuss_after_each: discuss,
       use_ai_selection: useAiSelection,
-      jumlah_soal_soal: useAiSelection ? jumlahSoal : null,
+      jumlah_soal_soal: useAiSelection ? jumlahSoalTotal : null,
       ai_config: aiConfig,
     };
 
@@ -294,12 +310,6 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       .filter((it) => (selectedDiffs.size === 0 ? true : it.difficulty !== null && selectedDiffs.has(Number(it.difficulty)))),
     [itemsByMateri, selectedTypes, selectedDiffs]
   );
-
-  useEffect(() => {
-    if (useAiSelection && filteredItems.length > 0) {
-      setJumlahSoal(filteredItems.length);
-    }
-  }, [useAiSelection, filteredItems.length]);
 
   if (!['guru', 'admin', 'konten'].includes(profile.role)) {
     return (
@@ -453,7 +463,6 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                     checked={useAiSelection}
                     onChange={(e) => {
                       setUseAiSelection(e.target.checked);
-                      if (e.target.checked && jumlahSoal > filteredItems.length) setJumlahSoal(filteredItems.length);
                     }}
                   />
                   <label className="form-label" htmlFor="pkg-ai">
@@ -462,18 +471,33 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                 </div>
                 {useAiSelection && (
                   <div style={{ marginTop: 8 }}>
-                    <div className="form-section-title" style={{ fontSize: 12 }}>Jumlah soal yang diujikan</div>
-                    <input
-                      type="number"
-                      className="input"
-                      style={{ width: 80 }}
-                      min={1}
-                      max={Math.max(filteredItems.length, 1)}
-                      value={jumlahSoal}
-                      onChange={(e) => setJumlahSoal(Math.min(Number(e.target.value), filteredItems.length))}
-                    />
-                    <p className="input-hint" style={{ marginTop: 4 }}>
-                      {filteredItems.length} soal tersedia, AI pilih {jumlahSoal} yang berbeda untuk tiap siswa.
+                    <div className="form-section-title" style={{ fontSize: 12 }}>Jumlah soal per jenis (AI distribusi acak per siswa)</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 6 }}>
+                      {ALL_ITEM_TYPES.map((t) => {
+                        const availT = itemsByMateri.filter((it) => it.item_type === t).length;
+                        const label = t === 'pernyataan_bs' ? 'Pernyataan B/S' : (ITEM_TYPE_LABELS[t] ?? t);
+                        return (
+                          <div key={t} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 90 }}>
+                            <label style={{ fontSize: 11, color: 'var(--muted)' }}>{label}</label>
+                            <input
+                              type="number"
+                              className="input"
+                              style={{ width: 90 }}
+                              min={0}
+                              max={availT}
+                              value={(jumlahPerTipe as Record<string, number>)[t] || 0}
+                              onChange={(e) => {
+                                const v = Math.max(0, Math.min(Number(e.target.value) || 0, availT));
+                                setJumlahPerTipe((prev) => ({ ...prev, [t]: v }));
+                              }}
+                            />
+                            <span style={{ fontSize: 11, color: 'var(--muted)' }}>{availT} tersedia</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="input-hint" style={{ marginTop: 6 }}>
+                      Total {jumlahSoalTotal} soal ({filteredItems.length} tersedia). {jumlahSoalTotal === 0 ? 'Isi minimal 1.' : ''}
                     </p>
                   </div>
                 )}
@@ -499,7 +523,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             <h2 className="card-title">Pilih soal</h2>
             <p className="card-subtitle">
               {useAiSelection
-                ? `${filteredItems.length} soal tersedia — AI akan pilih ${jumlahSoal} untuk tiap siswa`
+                  ? `${filteredItems.length} soal tersedia — AI akan pilih ${jumlahSoalTotal} untuk tiap siswa`
                 : `${picked.length} dipilih · ${filteredItems.length} tersedia`}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -617,7 +641,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               <div className="rec-icon">💡</div>
               <div className="rec-info">
                 <h3>Distribusi oleh AI</h3>
-                <p>AI akan memilih secara acak {jumlahSoal} soal untuk setiap siswa — berbeda tiap user — berdasarkan materi, jenis soal, dan tingkat kesulitan di atas. Semua soal pada bank soal ini dapat dipilih.</p>
+                <p>AI akan memilih secara acak {jumlahSoalTotal} soal untuk setiap siswa — berbeda tiap user — berdasarkan jumlah per jenis soal, jenis soal, dan tingkat kesulitan di atas. Semua soal pada bank soal ini dapat dipilih.</p>
               </div>
             </div>
           )}
