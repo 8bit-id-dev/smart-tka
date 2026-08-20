@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { KurikulumCrud } from '../components/KurikulumCrud';
 import { insforge, type AppProfile } from '../lib/insforge';
-import type { MapelRow, MateriRow } from '../lib/kurikulum';
+import type { MapelRow } from '../lib/kurikulum';
 
 type ItemRow = { id: string; stem: string; mapel: string; materi?: string | null; item_type: string; difficulty?: number | null };
 type Pkg = {
@@ -197,31 +197,29 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     }
 
     if (useAiSelection) {
-      if (chosenTotal !== jumlahSoal) {
-        setErr(`Total soal per tingkat kesulitan (${chosenTotal}) harus sama dengan jumlah soal (${jumlahSoal}).`);
+      if (jumlahSoal > filteredItems.length && filteredItems.length > 0) {
+        setErr(`Jumlah soal (${jumlahSoal}) melebihi bank soal yang tersedia (${filteredItems.length}).`);
         return;
-      }
-      for (const [m, types] of Object.entries(detailMap)) {
-        for (const [t, diffs] of Object.entries(types)) {
-          for (const [d, n] of Object.entries(diffs)) {
-            if (!n) continue;
-            const avail = filteredItems.filter((it) => it.materi === m && it.item_type === t && Number(it.difficulty) === Number(d)).length;
-            if (n > avail) {
-              setErr(`Jumlah soal (${n}) untuk ${m} / ${ITEM_TYPE_LABELS[t] || t} / kesulitan ${d} melebihi tersedia (${avail}).`);
-              return;
-            }
-          }
-        }
       }
     }
 
-    const aiFilters = { item_types: Array.from(selectedTypes), difficulties: selectedDiffs.size > 0 ? Array.from(selectedDiffs) : undefined };
+    const aiConfig = useAiSelection
+      ? {
+          mapel: mapel || null,
+          materi: Array.from(selectedMateris),
+          item_types: Array.from(selectedTypes),
+          difficulties: Array.from(selectedDiffs),
+          jumlah_soal: jumlahSoal,
+          jenjang,
+        }
+      : null;
+
     const row = {
       school_id: profile.school_id,
       created_by: profile.id,
       kind,
       mapel,
-      materi: materi || null,
+      materi: Array.from(selectedMateris).join(', ') || materi || null,
       info: infoText.trim() || null,
       jenjang,
       title: title.trim(),
@@ -231,7 +229,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       discuss_after_each: discuss,
       use_ai_selection: useAiSelection,
       jumlah_soal_soal: useAiSelection ? jumlahSoal : null,
-      ai_config: { materi_counts: materiCounts, detail: useAiSelection ? detailMap : {}, filters: aiFilters },
+      ai_config: aiConfig,
     };
 
     setOk('Menyimpan…');
@@ -257,13 +255,15 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       pkgId = (data[0] as { id: string }).id;
     }
 
-    const links = picked.map((item_id, position) => ({ package_id: pkgId, item_id, position: position + 1 }));
-    const { error: e2 } = await insforge.database.from('package_items').insert(links);
-    if (e2) {
-      setErr(e2.message);
-      setOk('');
-      setBusy(false);
-      return;
+    if (!useAiSelection && picked.length > 0) {
+      const links = picked.map((item_id, position) => ({ package_id: pkgId, item_id, position: position + 1 }));
+      const { error: e2 } = await insforge.database.from('package_items').insert(links);
+      if (e2) {
+        setErr(e2.message);
+        setOk('');
+        setBusy(false);
+        return;
+      }
     }
     setOk(editId ? 'Paket diperbarui.' : 'Paket dibuat.');
     kosongkanForm();
@@ -386,10 +386,14 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
           </div>
 
           <div className="form-section">
-            <div className="form-section-title">Mapel &amp; materi <span className="req"></span></div>
-            <p className="input-hint">
-              {mapel ? `${mapel}${materi ? ` · ${materi}` : ''}` : 'Belum dipilih'}
-            </p>
+            <div className="form-section-title">Mapel <span className="req"></span></div>
+            {mapel ? (
+              <p className="input-hint">
+                {mapel}{Array.from(selectedMateris).length ? ` · ${Array.from(selectedMateris).join(', ')}` : ''}
+              </p>
+            ) : (
+              <p className="input-hint">Belum dipilih</p>
+            )}
             <div className="hint-panel" style={{ marginTop: 8 }}>
               <KurikulumCrud
                 profile={profile}
@@ -398,18 +402,41 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                 pilihMateriId={materiId}
                 allowedSubjects={isGuru ? mySubjects : undefined}
                 isAdmin={profile.role !== 'guru'}
-                onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
+                onPilih={(mp: MapelRow | null) => {
                   if (isGuru && mp && !mySubjects.includes(mp.name)) {
                     setErr(`Anda tidak mengajar "${mp.name}". Hubungi admin untuk assignment.`);
                     return;
                   }
                   setMapelId(mp?.id || '');
-                  setMateriId(mt?.id || '');
+                  setMateriId('');
                   setMapel(mp?.name || '');
-                  setMateri(mt?.name || '');
+                  setMateri('');
+                  setSelectedMateris(new Set());
                 }}
               />
             </div>
+            {mapel && uniqueMateris.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div className="form-section-title">Pilih materi (bisa lebih dari 1)</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                  {uniqueMateris.map((m) => (
+                    <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedMateris.has(m)}
+                        onChange={(e) => {
+                          const next = new Set(selectedMateris);
+                          if (e.target.checked) next.add(m);
+                          else next.delete(m);
+                          setSelectedMateris(next);
+                        }}
+                      />
+                      {m}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="form-section">
