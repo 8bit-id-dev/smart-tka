@@ -107,9 +107,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       const sch = await insforge.database
         .from('exam_schedules')
         .select('id, package_id, subject, materi, duration_sec, start_at, end_at, is_active')
-        .eq('is_active', true)
-        .lte('start_at', new Date().toISOString())
-        .gte('end_at', new Date().toISOString());
+        .eq('is_active', true);
       if (!sch.error) setSchedules((sch.data || []) as ExamSchedule[]);
 
       void Promise.all([
