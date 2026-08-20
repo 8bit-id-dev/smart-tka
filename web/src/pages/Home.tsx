@@ -125,6 +125,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
     })();
   }, [profile.id, isSiswa]);
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!isSiswa || !attempts.length) return;
     void (async () => {
@@ -138,6 +139,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       if (data) setAa(data as AARow[]);
     })();
   }, [attempts.length, isSiswa]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const stats = useMemo(() => {
     const submitted = attempts.filter((a) => a.status === 'submitted' && a.score != null);

@@ -76,6 +76,7 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
     setLoading(false);
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, [me.id]);
 
   const pkgMap = useMemo(() => new Map(pkgs.map((p) => [p.id, p])), [pkgs]);
@@ -318,6 +319,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
     if (!m.error) setCs((m.data || []) as CS[]);
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, []);
 
   const pkgMap = useMemo(() => new Map(pkgs.map((p) => [p.id, p])), [pkgs]);

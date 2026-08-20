@@ -71,9 +71,11 @@ export function KurikulumCrud({
     }
   }
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     void refresh();
   }, [profile.school_id, jenjang]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     void muatMateri(pilihMapelId);

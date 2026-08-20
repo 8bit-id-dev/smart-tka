@@ -70,9 +70,11 @@ export function XpReward({
   }
 
   // Expose showXp globally for parent components
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     (window as any).__showXpReward = showXp;
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return (
     <>

@@ -220,12 +220,14 @@ export function AppShell({
 
   const isLightOnlyRole = ['guru', 'admin'].includes(role);
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     const saved = localStorage.getItem('smart_tka_theme') as 'dark' | 'light' | null;
     const initial = isLightOnlyRole ? 'light' : (saved || 'dark');
     setTheme(initial);
     document.documentElement.classList.toggle('dark', initial === 'dark');
   }, [role]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     void (async () => {

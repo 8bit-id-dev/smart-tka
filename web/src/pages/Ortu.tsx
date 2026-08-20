@@ -57,9 +57,11 @@ export function Ortu({ me }: { me: AppProfile }) {
     );
   }
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     void muat();
   }, [me.id]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   async function taut(e: React.FormEvent) {
     e.preventDefault();

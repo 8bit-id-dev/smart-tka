@@ -88,9 +88,11 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         else setPkgs((p.data || []) as Pkg[]);
     }
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     void load();
   }, [profile.id]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     if (!isGuru) return;

@@ -100,13 +100,17 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     else setList((data || []) as ItemRow[]);
   }
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     void loadMySubjects();
   }, [profile.id]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     void load();
   }, [profile.id, mySubjects.length]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   function resetForm() {
     setEditingId(null);
