@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
+import { Icons } from '../AppShell';
 
 const JENJANG_LABEL: Record<string, string> = {
   sd: 'SD kelas 6',
@@ -77,9 +78,9 @@ export function Profil({
     }
     setCode(next);
     setExp(until);
-  }
+   }
 
-  const initials = (profile.full_name || email || 'U').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
+
 
   async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -143,16 +144,16 @@ export function Profil({
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* Avatar + info */}
          <div className="card" style={{ textAlign: 'center', minWidth: 200, flex: '1 1 260px' }}>
-            <div style={{
-              width: 72, height: 72, borderRadius: 20,
-              background: photoUrl ? undefined : 'var(--accent)', color: '#fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 28, fontWeight: 700, margin: '0 auto 12px',
-              overflow: 'hidden', objectFit: 'cover',
-              border: photoUrl ? '2px solid var(--accent-soft)' : 'none',
-              cursor: 'pointer', userSelect: 'none',
-            }} onClick={() => setPhotoMenuOpen(true)}>
-              {photoUrl ? <img src={photoUrl} alt="Foto profil" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} /> : initials}
+              <div style={{
+                width: 96, height: 96, borderRadius: 24,
+                background: photoUrl ? undefined : 'var(--card)', color: photoUrl ? '#fff' : 'var(--muted)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 32, fontWeight: 700, margin: '0 auto 12px',
+                overflow: 'hidden', objectFit: 'cover',
+                border: photoUrl ? '2px solid var(--accent-soft)' : '1px solid var(--card-border)',
+                cursor: 'pointer', userSelect: 'none',
+              }} onClick={() => setPhotoMenuOpen(true)}>
+              {photoUrl ? <img src={photoUrl} alt="Foto profil" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 24 }} /> : Icons.profil(false)}
             </div>
             {photoErr && <p className="legal" style={{ color: '#f85149', marginTop: 4 }}>{photoErr}</p>}
             {photoMenuOpen && (

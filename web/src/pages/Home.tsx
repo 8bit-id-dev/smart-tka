@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
 import type { Tab } from '../AppShell';
 import { Icons } from '../AppShell';
@@ -210,7 +210,13 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
   const [photoUrl, setPhotoUrl] = useState(profile.photo_url || '');
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoErr, setPhotoErr] = useState('');
-  const avatarLetter = (profile.full_name || name || 'U').split(' ').map(p => p[0]).join('').slice(0, 1).toUpperCase();
+  const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function openPhotoMenu() {
+    if (!isSiswa || photoLoading) return;
+    setPhotoMenuOpen(true);
+  }
 
   async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -309,26 +315,36 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
     <div className="dashboard-page student-dashboard">
       <div className="greeting-card">
         <div className="greeting-left">
-          <div className="avatar-wrap">
+          <div
+            className="avatar-wrap"
+            onClick={openPhotoMenu}
+            style={isSiswa ? { cursor: 'pointer' } : undefined}
+          >
             {photoUrl ? (
               <img src={photoUrl} alt={name} className="avatar-img" />
             ) : (
-              <div className="avatar-placeholder">{avatarLetter}</div>
+              <div className="avatar-placeholder">
+                {Icons.profil(false)}
+              </div>
             )}
             {photoLoading && <div className="avatar-overlay">Menyimpan…</div>}
           </div>
-          <div className="avatar-actions">
-            <label className="avatar-btn" title="Ganti foto">
-              {Icons.edit(true)}
-              <input type="file" accept="image/*" onChange={uploadPhoto} style={{ display: 'none' }} />
-            </label>
-            {photoUrl && (
-              <button className="avatar-btn" title="Hapus foto" onClick={deletePhoto} disabled={photoLoading}>
-                {Icons.x(true)}
-              </button>
-            )}
-            {photoErr && <div className="avatar-error">{photoErr}</div>}
-          </div>
+          {photoErr && <div className="avatar-error">{photoErr}</div>}
+          {photoMenuOpen && (
+            <div className="photo-menu-backdrop" onClick={() => setPhotoMenuOpen(false)}>
+              <div className="photo-menu" onClick={(e) => e.stopPropagation()}>
+                <button type="button" className="photo-menu-item" onClick={() => { fileInputRef.current?.click(); setPhotoMenuOpen(false); }} disabled={photoLoading}>
+                  Ganti Foto
+                </button>
+                {photoUrl && (
+                  <button type="button" className="photo-menu-item photo-menu-item-danger" onClick={() => { void deletePhoto(); setPhotoMenuOpen(false); }} disabled={photoLoading}>
+                    Hapus Foto
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={uploadPhoto} disabled={photoLoading} />
         </div>
         <div className="greeting-text">
           <h1>Selamat datang, {name}!</h1>
