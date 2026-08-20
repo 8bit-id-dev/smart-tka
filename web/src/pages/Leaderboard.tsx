@@ -49,7 +49,7 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         .from('gamification_profiles')
         .select('xp, level, streak_current, streak_best')
         .eq('profile_id', me.id)
-        .maybeSingle();
+        .single();
       if (!gpErr && gpData) setMyGp(gpData as { xp: number; level: number; streak_current: number; streak_best: number });
 
       const { data, error } = await insforge.database

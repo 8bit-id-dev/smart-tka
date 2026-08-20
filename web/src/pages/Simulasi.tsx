@@ -5,6 +5,18 @@ import { acakListSeeded, acakOpsiSeeded, type DbItem } from '../lib/soal';
 import { toggleBookmark, isBookmarked } from '../lib/bookmarks';
 import { Icons } from '../AppShell';
 
+function friendlyAttemptError(msg: string | undefined): string {
+  const m = (msg || '').toLowerCase();
+  if (m.includes('attempts_one_active') || m.includes('violates')) {
+    return 'Sesi ujian sudah berjalan. Silakan klik Mulai lagi.';
+  }
+  if (m.includes('profil tidak dikenal') || m.includes('token sesi kosong')) {
+    return 'Sesi tidak dikenali. Silakan login kembali, lalu klik Mulai.';
+  }
+  return msg || 'Gagal memulai simulasi.';
+}
+
+
 type Pkg = {
   id: string;
   title: string;
@@ -470,7 +482,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
         })
         .select('id');
       if (error) {
-        setErr('Nilai dihitung, tapi belum tersimpan ke laporan: ' + error.message);
+        setErr(friendlyAttemptError(error.message));
         return;
       }
       aid = (data?.[0] as { id?: string } | undefined)?.id ?? null;

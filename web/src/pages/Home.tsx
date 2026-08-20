@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
 import type { Tab } from '../AppShell';
 import { Icons } from '../AppShell';
@@ -85,66 +85,53 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
   const [gp, setGp] = useState<GpRow | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async () => {
-    if (!isSiswa) return;
-    setLoading(true);
-
-    const att = await insforge.database
-      .from('attempts')
-      .select('id, score, status, submitted_at, package_id')
-      .eq('student_id', profile.id);
-    if (!att.error) setAttempts((att.data || []) as AttemptRow[]);
-
-    const pk = await insforge.database
-      .from('packages')
-      .select('id, title, mapel, kind, item_count, duration_sec')
-      .order('kind')
-      .order('mapel')
-      .limit(50);
-    if (!pk.error) setPkgs((pk.data || []) as PkgRow[]);
-
-    const sch = await insforge.database
-      .from('exam_schedules')
-      .select('id, package_id, subject, materi, duration_sec, start_at, end_at, is_active')
-      .eq('is_active', true);
-    if (!sch.error) setSchedules((sch.data || []) as ExamSchedule[]);
-
-    void Promise.all([
-      insforge.database
-        .from('class_students')
-        .select('class_id, classes!inner(id, name, jenjang)')
-        .eq('profile_id', profile.id)
-        .limit(1),
-      insforge.database
-        .from('gamification_profiles')
-        .select('xp, level, streak_current, streak_best')
-        .eq('profile_id', profile.id)
-        .maybeSingle(),
-    ]).then(([clsRes, gpRes]) => {
-      if (!clsRes.error && clsRes.data && (clsRes.data as any[]).length > 0) {
-        const first = (clsRes.data as any[])[0];
-        setMyClass(first.classes as ClassRow);
-      }
-      if (!gpRes.error && gpRes.data) setGp(gpRes.data as GpRow);
-    });
-
-    setLoading(false);
-  }, [isSiswa, profile.id]);
-
   useEffect(() => {
-    void loadData();
-    const onFocus = () => {
-      void loadData();
-    };
-    window.addEventListener('focus', onFocus);
-    const t = setInterval(() => {
-      void loadData();
-    }, 60000);
-    return () => {
-      window.removeEventListener('focus', onFocus);
-      clearInterval(t);
-    };
-  }, [loadData]);
+    if (!isSiswa) return;
+    void (async () => {
+      setLoading(true);
+
+      const att = await insforge.database
+        .from('attempts')
+        .select('id, score, status, submitted_at, package_id')
+        .eq('student_id', profile.id);
+      if (!att.error) setAttempts((att.data || []) as AttemptRow[]);
+
+      const pk = await insforge.database
+        .from('packages')
+        .select('id, title, mapel, kind, item_count, duration_sec')
+        .order('kind')
+        .order('mapel')
+        .limit(50);
+      if (!pk.error) setPkgs((pk.data || []) as PkgRow[]);
+
+      const sch = await insforge.database
+        .from('exam_schedules')
+        .select('id, package_id, subject, materi, duration_sec, start_at, end_at, is_active')
+        .eq('is_active', true);
+      if (!sch.error) setSchedules((sch.data || []) as ExamSchedule[]);
+
+      void Promise.all([
+        insforge.database
+          .from('class_students')
+          .select('class_id, classes!inner(id, name, jenjang)')
+          .eq('profile_id', profile.id)
+          .limit(1),
+        insforge.database
+          .from('gamification_profiles')
+          .select('xp, level, streak_current, streak_best')
+          .eq('profile_id', profile.id)
+          .single(),
+      ]).then(([clsRes, gpRes]) => {
+        if (!clsRes.error && clsRes.data && (clsRes.data as any[]).length > 0) {
+          const first = (clsRes.data as any[])[0];
+          setMyClass(first.classes as ClassRow);
+        }
+        if (!gpRes.error && gpRes.data) setGp(gpRes.data as GpRow);
+      });
+
+      setLoading(false);
+    })();
+  }, [profile.id, isSiswa]);
 
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
