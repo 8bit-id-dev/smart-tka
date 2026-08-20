@@ -101,7 +101,7 @@ begin
     end if;
 
     -- Fallback: isi hingga qty dari pool yang tersisa (jenis soal tidak ada di jumlah_per_type)
-    if array_length(picked_ids,1) < qty then
+    if coalesce(array_length(picked_ids,1),0) < qty then
       for obj in
         select jsonb_build_object(
           'id',          i.id,
