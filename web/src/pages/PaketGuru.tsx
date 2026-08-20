@@ -544,6 +544,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               style={{ width: '100%', resize: 'vertical' }}
             />
           </div>
+        </div>
 
           <div className="actions">
             <button className="btn btn-primary" type="submit" disabled={busy}>
