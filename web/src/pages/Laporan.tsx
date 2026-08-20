@@ -184,11 +184,17 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
       <section className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
           <h3 className="card-title" style={{ margin: 0 }}>Riwayat Pengerjaan</h3>
-            <select className="input" style={{ maxWidth: 200, padding: '8px 12px', fontSize: 13 }} value={filterKind} onChange={(e) => setFilterKind(e.target.value)}>
-              <option value="semua">Semua Sesi</option>
-              <option value="latihan">Latihan</option>
-              <option value="ujian">Ujian (simulasi/ujian kelas)</option>
-            </select>
+          <div className="lap-tab" role="tablist">
+            <button type="button" role="tab"
+              className={`lap-tab-btn ${filterKind === 'semua' ? 'active' : ''}`}
+              onClick={() => setFilterKind('semua')}>Semua</button>
+            <button type="button" role="tab"
+              className={`lap-tab-btn ${filterKind === 'latihan' ? 'active' : ''}`}
+              onClick={() => setFilterKind('latihan')}>Latihan</button>
+            <button type="button" role="tab"
+              className={`lap-tab-btn ${filterKind === 'ujian' ? 'active' : ''}`}
+              onClick={() => setFilterKind('ujian')}>Ujian</button>
+          </div>
         </div>
 
         {loading ? (
@@ -384,13 +390,13 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
               ))}
             </select>
           </div>
-          <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+          <div className="form-group" style={{ flex: '1 1 260px', marginBottom: 0 }}>
             <label className="form-label">Jenis</label>
-            <select className="input" value={fKind} onChange={(e) => setFKIND(e.target.value as 'semua' | 'latihan' | 'ujian')}>
-              <option value="semua">Semua</option>
-              <option value="latihan">Latihan</option>
-              <option value="ujian">Ujian (simulasi/ujian kelas)</option>
-            </select>
+            <div className="lap-tab" role="tablist">
+              <button type="button" role="tab" className={`lap-tab-btn ${fKind === 'semua' ? 'active' : ''}`} onClick={() => setFKIND('semua')}>Semua</button>
+              <button type="button" role="tab" className={`lap-tab-btn ${fKind === 'latihan' ? 'active' : ''}`} onClick={() => setFKIND('latihan')}>Latihan</button>
+              <button type="button" role="tab" className={`lap-tab-btn ${fKind === 'ujian' ? 'active' : ''}`} onClick={() => setFKIND('ujian')}>Ujian</button>
+            </div>
           </div>
         </div>
 
