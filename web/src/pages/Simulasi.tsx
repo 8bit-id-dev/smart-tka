@@ -61,6 +61,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   const [selectedExam, setSelectedExam] = useState<ExamSchedule | null>(null);
   const [identity, setIdentity] = useState<Identity>({ name: '', kelas: '', nisn: '', token: '' });
   const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [endsAt, setEndsAt] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -206,28 +207,63 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
 
   useEffect(() => {
     if (phase === 'run' && pkg) {
-      sessionStorage.setItem(`sim-${pkg.id}-draft`, JSON.stringify({ ans, i }));
+      sessionStorage.setItem(`sim-${pkg.id}-draft`, JSON.stringify({ ans, i, endsAt }));
     }
-  }, [ans, i, phase, pkg]);
+  }, [ans, i, phase, pkg, endsAt]);
 
 
   async function mulai(p: Pkg, exam?: ExamSchedule) {
     setErr('');
     setAns({});
     setSkor(null);
-    const { data: links, error } = await insforge.database.from('package_items').select('item_id, position').eq('package_id', p.id);
-    if (error) {
-      setErr(error.message);
-      return;
-    }
-    const ids = ((links || []) as { item_id: string; position: number }[]).sort((a, b) => a.position - b.position).map((x) => x.item_id);
-    if (ids.length === 0) {
-      setErr('Paket belum berisi soal.');
-      return;
+    let ids: string[] = [];
+    let attemptIdNew: string | null = null;
+    let endsAtMs: number | null = null;
+
+    if (p.use_ai_selection) {
+      const token = identity.token || `${studentId || 'anon'}_${p.id}_${Date.now()}`;
+      const { data, error } = await insforge.database.rpc('smart_attempt_start', {
+        p_package_id: p.id,
+        p_token: token,
+      });
+      if (error) {
+        setErr(error.message);
+        return;
+      }
+      const res = (data || {}) as {
+        ok: boolean;
+        error?: string;
+        items?: DbItem[];
+        attempt_id?: string;
+        ends_at?: string;
+      };
+      if (!res.ok) {
+        setErr(res.error || 'Gagal memulai simulasi.');
+        return;
+      }
+      ids = ((res.items || []) as DbItem[]).map((x) => x.id);
+      attemptIdNew = res.attempt_id || null;
+      endsAtMs = res.ends_at ? Date.parse(res.ends_at) : null;
+      if (ids.length === 0) {
+        setErr('Paket belum berisi soal.');
+        return;
+      }
+    } else {
+      const { data: links, error } = await insforge.database.from('package_items').select('item_id, position').eq('package_id', p.id);
+      if (error) {
+        setErr(error.message);
+        return;
+      }
+      ids = ((links || []) as { item_id: string; position: number }[]).sort((a, b) => a.position - b.position).map((x) => x.item_id);
+      if (ids.length === 0) {
+        setErr('Paket belum berisi soal.');
+        return;
+      }
     }
     const { data: its, error: e2 } = await insforge.database
       .from('items')
-      .select('id, item_type, mapel, materi, stem, stimulus, choices, correct_key, rationale, jenjang, difficulty');
+      .select('id, item_type, mapel, materi, stem, stimulus, choices, correct_key, rationale, jenjang, difficulty')
+      .in('id', ids);
     if (e2) {
       setErr(e2.message);
       return;
@@ -260,7 +296,17 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     setItems(shuffled);
     setPkg(p);
     setI(0);
-    setSisa((exam && exam.duration_sec && exam.duration_sec > 0) ? exam.duration_sec : (p.duration_sec && p.duration_sec > 0 ? p.duration_sec : 15 * 60));
+    setAttemptId(attemptIdNew || attemptId);
+    setEndsAt(endsAtMs);
+    setSisa(
+      endsAtMs
+        ? Math.round(Math.max(0, endsAtMs - Date.now()) / 1000)
+        : (exam && exam.duration_sec && exam.duration_sec > 0)
+          ? exam.duration_sec
+          : p.duration_sec && p.duration_sec > 0
+            ? p.duration_sec
+            : 15 * 60,
+    );
     const saved = new Set<string>();
     shuffled.forEach((it) => {
       if (isBookmarked(studentId, it.id)) saved.add(it.id);
@@ -271,9 +317,13 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     const draft = sessionStorage.getItem(`sim-${p.id}-draft`);
     if (draft) {
       try {
-        const d = JSON.parse(draft) as { ans?: Record<string, Ans>; i?: number };
+        const d = JSON.parse(draft) as { ans?: Record<string, Ans>; i?: number; endsAt?: number };
         if (d.ans) setAns(d.ans);
         if (typeof d.i === 'number' && d.i > 0 && d.i < shuffled.length) setI(d.i);
+        if (typeof d.endsAt === 'number') {
+          setEndsAt(d.endsAt);
+          setSisa(Math.round(Math.max(0, d.endsAt - Date.now()) / 1000));
+        }
       } catch { /* noop */ }
     }
     if (studentId) {
