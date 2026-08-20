@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ItemPlayer } from '../components/ItemPlayer';
 import { insforge } from '../lib/insforge';
 import { acakListSeeded, acakOpsiSeeded, type DbItem } from '../lib/soal';
@@ -63,11 +63,13 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [endsAt, setEndsAt] = useState<number | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await insforge.database
+  const loadList = useCallback(
+    async () => {
+      let q = insforge.database
         .from('packages')
         .select('id, title, kind, mapel, info, materi, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal');
+      if (schoolId) q = q.eq('school_id', schoolId);
+      const { data, error } = await q;
       if (error) setErr(error.message);
       else setPkgs((data || []) as Pkg[]);
 
@@ -79,8 +81,24 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
         .lt('start_at', new Date(Date.now() + 24 * 3600 * 1000).toISOString())
         .order('start_at', { ascending: true });
       if (schData) setSchedules((schData || []) as ExamSchedule[]);
-    })();
-  }, [schoolId]);
+    },
+    [schoolId],
+  );
+
+  useEffect(() => {
+    void loadList();
+    const onFocus = () => {
+      void loadList();
+    };
+    window.addEventListener('focus', onFocus);
+    const t = setInterval(() => {
+      void loadList();
+    }, 60000);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      clearInterval(t);
+    };
+  }, [loadList]);
 
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -645,7 +663,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
                       >
                         {active ? 'Mulai Ujian' : 'Belum dimulai'}
                       </button>
-                    </div>
+                      </div>
                   );
                 })}
               </div>
