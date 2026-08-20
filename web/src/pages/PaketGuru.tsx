@@ -497,9 +497,13 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         <div className="form-card">
           <header className="card-header">
             <h2 className="card-title">Pilih soal</h2>
-            <p className="card-subtitle">{picked.length} dipilih · {filteredItems.length} tersedia</p>
+            <p className="card-subtitle">
+              {useAiSelection
+                ? `${filteredItems.length} soal tersedia — AI akan pilih ${jumlahSoal} untuk tiap siswa`
+                : `${picked.length} dipilih · ${filteredItems.length} tersedia`}
+            </p>
             <div style={{ display: 'flex', gap: 8 }}>
-              {items.length > 0 && (
+              {!useAiSelection && items.length > 0 && (
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
@@ -627,6 +631,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             <p className="type-lab">Tidak ada soal untuk materi ini.</p>
           )}
 
+          {!useAiSelection && (
           <div className="chip-pick-row">
             {filteredItems.map((it) => (
               <label
@@ -651,6 +656,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               </label>
             ))}
           </div>
+          )}
         </div>
 
         <div className="actions">
