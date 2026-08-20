@@ -307,9 +307,14 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
 
   async function hapus(id: string) {
     if (!confirm('Hapus paket ini?')) return;
+    const prev = [...pkgs];
+    setPkgs((c) => c.filter((p) => p.id !== id));
+    setErr('');
     const { error } = await insforge.database.from('packages').delete().eq('id', id);
-    if (error) setErr(error.message);
-    else {
+    if (error) {
+      setPkgs(prev);
+      setErr(error.message);
+    } else {
       if (editId === id) kosongkanForm();
       await load();
     }
