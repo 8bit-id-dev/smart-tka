@@ -119,7 +119,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         .from('gamification_profiles')
         .select('xp, level, streak_current, streak_best')
         .eq('profile_id', profile.id)
-        .single(),
+        .maybeSingle(),
     ]).then(([clsRes, gpRes]) => {
       if (!clsRes.error && clsRes.data && (clsRes.data as any[]).length > 0) {
         const first = (clsRes.data as any[])[0];

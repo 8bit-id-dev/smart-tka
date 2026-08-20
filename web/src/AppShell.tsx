@@ -234,7 +234,7 @@ export function AppShell({
         .from('gamification_profiles')
         .select('xp, level, streak_current, streak_best')
         .eq('profile_id', profile.id)
-        .single();
+        .maybeSingle();
       if (!error && data) setGp(data as GamifProfile);
     })();
   }, [profile.id]);
@@ -302,7 +302,7 @@ export function AppShell({
       .from('gamification_profiles')
       .select('xp, level, streak_current, streak_best')
       .eq('profile_id', profile.id)
-      .single();
+      .maybeSingle()
 
     if (gpData) {
       setGp(gpData as GamifProfile);
