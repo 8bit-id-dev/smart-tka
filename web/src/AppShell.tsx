@@ -214,11 +214,10 @@ export function AppShell({
   headerExtra?: React.ReactNode;
 }) {
   const [notifOpen, setNotifOpen] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>(['guru', 'admin'].includes(role) ? 'light' : 'dark');
+  const isLightOnlyRole = ['guru', 'admin', 'siswa'].includes(role);
+  const [theme, setTheme] = useState<'dark' | 'light'>(isLightOnlyRole ? 'light' : 'dark');
   const [rows, setRows] = useState<NotifRow[]>([]);
   const [gp, setGp] = useState<GamifProfile | null>(null);
-
-  const isLightOnlyRole = ['guru', 'admin'].includes(role);
 
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
