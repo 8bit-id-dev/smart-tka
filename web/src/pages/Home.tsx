@@ -7,6 +7,7 @@ import { GamifQuickView } from '../components/GamifQuickView';
 type AttemptRow = { score: number | null; status: string; submitted_at: string | null; package_id: string | null };
 type AARow = { item_id: string; is_correct: boolean; items: { mapel: string }[] };
 type PkgRow = { id: string; title: string; mapel: string; kind: string; item_count: number; duration_sec: number | null };
+type ExamSchedule = { id: string; package_id: string; subject: string; materi: string | null; duration_sec: number | null; start_at: string; end_at: string; is_active: boolean };
 type ClassRow = { id: string; name: string; jenjang: string };
 type GpRow = { xp: number; level: number; streak_current: number; streak_best: number };
 
@@ -79,6 +80,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
   const [aa, setAa] = useState<AARow[]>([]);
   const [pkgs, setPkgs] = useState<PkgRow[]>([]);
+  const [schedules, setSchedules] = useState<ExamSchedule[]>([]);
   const [myClass, setMyClass] = useState<ClassRow | null>(null);
   const [gp, setGp] = useState<GpRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,6 +103,14 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         .order('mapel')
         .limit(50);
       if (!pk.error) setPkgs((pk.data || []) as PkgRow[]);
+
+      const sch = await insforge.database
+        .from('exam_schedules')
+        .select('id, package_id, subject, materi, duration_sec, start_at, end_at, is_active')
+        .eq('is_active', true)
+        .lte('start_at', new Date().toISOString())
+        .gte('end_at', new Date().toISOString());
+      if (!sch.error) setSchedules((sch.data || []) as ExamSchedule[]);
 
       void Promise.all([
         insforge.database
@@ -185,7 +195,14 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
     return entries.sort((a, b) => a.akurasi - b.akurasi)[0];
   }, [subjectStats]);
 
-  const simulasiPkg = useMemo(() => pkgs.find((p) => p.kind === 'simulasi') || pkgs[0], [pkgs]);
+  const assignedPkgIds = useMemo(() => schedules.map((s) => s.package_id), [schedules]);
+  const simulasiPkg = useMemo(
+    () =>
+      pkgs.find((p) => assignedPkgIds.includes(p.id) && p.kind === 'simulasi') ||
+      (assignedPkgIds.length > 0 ? pkgs.find((p) => assignedPkgIds.includes(p.id)) : undefined) ||
+      pkgs[0],
+    [pkgs, assignedPkgIds]
+  );
   const lastSimScore = useMemo(() => {
     const submitted = attempts.filter((a) => a.status === 'submitted' && a.score != null);
     return submitted.length > 0 ? Math.max(...submitted.map((a) => Number(a.score))) : 0;
