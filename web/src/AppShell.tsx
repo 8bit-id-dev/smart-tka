@@ -479,16 +479,6 @@ export function AppShell({
                 {Icons.bell()}
                 {rows.length > 0 && <span className="header-badge">{rows.length}</span>}
               </button>
-{!isLightOnlyRole && (
-                <button
-                  type="button"
-                  className="header-icon-btn"
-                  title="Tema gelap/terang"
-                  onClick={toggleTheme}
-                >
-                  {theme === 'dark' ? Icons.moon() : Icons.sun()}
-                </button>
-              )}
               <button
                 type="button"
                 className="header-icon-btn"
