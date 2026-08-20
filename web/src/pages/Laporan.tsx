@@ -290,9 +290,14 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   const [fPkg, setFPkg] = useState('');
   const [fKelas, setFKelas] = useState('');
   const [fKind, setFKIND] = useState<'semua' | 'latihan' | 'ujian'>('semua');
+  const [fMapel, setFMapel] = useState('');
+  const [fDateFrom, setFDateFrom] = useState('');
+  const [fDateTo, setFDateTo] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   async function load() {
     setErr('');
+    setSelected(new Set());
     let subjects: string[] = [];
     if (me.role === 'guru') {
       const { data: tsData } = await insforge.database
@@ -301,16 +306,39 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
         .eq('profile_id', me.id)
         .eq('is_active', true);
       if (tsData) subjects = (tsData as { subject: string }[]).map((r) => r.subject);
+
+      if (subjects.length > 0) {
+        const { data: sharedGurus } = await insforge.database
+          .from('teacher_subjects')
+          .select('profile_id')
+          .in('subject', subjects)
+          .eq('is_active', true);
+        const guruIds = Array.from(new Set((sharedGurus || []).map((r: any) => r.profile_id)));
+        if (guruIds.length > 0) {
+          const { data: allSubjects } = await insforge.database
+            .from('teacher_subjects')
+            .select('subject')
+            .in('profile_id', guruIds)
+            .eq('is_active', true);
+          const allSubj = Array.from(new Set((allSubjects || []).map((r: any) => r.subject)));
+          if (allSubj.length > 0) subjects = allSubj;
+        }
+      }
     }
     const a = await insforge.database.from('attempts').select('id, package_id, student_id, status, score, started_at, submitted_at, tab_leave_count');
     if (a.error) setErr(a.error.message.includes('does not exist') ? 'Tabel attempts belum ada.' : a.error.message);
     else setRows((a.data || []) as Attempt[]);
 
-    const p = await insforge.database
-      .from('packages')
-      .select('id, title, mapel, kind')
-      .in('mapel', subjects.length > 0 ? subjects : ['___none___']);
-    if (!p.error) setPkgs((p.data || []) as Pkg[]);
+    if (subjects.length > 0) {
+      const p = await insforge.database
+        .from('packages')
+        .select('id, title, mapel, kind')
+        .in('mapel', subjects);
+      if (!p.error) setPkgs((p.data || []) as Pkg[]);
+    } else {
+      const p = await insforge.database.from('packages').select('id, title, mapel, kind');
+      if (!p.error) setPkgs((p.data || []) as Pkg[]);
+    }
     const pr = await insforge.database.from('profiles').select('id, full_name').eq('role', 'siswa');
     if (!pr.error) setProfs((pr.data || []) as Prof[]);
     const c = await insforge.database.from('classes').select('id, name');
@@ -331,6 +359,12 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
     return m;
   }, [cs, classes]);
 
+  const mapelList = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of pkgs) if (p.mapel) s.add(p.mapel);
+    return Array.from(s).sort();
+  }, [pkgs]);
+
   const selesai = rows.filter((r) => r.status === 'submitted' || r.score != null);
   const filtered = selesai.filter((r) => {
     const p = r.package_id ? pkgMap.get(r.package_id) : null;
@@ -342,8 +376,60 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
       const kid = cs.find((x) => x.profile_id === r.student_id && x.class_id === fKelas);
       if (!kid) return false;
     }
+    if (fMapel) {
+      const mp = p?.mapel;
+      if (mp !== fMapel) return false;
+    }
+    const tgl = r.submitted_at || r.started_at;
+    if (fDateFrom) {
+      const from = new Date(fDateFrom);
+      if (new Date(tgl) < from) return false;
+    }
+    if (fDateTo) {
+      const to = new Date(fDateTo);
+      to.setHours(23, 59, 59, 999);
+      if (new Date(tgl) > to) return false;
+    }
     return true;
   });
+
+  async function hapusAttempt(id: string) {
+    if (!confirm('Hapus riwayat pengerjaan ini? Semua jawaban dan history terkait akan dihapus permanen.')) return;
+    const { error } = await insforge.database.from('attempts').delete().eq('id', id);
+    if (error) setErr(error.message);
+    else {
+      setRows((c) => c.filter((r) => r.id !== id));
+      setSelected((s) => { const n = new Set(s); n.delete(id); return n; });
+    }
+  }
+
+  async function hapusTerpilih() {
+    if (!confirm(`Hapus ${selected.size} riwayat yang dipilih? Semua jawaban dan history terkait akan dihapus permanen.`)) return;
+    const ids = Array.from(selected);
+    for (const id of ids) {
+      await insforge.database.from('attempts').delete().eq('id', id);
+    }
+    setRows((c) => c.filter((r) => !selected.has(r.id)));
+    setSelected(new Set());
+  }
+
+  function toggleAll() {
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.size === filtered.length) n.clear();
+      else filtered.forEach((r) => n.add(r.id));
+      return n;
+    });
+  }
+
+  function toggleRow(id: string) {
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
 
   const avg = filtered.length === 0 ? 0 : Math.round((filtered.reduce((s, r) => s + Number(r.score || 0), 0) / filtered.length) * 100) / 100;
 
@@ -373,33 +459,57 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
       </div>
 
       <section className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-          <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
-            <label className="form-label">Filter paket</label>
-            <select className="input" value={fPkg} onChange={(e) => setFPkg(e.target.value)}>
-              <option value="">Semua paket</option>
-              {pkgs.map((p) => (
-                <option key={p.id} value={p.id}>{p.title} ({p.mapel})</option>
-              ))}
-            </select>
-          </div>
-          <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
-            <label className="form-label">Filter kelas</label>
-            <select className="input" value={fKelas} onChange={(e) => setFKelas(e.target.value)}>
-              <option value="">Semua kelas</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="form-group" style={{ flex: '1 1 260px', marginBottom: 0 }}>
-            <label className="form-label">Jenis</label>
-            <div className="lap-tab" role="tablist">
-              <button type="button" role="tab" className={`lap-tab-btn ${fKind === 'semua' ? 'active' : ''}`} onClick={() => setFKIND('semua')}>Semua</button>
-              <button type="button" role="tab" className={`lap-tab-btn ${fKind === 'latihan' ? 'active' : ''}`} onClick={() => setFKIND('latihan')}>Latihan</button>
-              <button type="button" role="tab" className={`lap-tab-btn ${fKind === 'ujian' ? 'active' : ''}`} onClick={() => setFKIND('ujian')}>Ujian</button>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flex: 1 }}>
+            <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+              <label className="form-label">Filter paket</label>
+              <select className="input" value={fPkg} onChange={(e) => setFPkg(e.target.value)}>
+                <option value="">Semua paket</option>
+                {pkgs.map((p) => (
+                  <option key={p.id} value={p.id}>{p.title} ({p.mapel})</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+              <label className="form-label">Filter mapel</label>
+              <select className="input" value={fMapel} onChange={(e) => setFMapel(e.target.value)}>
+                <option value="">Semua mapel</option>
+                {mapelList.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+              <label className="form-label">Dari tanggal</label>
+              <input className="input" type="date" value={fDateFrom} onChange={(e) => setFDateFrom(e.target.value)} />
+            </div>
+            <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+              <label className="form-label">Sampai tanggal</label>
+              <input className="input" type="date" value={fDateTo} onChange={(e) => setFDateTo(e.target.value)} />
+            </div>
+            <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+              <label className="form-label">Filter kelas</label>
+              <select className="input" value={fKelas} onChange={(e) => setFKelas(e.target.value)}>
+                <option value="">Semua kelas</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group" style={{ flex: '1 1 260px', marginBottom: 0 }}>
+              <label className="form-label">Jenis</label>
+              <div className="lap-tab" role="tablist">
+                <button type="button" role="tab" className={`lap-tab-btn ${fKind === 'semua' ? 'active' : ''}`} onClick={() => setFKIND('semua')}>Semua</button>
+                <button type="button" role="tab" className={`lap-tab-btn ${fKind === 'latihan' ? 'active' : ''}`} onClick={() => setFKIND('latihan')}>Latihan</button>
+                <button type="button" role="tab" className={`lap-tab-btn ${fKind === 'ujian' ? 'active' : ''}`} onClick={() => setFKIND('ujian')}>Ujian</button>
+              </div>
             </div>
           </div>
+          {selected.size > 0 && (
+            <button type="button" className="btn btn-danger" onClick={hapusTerpilih}>
+              Hapus {selected.size} terpilih
+            </button>
+          )}
         </div>
 
         {filtered.length === 0 && (
@@ -413,6 +523,9 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
           <table className="table">
             <thead>
               <tr>
+                <th style={{ width: 40 }}>
+                  <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleAll} />
+                </th>
                 <th>Siswa</th>
                 <th>Kelas</th>
                 <th>Paket</th>
@@ -420,6 +533,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
                 <th>Skor</th>
                 <th>Pindah tab</th>
                 <th>Waktu</th>
+                <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -427,6 +541,9 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
                 const p = r.package_id ? pkgMap.get(r.package_id) : null;
                 return (
                   <tr key={r.id}>
+                    <td>
+                      <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
+                    </td>
                     <td>{namaMap.get(r.student_id) || r.student_id.slice(0, 8)}</td>
                     <td>{kelasSiswa.get(r.student_id) || '—'}</td>
                     <td>{p?.title || (r.package_id ? r.package_id.slice(0, 8) : 'Latihan bebas')}</td>
@@ -434,6 +551,11 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
                     <td><strong>{r.score ?? '—'}</strong></td>
                     <td>{r.tab_leave_count ?? 0}</td>
                     <td style={{ color: 'var(--muted)' }}>{fmt(r.submitted_at || r.started_at)}</td>
+                    <td>
+                      <button type="button" className="btn btn-danger" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => hapusAttempt(r.id)} title="Hapus riwayat">
+                        🗑️
+                      </button>
+                    </td>
                   </tr>
                 );
               })}

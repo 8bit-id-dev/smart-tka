@@ -92,9 +92,27 @@ export function acakList<T>(arr: T[]): T[] {
   return a;
 }
 
-/** Acak opsi PG; huruf A–E mengikuti urutan baru, kunci ikut pindah. Pernyataan B/S, mencocokkan, dan uraian tidak diacak. */
+function shufflePernyataan(item: DbItem, orderedIdx: number[]): DbItem {
+  const list = asStringList(item.choices);
+  const key = parseKey(item);
+  if (!Array.isArray(key) || list.length !== key.length) {
+    return item;
+  }
+  return {
+    ...item,
+    choices: orderedIdx.map((i) => list[i]),
+    correct_key: JSON.stringify(orderedIdx.map((i) => key[i])),
+  };
+}
+
+/** Acak opsi PG; huruf A–E mengikuti urutan baru, kunci ikut pindah. Pernyataan B/S diacak (pernyataan + kunci ikut pindah). Mencocokkan dan uraian tidak diacak. */
 export function acakOpsi(item: DbItem): DbItem {
-  if (item.item_type === 'pernyataan_bs' || item.item_type === 'mencocokkan' || item.item_type === 'uraian') {
+  if (item.item_type === 'pernyataan_bs') {
+    const list = asStringList(item.choices);
+    if (list.length < 1) return item;
+    return shufflePernyataan(item, acakList(list.map((_, i) => i)));
+  }
+  if (item.item_type === 'mencocokkan' || item.item_type === 'uraian') {
     return item;
   }
   const opts = optionsOf(item);
@@ -141,8 +159,14 @@ export function acakListSeeded<T>(arr: T[], seed: string): T[] {
   return a;
 }
 
+/** Acak opsi PG secara deterministik (seed); huruf A–E mengikuti urutan baru, kunci ikut pindah. Pernyataan B/S diacak (pernyataan + kunci ikut pindah). Mencocokkan dan uraian tidak diacak. */
 export function acakOpsiSeeded(item: DbItem, seed: string): DbItem {
-  if (item.item_type === 'pernyataan_bs' || item.item_type === 'mencocokkan' || item.item_type === 'uraian') {
+  if (item.item_type === 'pernyataan_bs') {
+    const list = asStringList(item.choices);
+    if (list.length < 1) return item;
+    return shufflePernyataan(item, acakListSeeded(list.map((_, i) => i), seed));
+  }
+  if (item.item_type === 'mencocokkan' || item.item_type === 'uraian') {
     return item;
   }
   const opts = optionsOf(item);

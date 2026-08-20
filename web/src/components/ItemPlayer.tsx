@@ -21,11 +21,9 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
     const o = optionsOf(item);
     return Array.isArray(o) ? o.map(() => null) : [];
   });
-  const [statements, setStatements] = useState<string[]>(() => {
-    if (!isPernyataan) return [];
-    const o = optionsOf(item);
-    return Array.isArray(o) ? [...o] : [];
-  });
+  const statements: string[] = isPernyataan
+    ? (() => { const o = optionsOf(item); return Array.isArray(o) ? [...o] : []; })()
+    : [];
 
   // State for matching (mencocokkan) and essay (uraian)
   const [matchAns, setMatchAns] = useState<Record<number, string>>({});
@@ -150,11 +148,6 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
     pushUpdate(pg, kom, next, matchAns, essayAns);
   }
 
-  function addStatementRow() {
-    setStatements((prev) => [...prev, '']);
-    setBs((prev) => [...prev, null]);
-  }
-
   return (
     <div>
       {item.stimulus && (
@@ -232,29 +225,11 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
                 const rowKey = Array.isArray(key) && idx < key.length ? key[idx] : undefined;
                 const correctRow = rowKey !== undefined;
                 const isWrong = correctRow && chosen != null && chosen !== rowKey;
-                const readOnly = !s.trim() && idx < (Array.isArray(opts) ? opts.length : 0);
                 return (
                   <tr key={idx}>
                     <td className="center" style={{ paddingTop: 10 }}>{idx + 1}</td>
                     <td>
-                      {reveal && readOnly ? (
-                        <MathText text={(opts[idx] as string) || ''} />
-                      ) : (
-                        <input
-                          type="text"
-                          className="input inp-sm"
-                          value={s}
-                          disabled={locked && showBahas}
-                          onChange={(e) => {
-                            setStatements((prev) => {
-                              const next = [...prev];
-                              next[idx] = e.target.value;
-                              return next;
-                            });
-                          }}
-                          placeholder={`Pernyataan ${idx + 1}`}
-                        />
-                      )}
+                      <MathText text={(s && s.trim()) ? s : ((opts[idx] as string) || '')} />
                       {reveal && isWrong && <span className="type-lab" style={{ color: '#dc2626', marginLeft: 6 }}>salah</span>}
                     </td>
                     <td className="center" style={{ paddingTop: 8 }}>
@@ -295,11 +270,6 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
               })}
             </tbody>
           </table>
-          {!locked && (
-            <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={addStatementRow}>
-              + Tambah baris
-            </button>
-          )}
         </div>
       )}
 

@@ -1347,7 +1347,7 @@ pre.debug {
   align-items: center;
   justify-content: center;
 }
-.shell-mobile .shell-user { font-size: 12px; color: var(--muted-light); margin-left: auto; }
+.shell-mobile .shell-user { font-size: 12px; color: var(--muted-light); }
 .shell-main-mobile { padding: 24px 12px; flex: 1; min-height: 100vh; overflow-x: hidden; max-width: 100%; margin: 0 auto; }
 
 /* Desktop sidebar responsive collapse */
@@ -1673,6 +1673,7 @@ pre.debug {
 .shell-mobile { display: flex; flex-direction: column; max-width: 100%; margin: 0; overflow-x: hidden; }
 .shell-bar-left { display: flex; align-items: center; gap: 8px; }
 .shell-bar-right { display: flex; align-items: center; gap: 8px; }
+.shell-bar-right-end { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .app-logo-wrapper { display: flex; align-items: center; gap: 6px; }
 .app-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; border: 2px solid var(--card-border); border-radius: 8px; box-sizing: border-box; }
 .hamburger-btn {
@@ -1689,7 +1690,7 @@ pre.debug {
 }
 .hamburger-btn:hover { background: var(--canvas); border-color: var(--accent); color: var(--accent); }
 .shell-mobile .shell-nav { display: none; }
-.shell-mobile .shell-user { font-size: 12px; color: var(--muted-light); margin-left: auto; }
+.shell-mobile .shell-user { font-size: 12px; color: var(--muted-light); }
 .shell-main-mobile { padding: 24px 12px; flex: 1; min-height: 100vh; overflow-x: hidden; max-width: 100%; margin: 0 auto; }
 
 /* Mobile menu overlay */

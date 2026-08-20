@@ -479,44 +479,46 @@ export function AppShell({
               <button
                 type="button"
                 className="header-icon-btn"
-                title="Notifikasi"
-                onClick={() => setNotifOpen(!notifOpen)}
-                aria-expanded={notifOpen}
-              >
-                {Icons.bell()}
-                {rows.length > 0 && <span className="header-badge">{rows.length}</span>}
-              </button>
-              <button
-                type="button"
-                className="header-icon-btn"
                 title="Simpan"
                 onClick={() => onTab('bookmark')}
               >
                 {Icons.bookmark()}
               </button>
-              {notifOpen && (
-                <div className="notif-dropdown">
-                  {rows.length === 0 ? (
-                    <button type="button" className="notif-empty">
-                      <span className="notif-text">Kotak masuk kosong</span>
-                    </button>
-                  ) : (
-                    rows.map((n) => (
-                      <div key={n.id} className="notif-item">
-                        <div className="notif-item-main">
-                          <span className="notif-sender">{n.title}</span>
-                          <span className="notif-text">{n.body.slice(0, 80)}{n.body.length > 80 ? '…' : ''}</span>
-                          <span className="notif-time">{timeAgo(n.created_at)}</span>
+              <div className="shell-bar-right-end">
+                <button
+                  type="button"
+                  className="header-icon-btn"
+                  title="Notifikasi"
+                  onClick={() => setNotifOpen(!notifOpen)}
+                  aria-expanded={notifOpen}
+                >
+                  {Icons.bell()}
+                  {rows.length > 0 && <span className="header-badge">{rows.length}</span>}
+                </button>
+                {notifOpen && (
+                  <div className="notif-dropdown">
+                    {rows.length === 0 ? (
+                      <button type="button" className="notif-empty">
+                        <span className="notif-text">Kotak masuk kosong</span>
+                      </button>
+                    ) : (
+                      rows.map((n) => (
+                        <div key={n.id} className="notif-item">
+                          <div className="notif-item-main">
+                            <span className="notif-sender">{n.title}</span>
+                            <span className="notif-text">{n.body.slice(0, 80)}{n.body.length > 80 ? '…' : ''}</span>
+                            <span className="notif-time">{timeAgo(n.created_at)}</span>
+                          </div>
+                          <button type="button" className="notif-remove" title="Hapus notifikasi" onClick={() => ackNotif(n.id)}>✕</button>
                         </div>
-                        <button type="button" className="notif-remove" title="Hapus notifikasi" onClick={() => ackNotif(n.id)}>✕</button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-              <span className="shell-user">
-                {name} · {role}
-              </span>
+                      ))
+                    )}
+                  </div>
+                )}
+                <span className="shell-user">
+                  {name} · {role}
+                </span>
+              </div>
             </div>
           </header>
           <main className="shell-main-mobile">{children}</main>
