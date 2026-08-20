@@ -67,6 +67,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [jumlahPerTipe, setJumlahPerTipe] = useState<Record<string, number>>(
     ALL_ITEM_TYPES.reduce((acc, t) => ({ ...acc, [t]: 0 }), {})
   );
+  const [activeTypes, setActiveTypes] = useState<string[]>(['pg', 'pg_kompleks', 'pernyataan_bs']);
   const jumlahSoalTotal = useMemo(
     () => Object.values(jumlahPerTipe).reduce((s, n) => s + (n || 0), 0),
     [jumlahPerTipe]
@@ -133,8 +134,9 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     setPicked([]);
     setKind('latihan');
     setMenit(15);
-     setUseAiSelection(true);
-    setJumlahPerTipe(ALL_ITEM_TYPES.reduce((acc, t) => ({ ...acc, [t]: 0 }), {}));
+    setUseAiSelection(true);
+    setActiveTypes(['pg', 'pg_kompleks', 'pernyataan_bs']);
+    setJumlahPerTipe({ pg: 0, pg_kompleks: 0, pernyataan_bs: 0 });
     setSelectedMateris(new Set());
     setSelectedTypes(new Set());
     setSelectedDiffs(new Set());
@@ -161,7 +163,11 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       else setSelectedMateris(p.materi ? new Set(p.materi.split(',').map((s) => s.trim()).filter(Boolean)) : new Set());
       if (Array.isArray(cfg.item_types)) setSelectedTypes(new Set(cfg.item_types as string[]));
       if (Array.isArray(cfg.difficulties)) setSelectedDiffs(new Set(cfg.difficulties as number[]));
-      if (cfg.jumlah_per_type && typeof cfg.jumlah_per_type === 'object') setJumlahPerTipe(cfg.jumlah_per_type as Record<string, number>);
+      if (cfg.jumlah_per_type && typeof cfg.jumlah_per_type === 'object') {
+        const jt = cfg.jumlah_per_type as Record<string, number>;
+        setJumlahPerTipe(jt);
+        setActiveTypes(Object.keys(jt));
+      }
     } else {
       setSelectedMateris(p.materi ? new Set(p.materi.split(',').map((s) => s.trim()).filter(Boolean)) : new Set());
     }
@@ -195,7 +201,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       return;
     }
     if (useAiSelection) {
-      for (const t of ALL_ITEM_TYPES) {
+      for (const t of activeTypes) {
         const availT = itemsByMateri.filter((it) => it.item_type === t).length;
         if ((jumlahPerTipe[t] || 0) > availT) {
           setErr(`Jumlah ${ITEM_TYPE_LABELS[t] || t} (${jumlahPerTipe[t]}) melebihi tersedia (${availT}).`);
@@ -215,7 +221,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
           item_types: Array.from(selectedTypes),
           difficulties: Array.from(selectedDiffs),
           jumlah_soal: jumlahSoalTotal,
-          jumlah_per_type: ALL_ITEM_TYPES.reduce(
+          jumlah_per_type: activeTypes.reduce(
             (acc, t) => ({ ...acc, [t]: jumlahPerTipe[t] || 0 }),
             {} as Record<string, number>
           ),
@@ -473,7 +479,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                   <div style={{ marginTop: 8 }}>
                     <div className="form-section-title" style={{ fontSize: 12 }}>Jumlah soal per jenis (AI distribusi acak per siswa)</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 6 }}>
-                      {ALL_ITEM_TYPES.map((t) => {
+                      {activeTypes.map((t) => {
                         const availT = itemsByMateri.filter((it) => it.item_type === t).length;
                         const label = t === 'pernyataan_bs' ? 'Pernyataan B/S' : (ITEM_TYPE_LABELS[t] ?? t);
                         return (
@@ -496,6 +502,30 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                         );
                       })}
                     </div>
+                    {ALL_ITEM_TYPES.some((t) => !activeTypes.includes(t)) && (
+                      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>Tambah jenis soal:</span>
+                        <select
+                          className="select"
+                          style={{ maxWidth: 180 }}
+                          value=""
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v) {
+                              setJumlahPerTipe((prev) => ({ ...prev, [v]: 0 }));
+                              setActiveTypes((a) => [...a, v]);
+                            }
+                          }}
+                        >
+                          <option value="" disabled>Pilih jenis</option>
+                          {ALL_ITEM_TYPES.filter((t) => !activeTypes.includes(t)).map((t) => (
+                            <option key={t} value={t}>
+                              {t === 'pernyataan_bs' ? 'Pernyataan B/S' : (ITEM_TYPE_LABELS[t] ?? t)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <p className="input-hint" style={{ marginTop: 6 }}>
                       Total {jumlahSoalTotal} soal ({filteredItems.length} tersedia). {jumlahSoalTotal === 0 ? 'Isi minimal 1.' : ''}
                     </p>
@@ -518,6 +548,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
           </div>
         </div>
 
+        {!useAiSelection && (
         <div className="form-card">
           <header className="card-header">
             <h2 className="card-title">Pilih soal</h2>
@@ -655,7 +686,6 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             <p className="type-lab">Tidak ada soal untuk materi ini.</p>
           )}
 
-          {!useAiSelection && (
           <div className="chip-pick-row">
             {filteredItems.map((it) => (
               <label
@@ -680,8 +710,8 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               </label>
             ))}
           </div>
-          )}
         </div>
+)}
 
         <div className="actions">
           <button className="btn btn-primary" type="submit" disabled={busy}>
