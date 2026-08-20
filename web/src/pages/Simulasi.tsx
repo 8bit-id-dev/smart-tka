@@ -183,13 +183,19 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     document.onselectstart = () => false;
     document.oncontextmenu = handleContextMenu;
     document.onkeydown = handleKeyDown;
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleBlur);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       handleExit();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [phase]);
 
@@ -430,7 +436,6 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
 
   const mm = String(Math.floor(sisa / 60)).padStart(2, '0');
   const ss = String(sisa % 60).padStart(2, '0');
-  const bahasLangsung = !!pkg?.discuss_after_each;
 
   if (phase === 'landing' && pkg) {
     const isUjian = selectedExam !== null;
@@ -705,8 +710,8 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
           <ItemPlayer
             key={item.id}
             item={item}
-            showBahas={bahasLangsung}
-            hideKeys={!bahasLangsung}
+            showBahas={phase === 'hasil'}
+            hideKeys={phase !== 'hasil'}
              onUpdate={(info) => {
                setAns((m) => ({ ...m, [item.id]: info }));
                if (attemptId && studentId) {
