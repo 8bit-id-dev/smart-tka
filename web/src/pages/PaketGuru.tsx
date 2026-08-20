@@ -442,22 +442,32 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
 
             <div className="hint-panel" style={{ marginTop: 8 }}>
               <div className="form-section-title" style={{ fontSize: 12, marginBottom: 6 }}>Materi (pilih satu atau lebih)</div>
-              <select
-                className="select"
-                multiple
-                style={{ minHeight: 120 }}
-                value={Array.from(selectedMateris)}
-                onChange={(e) => {
-                  const vals = Array.from(e.target.selectedOptions).map((o) => o.value);
-                  setSelectedMateris(new Set(vals));
-                  setMateri(vals.join(','));
-                }}
-                disabled={!mapel}
-              >
-                {uniqueMateris.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
+              {uniqueMateris.length === 0 ? (
+                <p className="input-hint">Tidak ada materi tersedia untuk mapel ini.</p>
+              ) : (
+                <div className="field-row" style={{ flexWrap: 'wrap', gap: 10 }}>
+                  {uniqueMateris.map((m) => {
+                    const checked = selectedMateris.has(m);
+                    return (
+                      <label key={m} className={checked ? 'chip chip-terpilih' : 'chip'}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={!mapel}
+                          onChange={(e) => {
+                            const next = new Set(selectedMateris);
+                            if (e.target.checked) next.add(m);
+                            else next.delete(m);
+                            setSelectedMateris(next);
+                            setMateri(Array.from(next).join(','));
+                          }}
+                        />
+                        {m}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
