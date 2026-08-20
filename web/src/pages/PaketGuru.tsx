@@ -346,7 +346,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         </div>
       )}
 
-      <div className={`page-split${useAiSelection ? ' ai-only' : ''}`}>
+      <div className="page-split">
         <div className="form-sticky">
           <form onSubmit={simpan} className="form-container">
             <div className="form-card">
@@ -544,8 +544,16 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               style={{ width: '100%', resize: 'vertical' }}
             />
           </div>
+
+          <div className="actions">
+            <button className="btn btn-primary" type="submit" disabled={busy}>
+              {busy ? 'Menyimpan…' : editId ? 'Simpan perubahan' : 'Buat paket'}
+            </button>
+          </div>
+        </form>
         </div>
 
+        <div className="right-col">
         {!useAiSelection && (
         <div className="form-card">
           <header className="card-header">
@@ -711,14 +719,6 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         </div>
         )}
 
-        <div className="actions">
-          <button className="btn btn-primary" type="submit" disabled={busy}>
-            {busy ? 'Menyimpan…' : editId ? 'Simpan perubahan' : 'Buat paket'}
-          </button>
-        </div>
-      </form>
-        </div>
-
       <section className="form-card" style={{ marginTop: 0 }}>
         <header className="card-header">
           <h2 className="card-title">Paket saya ({pkgs.length})</h2>
@@ -756,6 +756,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
           </article>
         ))}
       </section>
+    </div>
     </div>
   </div>
   );
