@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { KurikulumCrud } from '../components/KurikulumCrud';
 import { insforge, type AppProfile } from '../lib/insforge';
 import type { MapelRow } from '../lib/kurikulum';
@@ -283,14 +283,22 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     a.localeCompare(b, 'id', { numeric: true, sensitivity: 'base' })
   );
 
-  const filteredItems = items
-    .filter((it) => !mapel || it.mapel === mapel)
-    .filter((it) => {
-      if (selectedMateris.size === 0) return true;
-      return it.materi ? selectedMateris.has(it.materi) : false;
-    })
-    .filter((it) => (selectedTypes.size === 0 ? true : selectedTypes.has(it.item_type)))
-    .filter((it) => (selectedDiffs.size === 0 ? true : it.difficulty !== null && selectedDiffs.has(Number(it.difficulty))));
+  const itemsByMateri = useMemo(() =>
+    items
+      .filter((it) => !mapel || it.mapel === mapel)
+      .filter((it) => {
+        if (selectedMateris.size === 0) return true;
+        return it.materi ? selectedMateris.has(it.materi) : false;
+      }),
+    [items, mapel, selectedMateris]
+  );
+
+  const filteredItems = useMemo(() =>
+    itemsByMateri
+      .filter((it) => (selectedTypes.size === 0 ? true : selectedTypes.has(it.item_type)))
+      .filter((it) => (selectedDiffs.size === 0 ? true : it.difficulty !== null && selectedDiffs.has(Number(it.difficulty)))),
+    [itemsByMateri, selectedTypes, selectedDiffs]
+  );
 
   if (!['guru', 'admin', 'konten'].includes(profile.role)) {
     return (
@@ -401,33 +409,11 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                   setMateri('');
                   setSelectedMateris(new Set());
                 }}
-              />
-            </div>
-            {mapel && uniqueMateris.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <div className="form-section-title">Pilih materi (bisa lebih dari 1)</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                  {uniqueMateris.map((m) => (
-                    <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedMateris.has(m)}
-                        onChange={(e) => {
-                          const next = new Set(selectedMateris);
-                          if (e.target.checked) next.add(m);
-                          else next.delete(m);
-                          setSelectedMateris(next);
-                        }}
-                      />
-                      {m}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
+            />
           </div>
+        </div>
 
-          <div className="form-section">
+        <div className="form-section">
             <div className="form-row">
               <div className="form-group">
                 <div className="form-section-title">
@@ -571,7 +557,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               {ALL_ITEM_TYPES.map((t) => {
                 const checked = selectedTypes.has(t);
                 const label = ITEM_TYPE_LABELS[t] ?? t;
-                const available = filteredItems.filter((it) => it.item_type === t).length;
+                const available = itemsByMateri.filter((it) => it.item_type === t).length;
                 return (
                   <label key={t} className="chip-pick" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: available === 0 ? 0.5 : 1 }}>
                     <input
@@ -597,7 +583,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {DIFF_OPTS.map((d) => {
                 const checked = selectedDiffs.has(d.v);
-                const available = filteredItems.filter((it) => it.difficulty === d.v).length;
+                const available = itemsByMateri.filter((it) => it.difficulty === d.v).length;
                 return (
                   <label key={d.v} className="chip-pick" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: available === 0 ? 0.5 : 1 }}>
                     <input
