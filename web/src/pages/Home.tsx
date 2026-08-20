@@ -6,7 +6,7 @@ import { GamifQuickView } from '../components/GamifQuickView';
 
 type AttemptRow = { score: number | null; status: string; submitted_at: string | null; package_id: string | null };
 type AARow = { item_id: string; is_correct: boolean; items: { mapel: string }[] };
-type PkgRow = { id: string; title: string; mapel: string; kind: string; item_count: number };
+type PkgRow = { id: string; title: string; mapel: string; kind: string; item_count: number; duration_sec: number | null };
 type ClassRow = { id: string; name: string; jenjang: string };
 type GpRow = { xp: number; level: number; streak_current: number; streak_best: number };
 
@@ -96,7 +96,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
 
       const pk = await insforge.database
         .from('packages')
-        .select('id, title, mapel, kind, item_count')
+        .select('id, title, mapel, kind, item_count, duration_sec')
         .order('kind')
         .order('mapel')
         .limit(50);
@@ -434,7 +434,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
             </div>
             <div className="featured-stat">
               <p className="featured-stat-label">Durasi</p>
-              <p className="featured-stat-value">90 mnt</p>
+              <p className="featured-stat-value">{simulasiPkg?.duration_sec && simulasiPkg.duration_sec > 0 ? `${Math.round(simulasiPkg.duration_sec / 60)} mnt` : (simulasiPkg ? 'tanpa timer' : '—')}</p>
             </div>
             <div className="featured-stat">
               <p className="featured-stat-label">Skor Terakhir</p>
