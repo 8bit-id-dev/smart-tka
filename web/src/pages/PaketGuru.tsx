@@ -431,25 +431,24 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         </div>
 
         <div className="form-section">
-            <div className="form-row">
-              <div className="form-group">
-                <div className="form-section-title">
-                  Durasi (menit) <span className="req"></span>
-                </div>
-                <input
-                  className="input"
-                  type="number"
-                  min={kind === 'latihan' ? 0 : 5}
-                  max={180}
-                  value={menit}
-                  onChange={(e) => setMenit(Number(e.target.value))}
-                />
-                <p className="input-hint" style={{ marginTop: 4 }}>
-                  {kind === 'latihan' ? '0 = tanpa countdown ketat' : 'wajib untuk simulasi/ujian'}
-                </p>
-              </div>
-              <div className="form-group">
-                <div className="form-section-title">Pengaturan</div>
+          <div className="form-group">
+            <div className="form-section-title">
+              Durasi (menit) <span className="req"></span>
+            </div>
+            <input
+              className="input"
+              type="number"
+              min={kind === 'latihan' ? 0 : 5}
+              max={180}
+              value={menit}
+              onChange={(e) => setMenit(Number(e.target.value))}
+            />
+            <p className="input-hint" style={{ marginTop: 4 }}>
+              {kind === 'latihan' ? '0 = tanpa countdown ketat' : 'wajib untuk simulasi/ujian'}
+            </p>
+          </div>
+          <div className="form-group" style={{ marginTop: 16 }}>
+            <div className="form-section-title">Pengaturan</div>
                 <div className="field-row" style={{ marginTop: 8 }}>
                   <input type="checkbox" id="pkg-shuffle" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} />
                   <label className="form-label" htmlFor="pkg-shuffle">
@@ -517,7 +516,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                             }
                           }}
                         >
-                          <option value="" disabled>Pilih jenis</option>
+                          <option value="" disabled>+</option>
                           {ALL_ITEM_TYPES.filter((t) => !activeTypes.includes(t)).map((t) => (
                             <option key={t} value={t}>
                               {t === 'pernyataan_bs' ? 'Pernyataan B/S' : (ITEM_TYPE_LABELS[t] ?? t)}
@@ -533,7 +532,6 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                 )}
               </div>
             </div>
-          </div>
 
           <div className="form-section">
             <div className="form-section-title">Info paket <small className="muted" style={{ display: 'block', fontSize: 11, fontWeight: 400 }}>(opsional — ditampilkan di halaman konfirmasi sebelum mengerjakan)</small></div>
@@ -548,7 +546,6 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
           </div>
         </div>
 
-        {!useAiSelection && (
         <div className="form-card">
           <header className="card-header">
             <h2 className="card-title">Pilih soal</h2>
@@ -711,7 +708,6 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             ))}
           </div>
         </div>
-)}
 
         <div className="actions">
           <button className="btn btn-primary" type="submit" disabled={busy}>
