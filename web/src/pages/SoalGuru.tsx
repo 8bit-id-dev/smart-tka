@@ -483,54 +483,36 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
             </div>
 
              <div style={{ marginBottom: 20 }}>
-               {isGuru ? (
+               {isGuru && mySubjects.length === 0 ? (
                  <div>
                    <label className="form-label">Mapel</label>
-                   {mySubjects.length === 0 ? (
-                     <p className="type-lab" style={{ marginTop: 4 }}>
-                       Anda belum memiliki mapel yang diassign. Hubungi admin untuk menambahkan mapel.
-                     </p>
-                   ) : (
-                     <select
-                       className="select"
-                       value={mapel}
-                       onChange={(e) => {
-                         const selected = mySubjects.find((s) => s === e.target.value) || '';
-                         setMapel(e.target.value);
-                         setMapelId(selected ? selected : '');
-                       }}
-                     >
-                       <option value="">— pilih mapel —</option>
-                       {mySubjects
-                         .slice()
-                         .sort((a, b) => a.localeCompare(b, 'id', { numeric: true, sensitivity: 'base' }))
-                         .map((s) => (
-                           <option key={s} value={s}>{s}</option>
-                         ))}
-                     </select>
-                   )}
+                   <p className="type-lab" style={{ marginTop: 4, color: 'var(--danger)' }}>
+                     Anda belum memiliki mata pelajaran yang diassign. Hubungi admin untuk menambahkan Anda ke mata pelajaran yang diajarkan.
+                   </p>
                  </div>
                ) : (
-                  <KurikulumCrud
-                    profile={profile}
-                    jenjang={jenjang}
-                    pilihMapelId={mapelId}
-                    pilihMateriId={materiId}
-                    allowedSubjects={isGuru ? mySubjects : undefined}
-                    isAdmin={profile.role !== 'guru'}
-                    onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
-                      if (isGuru && mp && !mySubjects.includes(mp.name)) {
-                        setErr(`Anda tidak mengajar "${mp.name}". Hubungi admin untuk assignment.`);
-                        return;
-                      }
-                      setMapelId(mp?.id || '');
-                      setMateriId(mt?.id || '');
-                      setMapel(mp?.name || '');
-                      setMateri(mt?.name || '');
-                    }}
-                  />
-            )}
-          </div>
+                 <KurikulumCrud
+                   profile={profile}
+                   jenjang={jenjang}
+                   pilihMapelId={mapelId}
+                   pilihMateriId={materiId}
+                   pilihMapelName={mapel}
+                   pilihMateriName={materi}
+                   allowedSubjects={isGuru ? mySubjects : undefined}
+                   isAdmin={profile.role !== 'guru'}
+                   onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
+                     if (isGuru && mp && !mySubjects.includes(mp.name)) {
+                       setErr(`Anda tidak mengajar "${mp.name}". Hubungi admin untuk assignment.`);
+                       return;
+                     }
+                     setMapelId(mp?.id || '');
+                     setMateriId(mt?.id || '');
+                     setMapel(mp?.name || '');
+                     setMateri(mt?.name || '');
+                   }}
+                 />
+               )}
+             </div>
 
             <div className="form-group">
               <label className="form-label">Tipe Soal</label>

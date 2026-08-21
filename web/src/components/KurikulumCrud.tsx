@@ -8,6 +8,8 @@ export function KurikulumCrud({
   onPilih,
   pilihMapelId,
   pilihMateriId,
+  pilihMapelName,
+  pilihMateriName,
   allowedSubjects,
   isAdmin = false,
 }: {
@@ -15,6 +17,8 @@ export function KurikulumCrud({
   jenjang: string;
   pilihMapelId: string;
   pilihMateriId: string;
+  pilihMapelName?: string;
+  pilihMateriName?: string;
   onPilih: (mapel: MapelRow | null, materi: MateriRow | null) => void;
   allowedSubjects?: string[];
   isAdmin?: boolean;
@@ -55,13 +59,40 @@ export function KurikulumCrud({
       return;
     }
     setErr('');
+
+    let dbRows = m.rows;
+    if (allowedSubjects && allowedSubjects.length > 0) {
+      const existingNames = new Set(dbRows.map((r) => r.name));
+      const missing = allowedSubjects.filter((name) => !existingNames.has(name));
+      if (missing.length > 0) {
+        for (const name of missing) {
+          await insforge.database.from('mapels').insert({
+            school_id: profile.school_id,
+            name,
+            jenjang,
+          });
+        }
+        const reloaded = await loadMapels(profile.school_id, jenjang);
+        if (!reloaded.error) {
+          dbRows = reloaded.rows;
+        }
+      }
+    }
+
     const displayed = allowedSubjects
-      ? m.rows.filter((r) => allowedSubjects.includes(r.name))
-      : m.rows;
+      ? dbRows.filter((r) => allowedSubjects.includes(r.name))
+      : dbRows;
     setMapels(displayed);
-    const still = displayed.find((r) => r.id === pilihMapelId);
-    if (still) {
-      await muatMateri(still.id);
+
+    const stillMapel = displayed.find(
+      (r) => r.id === pilihMapelId || (pilihMapelName && r.name.toLowerCase() === pilihMapelName.toLowerCase()),
+    );
+    if (stillMapel) {
+      const mats = await muatMateri(stillMapel.id);
+      const stillMateri = mats.find(
+        (mt) => mt.id === pilihMateriId || (pilihMateriName && mt.name.toLowerCase() === pilihMateriName.toLowerCase()),
+      );
+      onPilih(stillMapel, stillMateri || mats[0] || null);
     } else if (displayed[0]) {
       const mats = await muatMateri(displayed[0].id);
       onPilih(displayed[0], mats[0] || null);
@@ -129,7 +160,8 @@ export function KurikulumCrud({
   }
 
   async function simpanMateri() {
-    if (!pilihMapelId || !namaMateri.trim()) {
+    const currentMapelId = mapelAktif?.id || pilihMapelId;
+    if (!currentMapelId || !namaMateri.trim()) {
       setErr('Pilih mapel dulu, lalu isi nama materi.');
       return;
     }
@@ -143,7 +175,7 @@ export function KurikulumCrud({
     } else {
       const { data, error } = await insforge.database
         .from('materis')
-        .insert({ mapel_id: pilihMapelId, name: namaMateri.trim() })
+        .insert({ mapel_id: currentMapelId, name: namaMateri.trim() })
         .select('id, name, mapel_id');
       if (error) {
         setErr(
@@ -154,28 +186,29 @@ export function KurikulumCrud({
         return;
       }
       const row = (data?.[0] || null) as MateriRow | null;
-      const mp = mapels.find((x) => x.id === pilihMapelId) || null;
-      if (row) onPilih(mp, row);
+      if (row) onPilih(mapelAktif, row);
     }
     setNamaMateri('');
     setEditMateri(null);
-    await muatMateri(pilihMapelId);
+    await muatMateri(currentMapelId);
   }
 
   async function hapusMateri(id: string) {
     if (!confirm('Hapus materi ini?')) return;
+    const currentMapelId = mapelAktif?.id || pilihMapelId;
     const { error } = await insforge.database.from('materis').delete().eq('id', id);
     if (error) setErr(error.message);
     else {
-      const mats = await muatMateri(pilihMapelId);
+      const mats = await muatMateri(currentMapelId);
       if (pilihMateriId === id) {
-        const mp = mapels.find((x) => x.id === pilihMapelId) || null;
-        onPilih(mp, mats[0] || null);
+        onPilih(mapelAktif, mats[0] || null);
       }
     }
   }
 
-  const mapelAktif = mapels.find((m) => m.id === pilihMapelId) || null;
+  const mapelAktif = mapels.find(
+    (m) => m.id === pilihMapelId || (pilihMapelName && m.name.toLowerCase() === pilihMapelName.toLowerCase()),
+  ) || null;
 
   return (
     <div>
@@ -192,7 +225,7 @@ export function KurikulumCrud({
               <button
                 key={m.id}
                 type="button"
-                className={`chip-pick${m.id === pilihMapelId ? ' on' : ''}`}
+                className={`chip-pick${(m.id === mapelAktif?.id || (pilihMapelName && m.name.toLowerCase() === pilihMapelName.toLowerCase())) ? ' on' : ''}`}
                 onClick={() => onPilih(m, null)}
               >
                 {m.name}
@@ -203,15 +236,15 @@ export function KurikulumCrud({
       <div>
         <span className="type-lab">Materi — klik untuk memilih</span>
         <div className="chip-pick-row">
-          {!pilihMapelId && <span className="type-lab">Pilih mapel dulu.</span>}
-          {pilihMapelId && materis.length === 0 && <span className="type-lab">Belum ada materi.</span>}
+          {!mapelAktif && <span className="type-lab">Pilih mapel dulu.</span>}
+          {mapelAktif && materis.length === 0 && <span className="type-lab">Belum ada materi.</span>}
           {[...materis]
             .sort((a, b) => a.name.localeCompare(b.name, 'id', { sensitivity: 'base' }))
             .map((m) => (
               <button
                 key={m.id}
                 type="button"
-                className={`chip-pick${m.id === pilihMateriId ? ' on' : ''}`}
+                className={`chip-pick${(m.id === pilihMateriId || (pilihMateriName && m.name.toLowerCase() === pilihMateriName.toLowerCase())) ? ' on' : ''}`}
                 onClick={() => onPilih(mapelAktif, m)}
               >
                 {m.name}
@@ -296,9 +329,9 @@ export function KurikulumCrud({
                 value={namaMateri}
                 onChange={(e) => setNamaMateri(e.target.value)}
                 placeholder="Contoh: Turunan"
-                disabled={!pilihMapelId || (!isAdmin && !allowedSubjects?.includes(mapelAktif?.name || ''))}
+                disabled={!mapelAktif || (!isAdmin && !allowedSubjects?.includes(mapelAktif?.name || ''))}
               />
-              <button className="btn" type="button" disabled={!pilihMapelId} onClick={() => void simpanMateri()}>
+              <button className="btn" type="button" disabled={!mapelAktif} onClick={() => void simpanMateri()}>
                 {editMateri ? 'Simpan' : 'Tambah'}
               </button>
               {editMateri && (
