@@ -703,6 +703,33 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
             <button className="btn btn-primary" type="button" onClick={() => setPhase('list')}>Daftar Paket</button>
           </div>
         </section>
+
+        {items.length > 0 && (
+          <section style={{ maxWidth: 960, margin: '0 auto', padding: '0 12px 24px' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700 }}>Pembahasan Soal</h3>
+            {items.map((it, idx) => {
+              const myAns = ans[it.id];
+              const status = myAns?.correct === true ? 'benar' : myAns ? 'salah' : 'belum';
+              return (
+                <div key={it.id} className="card" style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                    <strong style={{ fontSize: 14 }}>No {idx + 1} · {it.item_type}</strong>
+                    <span className={`badge ${status === 'benar' ? 'badge-success' : status === 'salah' ? 'badge-danger' : 'badge-neutral'}`}>
+                      {status === 'benar' ? 'Benar' : status === 'salah' ? 'Salah' : 'Belum'}
+                    </span>
+                  </div>
+                  <ItemPlayer
+                    item={it}
+                    showBahas
+                    hideKeys={false}
+                    review
+                    answer={myAns?.answer || ''}
+                  />
+                </div>
+              );
+            })}
+          </section>
+        )}
       </div>
     );
   }

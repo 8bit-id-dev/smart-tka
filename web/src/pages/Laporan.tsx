@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
 import type { Tab } from '../AppShell';
 
@@ -294,6 +294,13 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   const [fDateFrom, setFDateFrom] = useState('');
   const [fDateTo, setFDateTo] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sortKey, setSortKey] = useState<'siswa' | 'kelas' | 'paket' | 'mapel' | 'skor' | 'tab' | 'waktu'>('waktu');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  function toggleSort(k: typeof sortKey) {
+    if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(k); setSortDir((k === 'skor' || k === 'tab' || k === 'waktu') ? 'desc' : 'asc'); }
+  }
 
   async function load() {
     setErr('');
@@ -433,6 +440,39 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
 
   const avg = filtered.length === 0 ? 0 : Math.round((filtered.reduce((s, r) => s + Number(r.score || 0), 0) / filtered.length) * 100) / 100;
 
+  const rowValue = useCallback((r: Attempt, k: typeof sortKey): string | number => {
+    const p = r.package_id ? pkgMap.get(r.package_id) : null;
+    switch (k) {
+      case 'siswa': return namaMap.get(r.student_id) || r.student_id.slice(0, 8);
+      case 'kelas': return kelasSiswa.get(r.student_id) || '';
+      case 'paket': return p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan bebas');
+      case 'mapel': return p?.mapel || '—';
+      case 'skor': return Number(r.score || 0);
+      case 'tab': return Number(r.tab_leave_count || 0);
+      case 'waktu': return new Date(r.submitted_at || r.started_at).getTime() || 0;
+      default: return 0;
+    }
+  }, [pkgMap, namaMap, kelasSiswa]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      const va = rowValue(a, sortKey);
+      const vb = rowValue(b, sortKey);
+      const cmp = typeof va === 'number' && typeof vb === 'number'
+        ? va - vb
+        : String(va).localeCompare(String(vb), 'id');
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [filtered, sortKey, sortDir, rowValue]);
+
+  function arrow(k: typeof sortKey) {
+    if (sortKey !== k) return '⇅';
+    return sortDir === 'asc' ? '↑' : '↓';
+  }
+
   return (
     <div className="dashboard-page">
       <header className="page-header" style={{ marginBottom: 20 }}>
@@ -526,18 +566,18 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
                 <th style={{ width: 40 }}>
                   <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleAll} />
                 </th>
-                <th>Siswa</th>
-                <th>Kelas</th>
-                <th>Paket</th>
-                <th>Mapel</th>
-                <th>Skor</th>
-                <th>Pindah tab</th>
-                <th>Waktu</th>
+                <th><button type="button" className="col-sort" onClick={() => toggleSort('siswa')}>Siswa {arrow('siswa')}</button></th>
+                <th><button type="button" className="col-sort" onClick={() => toggleSort('kelas')}>Kelas {arrow('kelas')}</button></th>
+                <th><button type="button" className="col-sort" onClick={() => toggleSort('paket')}>Paket {arrow('paket')}</button></th>
+                <th><button type="button" className="col-sort" onClick={() => toggleSort('mapel')}>Mapel {arrow('mapel')}</button></th>
+                <th><button type="button" className="col-sort" onClick={() => toggleSort('skor')}>Skor {arrow('skor')}</button></th>
+                <th><button type="button" className="col-sort" onClick={() => toggleSort('tab')}>Pindah tab {arrow('tab')}</button></th>
+                <th><button type="button" className="col-sort" onClick={() => toggleSort('waktu')}>Waktu {arrow('waktu')}</button></th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => {
+              {sorted.map((r) => {
                 const p = r.package_id ? pkgMap.get(r.package_id) : null;
                 return (
                   <tr key={r.id}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MathText } from './MathText';
 import { LETTERS, optionsOf, parseKey, parseMatchPairs, sameSet, type DbItem } from '../lib/soal';
 import { evalUraianAI, type KoreksiUraianResult } from '../lib/aiSoal';
@@ -9,9 +9,11 @@ type Props = {
   hideKeys: boolean;
   onLocked?: (correct: boolean) => void;
   onUpdate?: (info: { answer: string; correct: boolean }) => void;
+  review?: boolean;
+  answer?: string;
 };
 
-export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Props) {
+export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, review = false, answer }: Props) {
   const [locked, setLocked] = useState(false);
   const [pg, setPg] = useState<string | null>(null);
   const [kom, setKom] = useState<string[]>([]);
@@ -37,7 +39,23 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
   const opts = optionsOf(item);
   const key = parseKey(item);
   const matchPairs = parseMatchPairs(item);
-  const reveal = showBahas && locked && !hideKeys;
+  const reveal = (showBahas || review) && !hideKeys;
+
+  // Review mode: re-show the student's previously saved answer so reveal
+  // highlight (benar/salah) reflects what they actually chose.
+  useEffect(() => {
+    if (!review || !answer) return;
+    try {
+      if (item.item_type === 'pg' || item.item_type === 'single') setPg(answer);
+      else if (item.item_type === 'pg_kompleks') setKom(JSON.parse(answer));
+      else if (item.item_type === 'pernyataan_bs') setBs(JSON.parse(answer));
+      else if (item.item_type === 'mencocokkan') {
+        const parsed = JSON.parse(answer);
+        setMatchAns(Array.isArray(parsed) ? Object.fromEntries(parsed.map((v: string, i: number) => [i, v])) : parsed);
+      } else if (item.item_type === 'uraian') setEssayAns(answer);
+    } catch { /* ignore malformed stored answer */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [review, answer]);
 
   async function mintaKoreksiAI() {
     if (!essayAns.trim()) return;
@@ -167,7 +185,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
               <button
                 key={L}
                 type="button"
-                disabled={locked && showBahas}
+                disabled={locked && (showBahas || review)}
                 className={`choice ${pg === L ? 'sel x-mark' : ''} ${reveal && L === key ? 'ok' : ''} ${reveal && pg === L && pg !== key ? 'bad' : ''}`}
                 onClick={() => {
                   setPg(L);
@@ -192,7 +210,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
               <button
                 key={L}
                 type="button"
-                disabled={locked && showBahas}
+                disabled={locked && (showBahas || review)}
                 className={`choice ${on ? 'sel' : ''} ${reveal && keys.includes(L) ? 'ok' : ''} ${reveal && on && !keys.includes(L) ? 'bad' : ''}`}
                 onClick={() => {
                   const next = kom.includes(L) ? kom.filter((x) => x !== L) : [...kom, L];
@@ -239,7 +257,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
                           name={`bs-${idx}`}
                           value="B"
                           checked={chosen === 'B'}
-                          disabled={locked && showBahas}
+                          disabled={locked && (showBahas || review)}
                           onChange={() => pickBs(idx, 'B')}
                         />
                         <span>Benar</span>
@@ -252,7 +270,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
                           name={`bs-${idx}`}
                           value="S"
                           checked={chosen === 'S'}
-                          disabled={locked && showBahas}
+                          disabled={locked && (showBahas || review)}
                           onChange={() => pickBs(idx, 'S')}
                         />
                         <span>Salah</span>
@@ -290,7 +308,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
                 </p>
                 <select
                   className="sel-input"
-                  disabled={locked && showBahas}
+                  disabled={locked && (showBahas || review)}
                   value={selectedVal}
                   style={{
                     borderColor: reveal ? (isPairCorrect ? '#2f9e6b' : '#dc2626') : undefined,
@@ -326,7 +344,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate }: Pr
           <textarea
             className="sel-input"
             rows={4}
-            disabled={locked && showBahas}
+            disabled={locked && (showBahas || review)}
             value={essayAns}
             placeholder="Tuliskan jawaban Anda di sini…"
             style={{ width: '100%', resize: 'vertical' }}
