@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { assignSiswaKeKelas, cariKelasByKode } from '../lib/kelas';
 import { adminCreateAuthUser, insforge, summarizeAuthError, type AppProfile } from '../lib/insforge';
+import { DirectoryGalleryAdmin } from './DirectoryGalleryAdmin';
 
 type UserRow = AppProfile;
 type ClassRow = { id: string; name: string; jenjang: string; invite_code?: string };
@@ -905,6 +906,8 @@ export function Admin({ me }: { me: AppProfile }) {
           </div>
         )}
       </div>
+
+      <DirectoryGalleryAdmin me={me} />
     </div>
   );
 }

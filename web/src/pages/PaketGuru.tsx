@@ -441,7 +441,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               <div className="form-group">
                 <div className="form-section-title">Jenis <span className="req"></span></div>
                 <select className="select" value={kind} onChange={(e) => setKind(e.target.value as (typeof KINDS)[number]['id'])}>
-                  {KINDS.map((k) => (
+                  {KINDS.filter((k) => k.id !== 'lab_25').map((k) => (
                     <option key={k.id} value={k.id}>
                       {k.label}
                     </option>
