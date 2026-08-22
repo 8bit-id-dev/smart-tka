@@ -4,8 +4,8 @@ import type { Tab } from '../AppShell';
 import { Icons } from '../AppShell';
 import { GamifQuickView } from '../components/GamifQuickView';
 
-type AttemptRow = { score: number | null; status: string; submitted_at: string | null; package_id: string | null };
-type AARow = { item_id: string; is_correct: boolean; items: { mapel: string; item_type: string; difficulty: number | null; materi: string | null }[] };
+type AttemptRow = { id: string; score: number | null; status: string; submitted_at: string | null; package_id: string | null };
+type AARow = { attempt_id: string; item_id: string; is_correct: boolean; items: { mapel: string; item_type: string; difficulty: number | null; materi: string | null }[] };
 type PkgRow = { id: string; title: string; mapel: string; kind: string; item_count: number; duration_sec: number | null };
 type ExamSchedule = { id: string; package_id: string; subject: string; materi: string | null; duration_sec: number | null; start_at: string; end_at: string; is_active: boolean };
 type ClassRow = { id: string; name: string; jenjang: string };
@@ -73,6 +73,149 @@ function SimpleLineChart({ data, labels, color = 'var(--accent)' }: { data: numb
   );
 }
 
+type AnalysisTab = 'mapel' | 'jenis' | 'kesulitan' | 'materi';
+
+function AbilityAnalysis({
+  stats,
+  subjectStats,
+  typeStats,
+  diffStats,
+  materiStats,
+  trend,
+  activityChart,
+}: {
+  stats: { soalDikerjakan: number; jawabanBenar: number; akurasi: number; rataSkor: number; simulasiSelesai: number; totalAttempts: number };
+  subjectStats: Record<string, { total: number; correct: number }>;
+  typeStats: Record<string, { total: number; correct: number }>;
+  diffStats: Record<number, { total: number; correct: number }>;
+  materiStats: Record<string, { total: number; correct: number; mapel: string }>;
+  trend: string;
+  activityChart: { data: number[]; labels: string[] };
+}) {
+  const [tab, setTab] = useState<AnalysisTab>('mapel');
+  const hasData = Object.keys(subjectStats).length > 0 || Object.keys(typeStats).length > 0 || Object.keys(diffStats).length > 0 || Object.keys(materiStats).length > 0;
+
+  const TABS: { id: AnalysisTab; label: string }[] = [
+    { id: 'mapel', label: 'Mata Pelajaran' },
+    { id: 'jenis', label: 'Jenis Soal' },
+    { id: 'kesulitan', label: 'Kesulitan' },
+    { id: 'materi', label: 'Materi' },
+  ];
+
+  return (
+    <div className="section">
+      <div className="card" style={{ padding: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+          <h3 className="card-title" style={{ margin: 0 }}>Analisis Kemampuan</h3>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={tab === t.id ? 'seg-active' : 'seg'}
+                onClick={() => setTab(t.id)}
+                style={{ fontSize: 12, padding: '4px 10px' }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {!hasData ? (
+          <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 120, textAlign: 'center', padding: '12px 8px', backgroundColor: 'var(--surface-2)', borderRadius: 8 }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)' }}>{stats.akurasi}%</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Akurasi</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 120, textAlign: 'center', padding: '12px 8px', backgroundColor: 'var(--surface-2)', borderRadius: 8 }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--success)' }}>{stats.jawabanBenar}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Jawaban Benar</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 120, textAlign: 'center', padding: '12px 8px', backgroundColor: 'var(--surface-2)', borderRadius: 8 }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--gold)' }}>{stats.soalDikerjakan}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Soal Selesai</div>
+              </div>
+            </div>
+
+            {tab === 'mapel' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {Object.entries(subjectStats).map(([mapel, v]) => {
+                  const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+                  const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
+                  return <AnalysisBar key={mapel} label={mapel} pct={pct} tag={tag} />;
+                })}
+              </div>
+            )}
+
+            {tab === 'jenis' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {Object.entries(typeStats).map(([type, v]) => {
+                  const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+                  const label = type === 'pg' ? 'Pilihan Ganda' : type === 'pg_kompleks' ? 'PG Kompleks' : type === 'uraian' ? 'Uraian' : type === 'pernyataan_bs' ? 'Benar/Salah' : type === 'mencocokkan' ? 'Mencocokkan' : type;
+                  const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
+                  return <AnalysisBar key={type} label={label} pct={pct} tag={tag} />;
+                })}
+              </div>
+            )}
+
+            {tab === 'kesulitan' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {Object.entries(diffStats).sort(([a], [b]) => Number(a) - Number(b)).map(([diff, v]) => {
+                  const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+                  const diffNum = Number(diff);
+                  const label = diffNum === 1 ? 'Mudah' : diffNum === 2 ? 'Sedang' : diffNum === 3 ? 'Sulit' : `Level ${diff}`;
+                  const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
+                  return <AnalysisBar key={diff} label={label} pct={pct} tag={tag} />;
+                })}
+              </div>
+            )}
+
+            {tab === 'materi' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {Object.entries(materiStats).sort(([, a], [, b]) => (a.correct / a.total) - (b.correct / b.total)).map(([materi, v]) => {
+                  const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+                  const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
+                  return <AnalysisBar key={materi} label={materi + (v.mapel ? ` (${v.mapel})` : '')} pct={pct} tag={tag} />;
+                })}
+              </div>
+            )}
+
+            <div style={{ marginTop: 20 }}>
+              <h4 style={{ fontSize: 13, fontWeight: 600, margin: '0 0 8px' }}>Tren Skor</h4>
+              <div className="chart-svg-wrap" style={{ height: 120 }}>
+                <SimpleLineChart data={activityChart.data} labels={activityChart.labels} />
+              </div>
+              {trend !== 'neutral' && (
+                <p style={{ fontSize: 11, color: 'var(--muted)', margin: '6px 0 0', textAlign: 'center' }}>
+                  {trend === 'up' ? '📈 Tren meningkat' : '📉 Tren menurun'}
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AnalysisBar({ label, pct, tag }: { label: string; pct: number; tag: string }) {
+  const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : 'analysis-bar-tag-improve';
+  return (
+    <div className="analysis-bar-row">
+      <span className="analysis-bar-label">{label}</span>
+      <div className="analysis-bar-track">
+        <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="analysis-bar-pct">{pct}%</span>
+      <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
+    </div>
+  );
+}
+
 export function Home({ name, profile, onTab }: { name: string; profile: AppProfile; onTab: (t: Tab) => void }) {
   const staf = ['guru', 'admin', 'kepsek', 'konten'].includes(profile.role);
   const isSiswa = profile.role === 'siswa';
@@ -137,11 +280,11 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
   useEffect(() => {
     if (!isSiswa || !attempts.length) return;
     void (async () => {
-      const ids = attempts.map((a) => a.package_id).filter(Boolean);
+      const ids = attempts.map((a) => a.id).filter(Boolean);
       if (!ids.length) return;
       const { data } = await insforge.database
         .from('attempt_answers')
-        .select('item_id, is_correct, items!inner(mapel, item_type, difficulty, materi)')
+        .select('attempt_id, item_id, is_correct, items!inner(mapel, item_type, difficulty, materi)')
         .in('attempt_id', ids)
         .limit(1000);
       if (data) setAa(data as AARow[]);
@@ -150,19 +293,23 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
   /* eslint-enable react-hooks/exhaustive-deps */
 
   const stats = useMemo(() => {
-    const submitted = attempts.filter((a) => a.status === 'submitted' && a.score != null);
-    const soalDikerjakan = aa.length;
-    const jawabanBenar = aa.filter((a) => a.is_correct).length;
+    const submittedAttempts = attempts.filter((a) => a.status === 'submitted' && a.score != null);
+    const submittedIds = new Set(submittedAttempts.map((a) => a.id));
+    const completedAa = aa.filter((x) => submittedIds.has(x.attempt_id));
+    const soalDikerjakan = completedAa.length;
+    const jawabanBenar = completedAa.filter((a) => a.is_correct).length;
     const akurasi = soalDikerjakan > 0 ? Math.round((jawabanBenar / soalDikerjakan) * 100) : 0;
-    const rataSkor = submitted.length > 0
-      ? Math.round((submitted.reduce((s, r) => s + Number(r.score), 0) / submitted.length) * 10) / 10
+    const rataSkor = submittedAttempts.length > 0
+      ? Math.round((submittedAttempts.reduce((s, r) => s + Number(r.score), 0) / submittedAttempts.length) * 10) / 10
       : 0;
-    return { soalDikerjakan, jawabanBenar, akurasi, rataSkor, simulasiSelesai: submitted.length };
+    return { soalDikerjakan, jawabanBenar, akurasi, rataSkor, simulasiSelesai: submittedAttempts.length, totalAttempts: attempts.length };
   }, [attempts, aa]);
 
   const subjectStats = useMemo(() => {
+    const submittedIds = new Set(attempts.filter((a) => a.status === 'submitted').map((a) => a.id));
     const byMapel: Record<string, { total: number; correct: number }> = {};
     for (const a of aa) {
+      if (!submittedIds.has(a.attempt_id)) continue;
       const mapel = Array.isArray(a.items) && a.items[0]?.mapel
         ? a.items[0].mapel
         : 'Lainnya';
@@ -171,7 +318,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       if (a.is_correct) byMapel[mapel].correct += 1;
     }
     return byMapel;
-  }, [aa]);
+  }, [aa, attempts]);
 
   const recMapel = useMemo(() => {
     const entries = Object.entries(subjectStats).map(([name, v]) => ({
@@ -183,8 +330,10 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
   }, [subjectStats]);
 
   const typeStats = useMemo(() => {
+    const submittedIds = new Set(attempts.filter((a) => a.status === 'submitted').map((a) => a.id));
     const byType: Record<string, { total: number; correct: number }> = {};
     for (const a of aa) {
+      if (!submittedIds.has(a.attempt_id)) continue;
       const itemType = Array.isArray(a.items) && a.items[0]?.item_type
         ? a.items[0].item_type
         : 'Lainnya';
@@ -193,11 +342,13 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       if (a.is_correct) byType[itemType].correct += 1;
     }
     return byType;
-  }, [aa]);
+  }, [aa, attempts]);
 
   const diffStats = useMemo(() => {
+    const submittedIds = new Set(attempts.filter((a) => a.status === 'submitted').map((a) => a.id));
     const byDiff: Record<number, { total: number; correct: number }> = {};
     for (const a of aa) {
+      if (!submittedIds.has(a.attempt_id)) continue;
       const diff = Array.isArray(a.items) && a.items[0]?.difficulty != null
         ? Number(a.items[0].difficulty)
         : 0;
@@ -206,11 +357,13 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       if (a.is_correct) byDiff[diff].correct += 1;
     }
     return byDiff;
-  }, [aa]);
+  }, [aa, attempts]);
 
   const materiStats = useMemo(() => {
+    const submittedIds = new Set(attempts.filter((a) => a.status === 'submitted').map((a) => a.id));
     const byMateri: Record<string, { total: number; correct: number; mapel: string }> = {};
     for (const a of aa) {
+      if (!submittedIds.has(a.attempt_id)) continue;
       const materi = Array.isArray(a.items) && a.items[0]?.materi
         ? a.items[0].materi
         : 'Umum';
@@ -220,7 +373,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       if (a.is_correct) byMateri[materi].correct += 1;
     }
     return byMateri;
-  }, [aa]);
+  }, [aa, attempts]);
 
   const trend = useMemo(() => {
     const submitted = attempts
@@ -495,35 +648,17 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         </div>
       )}
 
-      <div className="section">
-        <div className="card">
-          <h3 className="card-title" style={{ marginBottom: 14 }}>Analisis Kemampuan</h3>
-          {Object.keys(subjectStats).length === 0 ? (
-            <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
-          ) : (
-            Object.entries(subjectStats).map(([mapel, v]) => {
-              const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
-              const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
-              const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : pct >= 50 ? 'analysis-bar-tag-improve' : 'analysis-bar-tag-improve';
-              return (
-                <div key={mapel} className="analysis-bar-row">
-                  <span className="analysis-bar-label">{mapel}</span>
-                  <div className="analysis-bar-track">
-                    <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="analysis-bar-pct">{pct}%</span>
-                  <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
+      <AbilityAnalysis
+        stats={stats}
+        subjectStats={subjectStats}
+        typeStats={typeStats}
+        diffStats={diffStats}
+        materiStats={materiStats}
+        trend={trend}
+        activityChart={activityChart}
+      />
 
       <div className="section">
-        <div className="section-header">
-          <h2 className="section-title">Latihan TKA</h2>
-        </div>
         {pkgs.filter((p) => p.kind === 'latihan').length === 0 ? (
           <p className="type-lab">Belum ada paket latihan tersedia.</p>
         ) : (
@@ -605,61 +740,6 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
                 return (
                   <div key={type} className="analysis-bar-row">
                     <span className="analysis-bar-label">{label}</span>
-                    <div className="analysis-bar-track">
-                      <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="analysis-bar-pct">{pct}%</span>
-                    <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="section">
-        <div className="card">
-          <h3 className="card-title" style={{ marginBottom: 14 }}>Analisis Per Tingkat Kesulitan</h3>
-          {Object.keys(diffStats).length === 0 ? (
-            <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {Object.entries(diffStats).sort(([a], [b]) => Number(a) - Number(b)).map(([diff, v]) => {
-                const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
-                const label = diff === '1' ? 'Mudah' : diff === '2' ? 'Sedang' : diff === '3' ? 'Sulit' : `Level ${diff}`;
-                const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
-                const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : 'analysis-bar-tag-improve';
-                return (
-                  <div key={diff} className="analysis-bar-row">
-                    <span className="analysis-bar-label">{label}</span>
-                    <div className="analysis-bar-track">
-                      <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="analysis-bar-pct">{pct}%</span>
-                    <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="section">
-        <div className="card">
-          <h3 className="card-title" style={{ marginBottom: 14 }}>Analisis Per Materi</h3>
-          {Object.keys(materiStats).length === 0 ? (
-            <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {Object.entries(materiStats).sort(([, a], [, b]) => (a.correct / a.total) - (b.correct / b.total)).map(([materi, v]) => {
-                const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
-                const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
-                const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : 'analysis-bar-tag-improve';
-                return (
-                  <div key={materi} className="analysis-bar-row">
-                    <span className="analysis-bar-label">{materi}{v.mapel ? ` (${v.mapel})` : ''}</span>
                     <div className="analysis-bar-track">
                       <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
                     </div>
