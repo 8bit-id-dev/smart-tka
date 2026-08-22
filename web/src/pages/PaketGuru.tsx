@@ -231,6 +231,40 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         setErr(`Jumlah soal (${jumlahSoalTotal}) melebihi bank soal yang tersedia (${filteredItems.length}).`);
         return;
       }
+      // Validasi: setiap jenis soal aktif harus minimal 1
+      for (const t of activeTypes) {
+        if ((jumlahPerTipe[t] || 0) < 1) {
+          setErr(`Jumlah soal untuk jenis ${ITEM_TYPE_LABELS[t] || t} harus minimal 1.`);
+          return;
+        }
+      }
+      // Validasi: setiap materi dalam bank soal harus memiliki minimal 1 soal tersedia
+      const materisWithQuestions = [...new Set(filteredItems.map((it) => it.materi).filter(Boolean) as string[])];
+      const materisInBank = [...new Set(itemsByMateri.map((it) => it.materi).filter(Boolean) as string[])];
+      const materisWithoutQuestions = materisInBank.filter((m) => !materisWithQuestions.includes(m));
+      if (materisWithoutQuestions.length > 0) {
+        setErr(`Materi berikut tidak memiliki soal dengan filter yang dipilih: ${materisWithoutQuestions.join(', ')}. Tambah jenis soal atau tingkat kesulitan agar semua materi tercakup.`);
+        return;
+      }
+      // Validasi: setiap tingkat kesulitan dalam bank soal harus memiliki minimal 1 soal tersedia
+      const diffsWithQuestions = [...new Set(filteredItems.map((it) => it.difficulty).filter(Boolean) as number[])];
+      const diffsInBank = [...new Set(itemsByMateri.map((it) => it.difficulty).filter(Boolean) as number[])];
+      const diffsWithoutQuestions = diffsInBank.filter((d) => !diffsWithQuestions.includes(d));
+      if (diffsWithoutQuestions.length > 0) {
+        const diffLabels = diffsWithoutQuestions.map((d) => DIFF_OPTS.find((o) => o.v === d)?.label || `Level ${d}`);
+        setErr(`Tingkat kesulitan berikut tidak memiliki soal dengan filter yang dipilih: ${diffLabels.join(', ')}. Tambah jenis soal atau materi agar semua tingkat kesulitan tercakup.`);
+        return;
+      }
+      // Validasi: total soal harus >= jumlah materi (agar setiap materi minimal 1)
+      if (materisInBank.length > 0 && jumlahSoalTotal < materisInBank.length) {
+        setErr(`Total soal (${jumlahSoalTotal}) harus minimal ${materisInBank.length} agar setiap materi mendapat minimal 1 soal.`);
+        return;
+      }
+      // Validasi: total soal harus >= jumlah tingkat kesulitan (agar setiap tingkat minimal 1)
+      if (diffsInBank.length > 0 && jumlahSoalTotal < diffsInBank.length) {
+        setErr(`Total soal (${jumlahSoalTotal}) harus minimal ${diffsInBank.length} agar setiap tingkat kesulitan mendapat minimal 1 soal.`);
+        return;
+      }
     }
 
     const aiConfig = useAiSelection
@@ -573,10 +607,41 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                         </select>
                       </div>
                     )}
-                    <p className="input-hint" style={{ marginTop: 6 }}>
-                      Total {jumlahSoalTotal} soal ({filteredItems.length} tersedia). {jumlahSoalTotal === 0 ? 'Isi minimal 1.' : ''}
-                    </p>
-                  </div>
+                     <p className="input-hint" style={{ marginTop: 6 }}>
+                       Total {jumlahSoalTotal} soal ({filteredItems.length} tersedia). {jumlahSoalTotal === 0 ? 'Isi minimal 1.' : ''}
+                     </p>
+                     {useAiSelection && itemsByMateri.length > 0 && (() => {
+                        const materisInBank = [...new Set(itemsByMateri.map((it) => it.materi).filter(Boolean) as string[])];
+                        const materisCovered = materisInBank.filter((m) => filteredItems.some((it) => it.materi === m));
+                        const diffsInBank = [...new Set(itemsByMateri.map((it) => it.difficulty).filter(Boolean) as number[])];
+                        const diffsCovered = diffsInBank.filter((d) => filteredItems.some((it) => it.difficulty === d));
+                        const typesCovered = activeTypes.filter((t) => (jumlahPerTipe[t] || 0) > 0);
+                        const allMateriCovered = materisCovered.length === materisInBank.length && materisInBank.length > 0;
+                        const allDiffsCovered = diffsCovered.length === diffsInBank.length && diffsInBank.length > 0;
+                        const allTypesCovered = typesCovered.length === activeTypes.length && activeTypes.length > 0;
+                        return (
+                          <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, backgroundColor: 'var(--surface-2)', fontSize: 12 }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>Cakupan paket:</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                              <span style={{ color: allTypesCovered ? 'var(--ok)' : 'var(--danger)' }}>
+                                {allTypesCovered ? '✓' : '✗'} {typesCovered.length}/{activeTypes.length} jenis soal
+                              </span>
+                              <span style={{ color: allMateriCovered ? 'var(--ok)' : 'var(--danger)' }}>
+                                {allMateriCovered ? '✓' : '✗'} {materisCovered.length}/{materisInBank.length} materi
+                              </span>
+                              <span style={{ color: allDiffsCovered ? 'var(--ok)' : 'var(--danger)' }}>
+                                {allDiffsCovered ? '✓' : '✗'} {diffsCovered.length}/{diffsInBank.length} tingkat kesulitan
+                              </span>
+                            </div>
+                            {(!allMateriCovered || !allDiffsCovered || !allTypesCovered) && (
+                              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--muted)' }}>
+                                Pastikan setiap jenis soal minimal 1, dan filter mencakup semua materi & tingkat kesulitan.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                   </div>
                 )}
               </div>
             </div>
@@ -646,11 +711,15 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {uniqueMateris.map((m) => {
                   const checked = selectedMateris.has(m);
+                  const count = itemsByMateri.filter((it) => it.materi === m).length;
+                  const filteredCount = filteredItems.filter((it) => it.materi === m).length;
+                  const hasFiltered = filteredCount > 0;
                   return (
-                    <label key={m} className="chip-pick" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <label key={m} className="chip-pick" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: count === 0 ? 0.5 : 1 }}>
                       <input
                         type="checkbox"
                         checked={checked}
+                        disabled={count === 0}
                         onChange={(e) => {
                           const next = new Set(selectedMateris);
                           if (e.target.checked) next.add(m);
@@ -658,7 +727,10 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                           setSelectedMateris(next);
                         }}
                       />
-                      <span className="type-bm" style={{ fontSize: 12 }}>{m}</span>
+                      <span className="type-bm" style={{ fontSize: 12 }}>
+                        {m} ({count})
+                        {useAiSelection && count > 0 && !hasFiltered && <span style={{ color: 'var(--danger)', marginLeft: 4 }}>⚠</span>}
+                      </span>
                     </label>
                   );
                 })}
@@ -699,6 +771,8 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               {DIFF_OPTS.map((d) => {
                 const checked = selectedDiffs.has(d.v);
                 const available = itemsByMateri.filter((it) => it.difficulty === d.v).length;
+                const filteredCount = filteredItems.filter((it) => it.difficulty === d.v).length;
+                const hasFiltered = filteredCount > 0;
                 return (
                   <label key={d.v} className="chip-pick" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: available === 0 ? 0.5 : 1 }}>
                     <input
@@ -712,7 +786,10 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                         setSelectedDiffs(next);
                       }}
                     />
-                    <span className="type-bm" style={{ fontSize: 12 }}>{d.label} ({available})</span>
+                    <span className="type-bm" style={{ fontSize: 12 }}>
+                      {d.label} ({available})
+                      {useAiSelection && available > 0 && !hasFiltered && <span style={{ color: 'var(--danger)', marginLeft: 4 }}>⚠</span>}
+                    </span>
                   </label>
                 );
               })}
