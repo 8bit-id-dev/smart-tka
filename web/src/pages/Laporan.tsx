@@ -327,6 +327,8 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   const [sortKey, setSortKey] = useState<'siswa' | 'kelas' | 'paket' | 'mapel' | 'skor' | 'tab' | 'waktu'>('waktu');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+  const isAdmin = me.role === 'admin';
+
   function toggleSort(k: typeof sortKey) {
     if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(k); setSortDir((k === 'skor' || k === 'tab' || k === 'waktu') ? 'desc' : 'asc'); }
@@ -610,7 +612,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
             </div>
           </div>
           <div className="filter-actions">
-            {selected.size > 0 && (
+            {isAdmin && selected.size > 0 && (
               <button type="button" className="btn btn-danger" onClick={hapusTerpilih}>
                 🗑️ Hapus {selected.size} terpilih
               </button>
@@ -634,9 +636,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
             <table className="table">
               <thead>
                 <tr>
-                  <th style={{ width: 40 }}>
-                    <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleAll} />
-                  </th>
+                  {isAdmin && <th style={{ width: 40 }}><input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleAll} /></th>}
                   <th><button type="button" className="col-sort" onClick={() => toggleSort('siswa')}>Siswa {arrow('siswa')}</button></th>
                   <th><button type="button" className="col-sort" onClick={() => toggleSort('kelas')}>Kelas {arrow('kelas')}</button></th>
                   <th><button type="button" className="col-sort" onClick={() => toggleSort('paket')}>Paket {arrow('paket')}</button></th>
@@ -644,7 +644,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
                   <th><button type="button" className="col-sort" onClick={() => toggleSort('skor')}>Skor {arrow('skor')}</button></th>
                   <th><button type="button" className="col-sort" onClick={() => toggleSort('tab')}>Pindah tab {arrow('tab')}</button></th>
                   <th><button type="button" className="col-sort" onClick={() => toggleSort('waktu')}>Waktu {arrow('waktu')}</button></th>
-                  <th>Aksi</th>
+                  {isAdmin && <th>Aksi</th>}
                 </tr>
               </thead>
               <tbody>
@@ -652,9 +652,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
                   const p = r.package_id ? pkgMap.get(r.package_id) : null;
                   return (
                     <tr key={r.id}>
-                      <td>
-                        <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
-                      </td>
+                      {isAdmin && <td><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} /></td>}
                       <td>{namaMap.get(r.student_id) || r.student_id.slice(0, 8)}</td>
                       <td>{kelasSiswa.get(r.student_id) || '—'}</td>
                       <td>{p?.title || (r.package_id ? r.package_id.slice(0, 8) : 'Latihan bebas')}</td>
@@ -662,11 +660,13 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
                       <td><strong>{r.score ?? '—'}</strong></td>
                       <td>{r.tab_leave_count ?? 0}</td>
                       <td className="text-muted">{fmt(r.submitted_at || r.started_at)}</td>
-                      <td>
-                        <button type="button" className="btn-icon btn-danger" onClick={() => hapusAttempt(r.id)} title="Hapus riwayat">
-                          🗑️
-                        </button>
-                      </td>
+                      {isAdmin && (
+                        <td>
+                          <button type="button" className="btn-icon btn-danger" onClick={() => hapusAttempt(r.id)} title="Hapus riwayat">
+                            🗑️
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
