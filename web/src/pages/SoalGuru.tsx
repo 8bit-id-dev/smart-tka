@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { drafSoalAI } from '../lib/aiSoal';
 import { KurikulumCrud } from '../components/KurikulumCrud';
 import { MathField } from '../components/MathField';
 import { MathText } from '../components/MathText';
@@ -34,9 +33,6 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
-  const [aiBusy, setAiBusy] = useState(false);
-  const [drafAi, setDrafAi] = useState(false);
-  const [catatanAi, setCatatanAi] = useState('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
 

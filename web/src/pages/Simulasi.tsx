@@ -257,7 +257,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
         p_token: token,
       });
       if (error) {
-        setErr(error.message);
+        setErr(friendlyAttemptError(error.message));
         return;
       }
       const res = (data || {}) as {
@@ -268,7 +268,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
         ends_at?: string;
       };
       if (!res.ok) {
-        setErr(res.error || 'Gagal memulai simulasi.');
+        setErr(friendlyAttemptError(res.error));
         return;
       }
       ids = ((res.items || []) as DbItem[]).map((x) => x.id);
@@ -391,6 +391,20 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
           return;
         }
       }
+    } else if (studentId) {
+      // Check if an in_progress attempt already exists for this package
+      const { data: ex } = await insforge.database
+        .from('attempts')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('package_id', p.id)
+        .eq('status', 'in_progress')
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (ex?.id) {
+        attempt = { id: ex.id as string };
+      }
     }
 
     if (!attempt) {
@@ -405,20 +419,23 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
         })
         .select('id');
       if (insErr) {
-        // Unique violation (23505) => another tab already created the in_progress attempt; resume it.
-        if ((insErr as any).code === '23505' && examId && studentId) {
+        // Unique violation (23505) => another tab/session already created the in_progress attempt; retrieve and resume it.
+        if (studentId) {
           const { data: ex2 } = await insforge.database
             .from('attempts')
             .select('id')
             .eq('student_id', studentId)
-            .eq('scheduled_exam_id', examId)
+            .eq('package_id', p.id)
             .eq('status', 'in_progress')
             .order('started_at', { ascending: false })
             .limit(1)
             .maybeSingle();
           if (ex2?.id) attempt = { id: ex2.id as string };
         }
-        if (!attempt) { setErr('Gagal membuat sesi ujian: ' + insErr.message); return; }
+        if (!attempt) {
+          setErr(friendlyAttemptError(insErr.message));
+          return;
+        }
       } else {
         if (!ins?.[0]?.id) { setErr('Gagal membuat sesi ujian.'); return; }
         attempt = { id: ins[0].id as string };
