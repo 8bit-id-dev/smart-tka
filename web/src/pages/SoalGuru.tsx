@@ -110,7 +110,6 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
 
   function resetForm() {
     setEditingId(null);
-    setDrafAi(false);
     setDifficulty(2);
     setStem('');
     setRationale('');
@@ -233,45 +232,6 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     setOk('Soal berhasil dihapus.');
     if (editingId === id) resetForm();
     await load();
-  }
-
-  function terapkanDraf(d: Awaited<ReturnType<typeof drafSoalAI>>) {
-    if ('error' in d) {
-      setErr(d.error);
-      return;
-    }
-    if (d.stem) setStem(d.stem);
-    if (d.pembahasan) setRationale(d.pembahasan);
-    if (tipe === 'pernyataan_bs') {
-      setPernyataan(d.pernyataan || ['', '']);
-      setKunciBs(d.kunci_bs || ['S', 'S']);
-    } else if (tipe === 'pg' || tipe === 'pg_kompleks') {
-      setOpsi(d.opsi);
-      if (tipe === 'pg') setKunciPg(d.kunci[0] || 'C');
-      else setKunciKom(d.kunci);
-    }
-    setDrafAi(true);
-    setOk('Draf AI terisi. Sunting kunci & pembahasan, baru Simpan. Tidak otomatis tersimpan.');
-  }
-
-  async function buatDraf(mode: 'baru' | 'bahas') {
-    setErr('');
-    setOk('');
-    if (!mapel.trim()) {
-      setErr('Pilih mapel (dan materi jika ada) sebelum minta draf AI.');
-      return;
-    }
-    setAiBusy(true);
-    const d = await drafSoalAI({
-      jenjang,
-      mapel,
-      materi,
-      tipe: tipe === 'mencocokkan' || tipe === 'uraian' ? 'pg' : tipe,
-      catatan: catatanAi,
-      stemAda: mode === 'bahas' ? stem : '',
-    });
-    setAiBusy(false);
-    terapkanDraf(d);
   }
 
   async function simpan(e: React.FormEvent) {
@@ -410,7 +370,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     <div className="page">
       <header className="page-header">
         <h1 className="page-title">Soal</h1>
-        <p className="page-subtitle">Kelola soal dan draf soal AI di bank sekolah Anda.</p>
+         <p className="page-subtitle">Kelola soal di bank sekolah Anda.</p>
       </header>
 
       <nav className="subtabs" style={{ marginBottom: 20 }}>
@@ -444,7 +404,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                 <p className="card-subtitle">
                   {editingId
                     ? 'Ubah soal yang sudah ada.'
-                    : 'Buat soal untuk bank sekolah Anda, bukan bank nasional SMART. AI hanya draf — guru wajib menyunting.'}
+                     : 'Buat soal untuk bank sekolah Anda, bukan bank nasional SMART.'}
                 </p>
               </div>
               {editingId && (
@@ -520,42 +480,6 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                 <option value="uraian">Uraian / Isian Singkat</option>
               </select>
             </div>
-
-            {!editingId && (
-              <div className="hint-panel">
-                <span className="hint-kicker">Petunjuk untuk AI (opsional)</span>
-                <input
-                  type="text"
-                  className="input"
-                  value={catatanAi}
-                  onChange={(e) => setCatatanAi(e.target.value)}
-                  placeholder="contoh: stimulus tabel, penalaran"
-                />
-                <p className="hint-note">AI hanya draf. Guru wajib menyunting sebelum simpan.</p>
-              </div>
-            )}
-
-            {!editingId && (
-              <div className="actions">
-                <button className="btn btn-secondary btn-sm" type="button" disabled={aiBusy} onClick={() => void buatDraf('baru')}>
-                  {aiBusy ? 'AI menulis…' : 'Draf AI'}
-                </button>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  type="button"
-                  disabled={aiBusy || !stem.trim()}
-                  onClick={() => void buatDraf('bahas')}
-                >
-                  Perbaiki pembahasan AI
-                </button>
-              </div>
-            )}
-
-            {drafAi && (
-              <div className="banner banner-warn">
-                <p className="banner-text">Ini draf AI. Cek kunci, opsi, dan bahasa. Baru klik Simpan soal.</p>
-              </div>
-            )}
 
             <MathField label="Pertanyaan / stimulus" value={stem} onChange={setStem} rows={3} required />
 
