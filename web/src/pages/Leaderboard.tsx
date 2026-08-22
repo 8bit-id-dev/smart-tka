@@ -15,6 +15,8 @@ type GpRow = {
 type FilterRange = 'all' | 'month' | 'week';
 type FilterRole = 'all' | 'siswa' | 'guru';
 
+type ClassRow = { id: string; name: string };
+
 function MedalIcon({ rank }: { rank: number }) {
   const medals = [
     { bg: '#FFD700', stroke: '#B8860B', icon: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' },
@@ -85,9 +87,14 @@ export function Leaderboard({ me }: { me: AppProfile }) {
   const [owned, setOwned] = useState<string[]>([]);
   const [filterRange, setFilterRange] = useState<FilterRange>('all');
   const [filterRole, setFilterRole] = useState<FilterRole>('all');
+  const [filterKelas, setFilterKelas] = useState<string>('');
+  const [filterMapel, setFilterMapel] = useState<string>('');
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [mapelList, setMapelList] = useState<string[]>([]);
 
   useEffect(() => {
     void (async () => {
+      setLoading(true);
       const { data: gpData, error: gpErr } = await insforge.database
         .from('gamification_profiles')
         .select('xp, level, streak_current, streak_best')
@@ -95,11 +102,27 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         .single();
       if (!gpErr && gpData) setMyGp(gpData as { xp: number; level: number; streak_current: number; streak_best: number });
 
+      const { data: classesData } = await insforge.database
+        .from('classes')
+        .select('id, name')
+        .eq('school_id', me.school_id);
+      if (classesData) setClasses(classesData as ClassRow[]);
+
+      const { data: packagesData } = await insforge.database
+        .from('packages')
+        .select('mapel')
+        .eq('school_id', me.school_id);
+      if (packagesData) {
+        const mapels = [...new Set((packagesData as { mapel: string }[]).map((p) => p.mapel).filter(Boolean))].sort();
+        setMapelList(mapels);
+      }
+
       let query = insforge.database
         .from('gamification_profiles')
-        .select('profile_id, xp, level, streak_current, streak_best, updated_at, profile:profiles!inner(full_name, role)')
+        .select('profile_id, xp, level, streak_current, streak_best, updated_at, profile:profiles!inner(full_name, role, school_id)')
+        .eq('profile.school_id', me.school_id)
         .order('xp', { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (filterRange === 'month') {
         const since = new Date();
@@ -122,7 +145,7 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         return;
       }
 
-      const mapped = ((data || []) as any[]).map((r) => ({
+      let mapped = ((data || []) as any[]).map((r) => ({
         profile_id: r.profile_id,
         xp: r.xp,
         level: r.level,
@@ -132,6 +155,29 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         role: r.profile?.role ?? 'siswa',
         updated_at: r.updated_at,
       }));
+
+      if (filterKelas) {
+        const { data: csData } = await insforge.database
+          .from('class_students')
+          .select('profile_id')
+          .eq('class_id', filterKelas);
+        if (csData) {
+          const studentIds = new Set((csData as { profile_id: string }[]).map((s) => s.profile_id));
+          mapped = mapped.filter((r) => studentIds.has(r.profile_id));
+        }
+      }
+
+      if (filterMapel) {
+        const { data: attemptsData } = await insforge.database
+          .from('attempts')
+          .select('student_id, package_id, packages!inner(mapel)')
+          .eq('packages.mapel', filterMapel);
+        if (attemptsData) {
+          const studentIds = new Set((attemptsData as { student_id: string }[]).map((a) => a.student_id));
+          mapped = mapped.filter((r) => studentIds.has(r.profile_id));
+        }
+      }
+
       setRows(mapped);
 
       const inv = await insforge.database
@@ -144,7 +190,7 @@ export function Leaderboard({ me }: { me: AppProfile }) {
       setMyRank(idx >= 0 ? idx + 1 : null);
       setLoading(false);
     })();
-  }, [me.id, filterRange, filterRole]);
+  }, [me.id, me.school_id, filterRange, filterRole, filterKelas, filterMapel]);
 
   const [storeErr, setStoreErr] = useState('');
 
@@ -284,6 +330,32 @@ export function Leaderboard({ me }: { me: AppProfile }) {
                 >
                   Guru
                 </button>
+              </div>
+              <div className="filter-group">
+                <span className="filter-label">Kelas:</span>
+                <select
+                  className="filter-select"
+                  value={filterKelas}
+                  onChange={(e) => setFilterKelas(e.target.value)}
+                >
+                  <option value="">Semua Kelas</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-group">
+                <span className="filter-label">Mapel:</span>
+                <select
+                  className="filter-select"
+                  value={filterMapel}
+                  onChange={(e) => setFilterMapel(e.target.value)}
+                >
+                  <option value="">Semua Mapel</option>
+                  {mapelList.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </section>
