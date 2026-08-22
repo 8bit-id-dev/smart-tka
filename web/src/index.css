@@ -336,6 +336,22 @@ body { margin: 0; background: var(--canvas); min-height: 100vh; overflow-x: hidd
   gap: 10px;
 }
 .rec-icon { font-size: 24px; }
+.rec-icon-svg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.rec-icon-svg svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.8;
+}
 .rec-info h3 { font-size: 14px; margin: 0 0 4px; }
 .rec-info p { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.4; }
 
@@ -2438,3 +2454,136 @@ html.dark .notif-item { border-bottom-color: var(--card-border); }
 .greeting-title { font-size: 14px; color: var(--accent); font-weight: 600; margin-top: 4px; display: block; }
 .seg { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--outline); background: var(--card); color: var(--ink-light); font-size: 13px; font-weight: 500; cursor: pointer; } .seg:hover { color: var(--ink); border-color: var(--accent); } .seg-active { padding: 6px 14px; border-radius: 6px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
 html.dark .seg { color: var(--muted-light); } html.dark input[type="text"],html.dark input[type="password"] { background: var(--card); color: var(--ink); border-color: var(--outline); }
+
+/* Leaderboard Filters */
+.leaderboard-filters {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-right: 4px;
+}
+.filter-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--outline);
+  background: var(--card);
+  color: var(--ink-light);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.filter-chip:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.filter-chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.leaderboard-row-top {
+  position: relative;
+}
+.leaderboard-row-top::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+.leaderboard-row-top:nth-child(1)::before { background: #FFD700; }
+.leaderboard-row-top:nth-child(2)::before { background: #C0C0C0; }
+.leaderboard-row-top:nth-child(3)::before { background: #CD7F32; }
+
+/* Login Error Modal */
+.login-error-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+.login-error-modal {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 360px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--card-border);
+  animation: slideUp 0.25s ease;
+}
+.login-error-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.login-error-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--danger-bg);
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.login-error-title {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--ink);
+  margin: 0;
+}
+.login-error-message {
+  font-size: 14px;
+  color: var(--ink-light);
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+.login-error-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.login-error-btn:hover {
+  background: var(--accent-hover);
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

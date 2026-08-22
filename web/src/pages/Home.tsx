@@ -717,7 +717,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
           <div className="rec-grid">
             {recommendations.map((rec, i) => (
               <div key={i} className="rec-card">
-                <div className="rec-icon-svg">{RecIcons[rec.icon](true)}</div>
+                 <div className="rec-icon-svg">{RecIcons[rec.icon](false)}</div>
                 <div className="rec-info">
                   <h3>{rec.title}</h3>
                   <p>{rec.desc}</p>
@@ -792,47 +792,6 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         </div>
       </div>
 
-      <div className="section">
-        <div className="chart-card">
-          <h3 className="card-title" style={{ margin: '0 0 8px' }}>Grafik Perkembangan Skor</h3>
-          <div className="chart-svg-wrap">
-            <SimpleLineChart data={activityChart.data} labels={activityChart.labels} />
-          </div>
-          {trend !== 'neutral' && (
-            <p style={{ fontSize: 12, color: 'var(--muted)', margin: '8px 0 0', textAlign: 'center' }}>
-              {trend === 'up' ? '📈 Tren meningkat — pertahankan!' : '📉 Tren menurun — review salah jawab'}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="section">
-        <div className="card">
-          <h3 className="card-title" style={{ marginBottom: 14 }}>Analisis Per Jenis Soal</h3>
-          {Object.keys(typeStats).length === 0 ? (
-            <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {Object.entries(typeStats).map(([type, v]) => {
-                const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
-                const label = type === 'pg' ? 'Pilihan Ganda' : type === 'pg_kompleks' ? 'PG Kompleks' : type === 'uraian' ? 'Uraian' : type === 'pernyataan_bs' ? 'Benar/Salah' : type === 'mencocokkan' ? 'Mencocokkan' : type;
-                const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
-                const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : 'analysis-bar-tag-improve';
-                return (
-                  <div key={type} className="analysis-bar-row">
-                    <span className="analysis-bar-label">{label}</span>
-                    <div className="analysis-bar-track">
-                      <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="analysis-bar-pct">{pct}%</span>
-                    <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 type Props = {
   configured: boolean;
@@ -16,12 +16,46 @@ function Icon({ d, size = 20 }: { d: string; size?: number }) {
   );
 }
 
+function LoginErrorModal({ message, onClose }: { message: string; onClose: () => void }) {
+  return (
+    <div className="login-error-overlay" onClick={onClose}>
+      <div className="login-error-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="login-error-header">
+          <div className="login-error-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+          </div>
+          <h3 className="login-error-title">Login Gagal</h3>
+        </div>
+        <p className="login-error-message">
+          {message || 'Email atau password yang Anda masukkan tidak benar. Silakan periksa kembali dan coba lagi.'}
+        </p>
+        <button className="login-error-btn" type="button" onClick={onClose}>
+          Coba Lagi
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function AuthScreen({ configured, busy, message, onSignIn, onSignUp }: Props) {
   const [mode, setMode] = useState<'daftar' | 'masuk'>('masuk');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    if (message) {
+      setErrorMessage(message);
+      setShowErrorModal(true);
+    }
+  }, [message]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,8 +63,14 @@ export function AuthScreen({ configured, busy, message, onSignIn, onSignUp }: Pr
     else onSignIn(email, password);
   }
 
+  function handleCloseError() {
+    setShowErrorModal(false);
+    setErrorMessage('');
+  }
+
   return (
     <div className="auth-page">
+      {showErrorModal && <LoginErrorModal message={errorMessage} onClose={handleCloseError} />}
       <main className="auth-card">
         <div className="auth-mark" aria-hidden>
           <Icon d="M22 10v6M2 10l10-5 10 5-10 5z M6 12v5c3 3 9 3 12 0v-5" size={28} />
@@ -87,9 +127,7 @@ export function AuthScreen({ configured, busy, message, onSignIn, onSignUp }: Pr
             </div>
           )}
 
-          {message && <p className="auth-msg">{message}</p>}
-
-          <button className="btn btn-primary auth-submit" type="submit" disabled={busy || !configured}>
+           <button className="btn btn-primary auth-submit" type="submit" disabled={busy || !configured}>
             {mode === 'daftar' ? 'Daftar' : 'Masuk'}
             <span aria-hidden> →</span>
           </button>

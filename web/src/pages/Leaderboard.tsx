@@ -9,9 +9,50 @@ type GpRow = {
   streak_best: number;
   full_name: string;
   role: string;
+  updated_at?: string;
 };
 
-const MEDALS = ['🥇', '🥈', '🥉'];
+type FilterRange = 'all' | 'month' | 'week';
+type FilterRole = 'all' | 'siswa' | 'guru';
+
+function MedalIcon({ rank }: { rank: number }) {
+  const medals = [
+    { bg: '#FFD700', stroke: '#B8860B', icon: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' },
+    { bg: '#C0C0C0', stroke: '#808080', icon: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' },
+    { bg: '#CD7F32', stroke: '#8B4513', icon: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' },
+  ];
+  const m = medals[rank];
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" aria-label={`Medali peringkat ${rank + 1}`}>
+      <defs>
+        <linearGradient id={`medalGrad${rank}`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={m.bg} />
+          <stop offset="100%" stopColor={m.stroke} />
+        </linearGradient>
+      </defs>
+      <path d={m.icon} fill={`url(#medalGrad${rank})`} stroke={m.stroke} strokeWidth="0.8" />
+    </svg>
+  );
+}
+
+function CrownIcon({ rank }: { rank: number }) {
+  const colors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+  const strokeColors = ['#B8860B', '#808080', '#8B4513'];
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" aria-label={`Mahkota peringkat ${rank + 1}`}>
+      <path
+        d="M2 17l3-7 4 4 3-9 3 9 4-4 3 7H2z"
+        fill={colors[rank]}
+        stroke={strokeColors[rank]}
+        strokeWidth="0.8"
+        strokeLinejoin="round"
+      />
+      <circle cx="2" cy="17" r="1.5" fill={colors[rank]} />
+      <circle cx="22" cy="17" r="1.5" fill={colors[rank]} />
+      <rect x="2" y="18" width="20" height="3" rx="1" fill={colors[rank]} stroke={strokeColors[rank]} strokeWidth="0.5" />
+    </svg>
+  );
+}
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -42,6 +83,8 @@ export function Leaderboard({ me }: { me: AppProfile }) {
   const [err, setErr] = useState('');
   const [view, setView] = useState<'leaderboard' | 'store'>('leaderboard');
   const [owned, setOwned] = useState<string[]>([]);
+  const [filterRange, setFilterRange] = useState<FilterRange>('all');
+  const [filterRole, setFilterRole] = useState<FilterRole>('all');
 
   useEffect(() => {
     void (async () => {
@@ -52,11 +95,27 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         .single();
       if (!gpErr && gpData) setMyGp(gpData as { xp: number; level: number; streak_current: number; streak_best: number });
 
-      const { data, error } = await insforge.database
+      let query = insforge.database
         .from('gamification_profiles')
-        .select('profile_id, xp, level, streak_current, streak_best, profile:profiles!inner(full_name, role)')
+        .select('profile_id, xp, level, streak_current, streak_best, updated_at, profile:profiles!inner(full_name, role)')
         .order('xp', { ascending: false })
         .limit(50);
+
+      if (filterRange === 'month') {
+        const since = new Date();
+        since.setMonth(since.getMonth() - 1);
+        query = query.gte('updated_at', since.toISOString());
+      } else if (filterRange === 'week') {
+        const since = new Date();
+        since.setDate(since.getDate() - 7);
+        query = query.gte('updated_at', since.toISOString());
+      }
+
+      if (filterRole !== 'all') {
+        query = query.eq('profile.role', filterRole);
+      }
+
+      const { data, error } = await query;
       if (error) {
         setErr(error.message);
         setLoading(false);
@@ -71,6 +130,7 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         streak_best: r.streak_best,
         full_name: r.profile?.full_name ?? 'Pengguna',
         role: r.profile?.role ?? 'siswa',
+        updated_at: r.updated_at,
       }));
       setRows(mapped);
 
@@ -84,7 +144,7 @@ export function Leaderboard({ me }: { me: AppProfile }) {
       setMyRank(idx >= 0 ? idx + 1 : null);
       setLoading(false);
     })();
-  }, [me.id]);
+  }, [me.id, filterRange, filterRole]);
 
   const [storeErr, setStoreErr] = useState('');
 
@@ -175,6 +235,59 @@ export function Leaderboard({ me }: { me: AppProfile }) {
       )}
       {view === 'leaderboard' && (
         <>
+          <section className="section">
+            <div className="leaderboard-filters">
+              <div className="filter-group">
+                <span className="filter-label">Periode:</span>
+                <button
+                  type="button"
+                  className={filterRange === 'all' ? 'filter-chip active' : 'filter-chip'}
+                  onClick={() => setFilterRange('all')}
+                >
+                  Semua Waktu
+                </button>
+                <button
+                  type="button"
+                  className={filterRange === 'month' ? 'filter-chip active' : 'filter-chip'}
+                  onClick={() => setFilterRange('month')}
+                >
+                  Bulan Ini
+                </button>
+                <button
+                  type="button"
+                  className={filterRange === 'week' ? 'filter-chip active' : 'filter-chip'}
+                  onClick={() => setFilterRange('week')}
+                >
+                  Minggu Ini
+                </button>
+              </div>
+              <div className="filter-group">
+                <span className="filter-label">Peran:</span>
+                <button
+                  type="button"
+                  className={filterRole === 'all' ? 'filter-chip active' : 'filter-chip'}
+                  onClick={() => setFilterRole('all')}
+                >
+                  Semua
+                </button>
+                <button
+                  type="button"
+                  className={filterRole === 'siswa' ? 'filter-chip active' : 'filter-chip'}
+                  onClick={() => setFilterRole('siswa')}
+                >
+                  Siswa
+                </button>
+                <button
+                  type="button"
+                  className={filterRole === 'guru' ? 'filter-chip active' : 'filter-chip'}
+                  onClick={() => setFilterRole('guru')}
+                >
+                  Guru
+                </button>
+              </div>
+            </div>
+          </section>
+
           {rows.length > 0 && (
         <section className="section">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
@@ -204,33 +317,34 @@ export function Leaderboard({ me }: { me: AppProfile }) {
               return (
                 <div
                   key={r.profile_id}
-                  className="leaderboard-row"
+                  className={`leaderboard-row ${isTop3 ? 'leaderboard-row-top' : ''}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
                     padding: '10px 12px',
                     borderRadius: i === rows.length - 1 ? 0 : 'var(--radius-sm)',
-                    background: isMe ? 'var(--accent-soft)' : undefined,
+                    background: isMe ? 'var(--accent-soft)' : isTop3 ? 'var(--gold-soft, #fffbeb)' : undefined,
                     margin: i === rows.length - 1 ? '0' : '0 0 4px',
                   }}
                 >
-                  <div style={{ width: 32, height: 32, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isTop3 ? 20 : 14, fontWeight: 700, color: isTop3 ? undefined : 'var(--muted)' }}>
-                    {isTop3 ? MEDALS[i] : `#${i + 1}`}
+                  <div style={{ width: 36, height: 36, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isTop3 ? <CrownIcon rank={i} /> : <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--muted)' }}>#{i + 1}</span>}
                   </div>
-                  <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: isMe ? 'var(--accent)' : 'var(--accent-soft)', color: isMe ? '#fff' : 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: isMe ? 'var(--accent)' : isTop3 ? 'var(--gold, #f59e0b)' : 'var(--accent-soft)', color: isMe || isTop3 ? '#fff' : 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
                     {getInitials(r.full_name)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 600 }}>{r.full_name}</span>
                       <span className="level-badge">L{r.level}</span>
+                      {isTop3 && <MedalIcon rank={i} />}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--muted)' }}>
                       {r.xp} XP · streak {r.streak_best}
                     </div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)', textAlign: 'right' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: isTop3 ? 'var(--gold, #f59e0b)' : 'var(--accent)', textAlign: 'right' }}>
                     {r.xp}
                   </div>
                 </div>
