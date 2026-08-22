@@ -5,7 +5,7 @@ import { Icons } from '../AppShell';
 import { GamifQuickView } from '../components/GamifQuickView';
 
 type AttemptRow = { score: number | null; status: string; submitted_at: string | null; package_id: string | null };
-type AARow = { item_id: string; is_correct: boolean; items: { mapel: string }[] };
+type AARow = { item_id: string; is_correct: boolean; items: { mapel: string; item_type: string; difficulty: number | null; materi: string | null }[] };
 type PkgRow = { id: string; title: string; mapel: string; kind: string; item_count: number; duration_sec: number | null };
 type ExamSchedule = { id: string; package_id: string; subject: string; materi: string | null; duration_sec: number | null; start_at: string; end_at: string; is_active: boolean };
 type ClassRow = { id: string; name: string; jenjang: string };
@@ -141,7 +141,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       if (!ids.length) return;
       const { data } = await insforge.database
         .from('attempt_answers')
-        .select('item_id, is_correct, items!inner(mapel)')
+        .select('item_id, is_correct, items!inner(mapel, item_type, difficulty, materi)')
         .in('attempt_id', ids)
         .limit(1000);
       if (data) setAa(data as AARow[]);
@@ -159,17 +159,6 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       : 0;
     return { soalDikerjakan, jawabanBenar, akurasi, rataSkor, simulasiSelesai: submitted.length };
   }, [attempts, aa]);
-
-  const chartData = useMemo(() => {
-    const submitted = attempts
-      .filter((a) => a.status === 'submitted' && a.score != null && a.submitted_at)
-      .sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime())
-      .slice(0, 7)
-      .reverse();
-    const data = submitted.map((a) => Number(a.score));
-    const labels = submitted.map((a) => new Date(a.submitted_at!).toLocaleDateString('id-ID', { weekday: 'short' }));
-    return { data, labels };
-  }, [attempts]);
 
   const subjectStats = useMemo(() => {
     const byMapel: Record<string, { total: number; correct: number }> = {};
@@ -193,6 +182,103 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
     return entries.sort((a, b) => a.akurasi - b.akurasi)[0];
   }, [subjectStats]);
 
+  const typeStats = useMemo(() => {
+    const byType: Record<string, { total: number; correct: number }> = {};
+    for (const a of aa) {
+      const itemType = Array.isArray(a.items) && a.items[0]?.item_type
+        ? a.items[0].item_type
+        : 'Lainnya';
+      if (!byType[itemType]) byType[itemType] = { total: 0, correct: 0 };
+      byType[itemType].total += 1;
+      if (a.is_correct) byType[itemType].correct += 1;
+    }
+    return byType;
+  }, [aa]);
+
+  const diffStats = useMemo(() => {
+    const byDiff: Record<number, { total: number; correct: number }> = {};
+    for (const a of aa) {
+      const diff = Array.isArray(a.items) && a.items[0]?.difficulty != null
+        ? Number(a.items[0].difficulty)
+        : 0;
+      if (!byDiff[diff]) byDiff[diff] = { total: 0, correct: 0 };
+      byDiff[diff].total += 1;
+      if (a.is_correct) byDiff[diff].correct += 1;
+    }
+    return byDiff;
+  }, [aa]);
+
+  const materiStats = useMemo(() => {
+    const byMateri: Record<string, { total: number; correct: number; mapel: string }> = {};
+    for (const a of aa) {
+      const materi = Array.isArray(a.items) && a.items[0]?.materi
+        ? a.items[0].materi
+        : 'Umum';
+      const mapel = Array.isArray(a.items) && a.items[0]?.mapel || '';
+      if (!byMateri[materi]) byMateri[materi] = { total: 0, correct: 0, mapel };
+      byMateri[materi].total += 1;
+      if (a.is_correct) byMateri[materi].correct += 1;
+    }
+    return byMateri;
+  }, [aa]);
+
+  const trend = useMemo(() => {
+    const submitted = attempts
+      .filter((a) => a.status === 'submitted' && a.score != null && a.submitted_at)
+      .sort((a, b) => new Date(a.submitted_at!).getTime() - new Date(b.submitted_at!).getTime());
+    if (submitted.length < 2) return 'neutral';
+    const recent = submitted.slice(-3);
+    const earlier = submitted.slice(0, Math.min(3, submitted.length - 3));
+    if (earlier.length === 0) return 'neutral';
+    const recentAvg = recent.reduce((s, r) => s + Number(r.score), 0) / recent.length;
+    const earlierAvg = earlier.reduce((s, r) => s + Number(r.score), 0) / earlier.length;
+    if (recentAvg > earlierAvg + 5) return 'up';
+    if (recentAvg < earlierAvg - 5) return 'down';
+    return 'neutral';
+  }, [attempts]);
+
+  const activityChart = useMemo(() => {
+    const last7 = attempts
+      .filter((a) => a.status === 'submitted' && a.submitted_at)
+      .sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime())
+      .slice(0, 7)
+      .reverse();
+    const data = last7.map((a) => Number(a.score) || 0);
+    const labels = last7.map((a) => new Date(a.submitted_at!).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
+    return { data, labels };
+  }, [attempts]);
+
+  const recommendations = useMemo(() => {
+    const recs: { icon: string; title: string; desc: string; action: Tab; actionLabel: string; priority: number }[] = [];
+    if (recMapel && recMapel.akurasi < 70) {
+      recs.push({ icon: '📚', title: `Perkuat ${recMapel.name}`, desc: `Akurasi ${recMapel.akurasi}% (${recMapel.soal} soal). Fokus pada topik yang belum dikuasai.`, action: 'latihan', actionLabel: 'Latihan', priority: 1 });
+    }
+    const weakTypes = Object.entries(typeStats).filter(([, v]) => v.total >= 3 && (v.correct / v.total) < 0.5);
+    for (const [t] of weakTypes) {
+      const typeLabel = t === 'pg' ? 'Pilihan Ganda' : t === 'pg_kompleks' ? 'PG Kompleks' : t === 'uraian' ? 'Uraian' : t === 'pernyataan_bs' ? 'Benar/Salah' : t === 'mencocokkan' ? 'Mencocokkan' : t;
+      recs.push({ icon: '✍️', title: `Latih soal ${typeLabel}`, desc: 'Akurasi jenis soal ini masih rendah. Kerjakan lebih banyak latihan.', action: 'latihan', actionLabel: 'Latihan', priority: 2 });
+    }
+    const weakDiffs = Object.entries(diffStats).filter(([, v]) => v.total >= 2 && (v.correct / v.total) < 0.4);
+    for (const [d] of weakDiffs) {
+      const label = d === '1' ? 'Mudah' : d === '2' ? 'Sedang' : d === '3' ? 'Sulit' : `Level ${d}`;
+      recs.push({ icon: '🎯', title: `Tingkatkan soal ${label}`, desc: `Soal tingkat ${label} masih sering salah. Mulai dari tingkat lebih mudah dulu.`, action: 'latihan', actionLabel: 'Latihan', priority: 3 });
+    }
+    const weakMateris = Object.entries(materiStats).filter(([, v]) => v.total >= 2 && (v.correct / v.total) < 0.5);
+    for (const [m, v] of weakMateris) {
+      const pct = Math.round((v.correct / v.total) * 100);
+      recs.push({ icon: '📝', title: `Review materi: ${m}`, desc: `${pct}% akurasi di ${v.mapel}. Pelajari kembali konsep dasar materi ini.`, action: 'latihan', actionLabel: 'Latihan', priority: 4 });
+    }
+    if (trend === 'down') {
+      recs.push({ icon: '📉', title: 'Skor menurun', desc: 'Skor beberapa tes terakhir menurun. Ambil jeda, review salah jawab, coba lagi.', action: 'latihan', actionLabel: 'Coba Lagi', priority: 5 });
+    } else if (trend === 'up') {
+      recs.push({ icon: '📈', title: 'Teruskan!', desc: 'Skor konsisten meningkat. Pertahankan ritme latihan dan coba soal lebih sulit.', action: 'simulasi', actionLabel: 'Simulasi', priority: 6 });
+    }
+    if (stats.simulasiSelesai < 3) {
+      recs.push({ icon: '🧪', title: 'Perbanyak simulasi', desc: `Kamu baru ${stats.simulasiSelesai} simulasi. Target minimal 5 simulasi untuk pembiasaan.`, action: 'simulasi', actionLabel: 'Simulasi', priority: 7 });
+    }
+    return recs.sort((a, b) => a.priority - b.priority).slice(0, 4);
+  }, [recMapel, typeStats, diffStats, materiStats, trend, stats]);
+
   const assignedPkgIds = useMemo(() => schedules.map((s) => s.package_id), [schedules]);
   const simulasiPkg = useMemo(
     () =>
@@ -202,9 +288,11 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       pkgs[0],
     [pkgs, assignedPkgIds]
   );
-  const lastSimScore = useMemo(() => {
-    const submitted = attempts.filter((a) => a.status === 'submitted' && a.score != null);
-    return submitted.length > 0 ? Math.max(...submitted.map((a) => Number(a.score))) : 0;
+  const { lastSimScore, bestSimScore } = useMemo(() => {
+    const submitted = attempts.filter((a) => a.status === 'submitted' && a.score != null && a.score > 0);
+    if (submitted.length === 0) return { lastSimScore: 0, bestSimScore: 0 };
+    const sorted = [...submitted].sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime());
+    return { lastSimScore: Number(sorted[0].score), bestSimScore: Math.max(...sorted.map((a) => Number(a.score))) };
   }, [attempts]);
 
   const [photoUrl, setPhotoUrl] = useState(profile.photo_url || '');
@@ -389,15 +477,20 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         </div>
       </div>
 
-      {recMapel && recMapel.akurasi < 70 && (
+      {recommendations.length > 0 && (
         <div className="section">
-          <div className="rec-card">
-            <div className="rec-icon">💡</div>
-            <div className="rec-info">
-              <h3>Perkuat kemampuan {recMapel.name}</h3>
-              <p>Akurasi Anda di {recMapel.name} adalah {recMapel.akurasi}%. Lanjutkan latihan untuk meningkatkan pemahaman.</p>
-            </div>
-            <button className="continue-btn" type="button" onClick={() => onTab('latihan')}>Mulai Latihan</button>
+          <h2 className="section-title">Rekomendasi Untukmu</h2>
+          <div className="rec-grid">
+            {recommendations.map((rec, i) => (
+              <div key={i} className="rec-card">
+                <div className="rec-icon">{rec.icon}</div>
+                <div className="rec-info">
+                  <h3>{rec.title}</h3>
+                  <p>{rec.desc}</p>
+                </div>
+                <button className="continue-btn" type="button" onClick={() => onTab(rec.action)}>{rec.actionLabel}</button>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -474,7 +567,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
             </div>
             <div className="featured-stat">
               <p className="featured-stat-label">Skor Terbaik</p>
-              <p className="featured-stat-value">{lastSimScore || '—'}</p>
+              <p className="featured-stat-value">{bestSimScore || '—'}</p>
             </div>
           </div>
           <button className="continue-btn" type="button" style={{ width: '100%' }} onClick={() => onTab('simulasi')}>
@@ -485,10 +578,98 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
 
       <div className="section">
         <div className="chart-card">
-          <h3 className="card-title" style={{ margin: '0 0 8px' }}>Grafik Perkembangan</h3>
+          <h3 className="card-title" style={{ margin: '0 0 8px' }}>Grafik Perkembangan Skor</h3>
           <div className="chart-svg-wrap">
-            <SimpleLineChart data={chartData.data} labels={chartData.labels} />
+            <SimpleLineChart data={activityChart.data} labels={activityChart.labels} />
           </div>
+          {trend !== 'neutral' && (
+            <p style={{ fontSize: 12, color: 'var(--muted)', margin: '8px 0 0', textAlign: 'center' }}>
+              {trend === 'up' ? '📈 Tren meningkat — pertahankan!' : '📉 Tren menurun — review salah jawab'}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="card">
+          <h3 className="card-title" style={{ marginBottom: 14 }}>Analisis Per Jenis Soal</h3>
+          {Object.keys(typeStats).length === 0 ? (
+            <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {Object.entries(typeStats).map(([type, v]) => {
+                const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+                const label = type === 'pg' ? 'Pilihan Ganda' : type === 'pg_kompleks' ? 'PG Kompleks' : type === 'uraian' ? 'Uraian' : type === 'pernyataan_bs' ? 'Benar/Salah' : type === 'mencocokkan' ? 'Mencocokkan' : type;
+                const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
+                const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : 'analysis-bar-tag-improve';
+                return (
+                  <div key={type} className="analysis-bar-row">
+                    <span className="analysis-bar-label">{label}</span>
+                    <div className="analysis-bar-track">
+                      <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="analysis-bar-pct">{pct}%</span>
+                    <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="card">
+          <h3 className="card-title" style={{ marginBottom: 14 }}>Analisis Per Tingkat Kesulitan</h3>
+          {Object.keys(diffStats).length === 0 ? (
+            <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {Object.entries(diffStats).sort(([a], [b]) => Number(a) - Number(b)).map(([diff, v]) => {
+                const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+                const label = diff === '1' ? 'Mudah' : diff === '2' ? 'Sedang' : diff === '3' ? 'Sulit' : `Level ${diff}`;
+                const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
+                const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : 'analysis-bar-tag-improve';
+                return (
+                  <div key={diff} className="analysis-bar-row">
+                    <span className="analysis-bar-label">{label}</span>
+                    <div className="analysis-bar-track">
+                      <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="analysis-bar-pct">{pct}%</span>
+                    <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="card">
+          <h3 className="card-title" style={{ marginBottom: 14 }}>Analisis Per Materi</h3>
+          {Object.keys(materiStats).length === 0 ? (
+            <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {Object.entries(materiStats).sort(([, a], [, b]) => (a.correct / a.total) - (b.correct / b.total)).map(([materi, v]) => {
+                const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+                const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
+                const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : 'analysis-bar-tag-improve';
+                return (
+                  <div key={materi} className="analysis-bar-row">
+                    <span className="analysis-bar-label">{materi}{v.mapel ? ` (${v.mapel})` : ''}</span>
+                    <div className="analysis-bar-track">
+                      <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="analysis-bar-pct">{pct}%</span>
+                    <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
