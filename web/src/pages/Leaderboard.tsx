@@ -117,44 +117,43 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         setMapelList(mapels);
       }
 
-      let query = insforge.database
-        .from('gamification_profiles')
-        .select('profile_id, xp, level, streak_current, streak_best, updated_at, profile:profiles!inner(full_name, role, school_id)')
-        .eq('profile.school_id', me.school_id)
-        .order('xp', { ascending: false })
-        .limit(100);
+      const { data: studentsData, error: studentsErr } = await insforge.database
+        .from('profiles')
+        .select('id, full_name, role, school_id, gamification_profiles(xp, level, streak_current, streak_best, updated_at)')
+        .eq('school_id', me.school_id)
+        .eq('role', 'siswa')
+        .order('role', { ascending: true });
 
-      if (filterRange === 'month') {
-        const since = new Date();
-        since.setMonth(since.getMonth() - 1);
-        query = query.gte('updated_at', since.toISOString());
-      } else if (filterRange === 'week') {
-        const since = new Date();
-        since.setDate(since.getDate() - 7);
-        query = query.gte('updated_at', since.toISOString());
-      }
-
-      if (filterRole !== 'all') {
-        query = query.eq('profile.role', filterRole);
-      }
-
-      const { data, error } = await query;
-      if (error) {
-        setErr(error.message);
+      if (studentsErr) {
+        setErr(studentsErr.message);
         setLoading(false);
         return;
       }
 
-      let mapped = ((data || []) as any[]).map((r) => ({
-        profile_id: r.profile_id,
-        xp: r.xp,
-        level: r.level,
-        streak_current: r.streak_current,
-        streak_best: r.streak_best,
-        full_name: r.profile?.full_name ?? 'Pengguna',
-        role: r.profile?.role ?? 'siswa',
-        updated_at: r.updated_at,
+      let mapped = ((studentsData || []) as any[]).map((r) => ({
+        profile_id: r.id,
+        xp: r.gamification_profiles?.xp ?? 0,
+        level: r.gamification_profiles?.level ?? 1,
+        streak_current: r.gamification_profiles?.streak_current ?? 0,
+        streak_best: r.gamification_profiles?.streak_best ?? 0,
+        full_name: r.full_name ?? 'Pengguna',
+        role: r.role ?? 'siswa',
+        updated_at: r.gamification_profiles?.updated_at,
       }));
+
+      if (filterRange === 'month') {
+        const since = new Date();
+        since.setMonth(since.getMonth() - 1);
+        mapped = mapped.filter((r) => !r.updated_at || new Date(r.updated_at) >= since);
+      } else if (filterRange === 'week') {
+        const since = new Date();
+        since.setDate(since.getDate() - 7);
+        mapped = mapped.filter((r) => !r.updated_at || new Date(r.updated_at) >= since);
+      }
+
+      if (filterRole !== 'all') {
+        mapped = mapped.filter((r) => r.role === filterRole);
+      }
 
       if (filterKelas) {
         const { data: csData } = await insforge.database
@@ -177,6 +176,8 @@ export function Leaderboard({ me }: { me: AppProfile }) {
           mapped = mapped.filter((r) => studentIds.has(r.profile_id));
         }
       }
+
+      mapped.sort((a, b) => b.xp - a.xp);
 
       setRows(mapped);
 
