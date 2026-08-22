@@ -18,6 +18,24 @@ export type Tab =
   | 'profil'
   | 'bookmark';
 
+function useOrientation() {
+  const [isLandscape, setIsLandscape] = useState(
+    typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : false
+  );
+  useEffect(() => {
+    function handleResize() {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    }
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
+  return isLandscape;
+}
+
 const Icons = {
   beranda: (filled: boolean) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -218,6 +236,7 @@ export function AppShell({
   const [theme, setTheme] = useState<'dark' | 'light'>(isLightOnlyRole ? 'light' : 'dark');
   const [rows, setRows] = useState<NotifRow[]>([]);
   const [gp, setGp] = useState<GamifProfile | null>(null);
+  const isLandscape = useOrientation();
 
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -357,6 +376,9 @@ export function AppShell({
   }
 
   const isDesktopRole = ['guru', 'admin', 'konten', 'kepsek'].includes(role);
+  const isMobileStudent = role === 'siswa' || role === 'orang_tua';
+  const showSidebar = isDesktopRole || (isMobileStudent && isLandscape);
+  const showBottomNav = isMobileStudent && !isLandscape;
 
   const getIcon = (id: Tab, isActive: boolean) => {
     const iconKey = id === 'beranda' && role === 'orang_tua' ? 'anak' : id;
@@ -366,9 +388,9 @@ export function AppShell({
 
   const initials = getInitials(name);
 
-  return (
-     <div className={`shell ${isDesktopRole ? 'shell-desktop sidebar-collapsed' : 'shell-mobile'}`}>
-       {isDesktopRole ? (
+   return (
+     <div className={`shell ${showSidebar ? 'shell-desktop sidebar-collapsed' : 'shell-mobile'}`}>
+        {showSidebar ? (
          <>
            <aside className="shell-sidebar">
              <div className="shell-sidebar-header">
@@ -522,17 +544,19 @@ export function AppShell({
             </div>
           </header>
           <main className="shell-main-mobile">{children}</main>
-          <nav className="shell-mobile-nav">
-            {items.slice(0, 5).map((i) => {
-              const isActive = tab === i.id;
-              return (
-                <button key={i.id} className={isActive ? 'on' : ''} type="button" onClick={() => onTab(i.id)}>
-                  <span className="nav-icon-mobile">{getIcon(i.id, isActive)}</span>
-                  <span>{i.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+          {showBottomNav && (
+            <nav className="shell-mobile-nav">
+              {items.slice(0, 5).map((i) => {
+                const isActive = tab === i.id;
+                return (
+                  <button key={i.id} className={isActive ? 'on' : ''} type="button" onClick={() => onTab(i.id)}>
+                    <span className="nav-icon-mobile">{getIcon(i.id, isActive)}</span>
+                    <span>{i.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          )}
         </>
       )}
       {role === 'siswa' && <XpReward onXpAwarded={handleXpAwarded} />}

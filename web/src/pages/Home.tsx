@@ -522,7 +522,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       pkgs[0],
     [pkgs, assignedPkgIds]
   );
-  const { lastSimScore, bestSimScore } = useMemo(() => {
+  const { lastSimScore: _lastSimScore, bestSimScore: _bestSimScore } = useMemo(() => {
     const submitted = attempts.filter((a) => a.status === 'submitted' && a.score != null && a.score > 0);
     if (submitted.length === 0) return { lastSimScore: 0, bestSimScore: 0 };
     const sorted = [...submitted].sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime());
@@ -711,6 +711,39 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         </div>
       </div>
 
+      <div className="section">
+        <div className="quick-actions-grid">
+          <div className="quick-action-card quick-action-latihan" onClick={() => onTab('latihan')}>
+            <div className="quick-action-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+            </div>
+            <div className="quick-action-info">
+              <h3>Latihan</h3>
+              <p>Kerjakan soal per mata pelajaran</p>
+            </div>
+            <span className="quick-action-arrow">→</span>
+          </div>
+          <div className="quick-action-card quick-action-simulasi" onClick={() => onTab('simulasi')}>
+            <div className="quick-action-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                <polyline points="14 2 14 8 20 8" />
+                <path d="M12 18v-6" />
+                <path d="M9 15h6" />
+              </svg>
+            </div>
+            <div className="quick-action-info">
+              <h3>Simulasi</h3>
+              <p>{simulasiPkg?.title || 'Simulasi TKA'}</p>
+            </div>
+            <span className="quick-action-arrow">→</span>
+          </div>
+        </div>
+      </div>
+
       {recommendations.length > 0 && (
         <div className="section">
           <h2 className="section-title">Rekomendasi Untukmu</h2>
@@ -739,10 +772,9 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         activityChart={activityChart}
       />
 
-      <div className="section">
-        {pkgs.filter((p) => p.kind === 'latihan').length === 0 ? (
-          <p className="type-lab">Belum ada paket latihan tersedia.</p>
-        ) : (
+      {pkgs.filter((p) => p.kind === 'latihan').length > 0 && (
+        <div className="section">
+          <h2 className="section-title">Paket Latihan Tersedia</h2>
           <div className="subject-hscroll">
             {pkgs.filter((p) => p.kind === 'latihan').slice(0, 8).map((p) => (
               <div key={p.id} className="subject-card" onClick={() => onTab('latihan')}>
@@ -759,38 +791,8 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
               </div>
             ))}
           </div>
-        )}
-      </div>
-
-      <div className="section">
-        <div className="featured-card">
-          <div className="section-header" style={{ marginBottom: 8 }}>
-            <h2 className="section-title" style={{ margin: 0 }}>{simulasiPkg?.title || 'Simulasi TKA'}</h2>
-            <span className="badge badge-success">Aktif</span>
-          </div>
-          <div className="featured-grid">
-            <div className="featured-stat">
-              <p className="featured-stat-label">Jumlah Soal</p>
-              <p className="featured-stat-value">{simulasiPkg?.item_count || 35}</p>
-            </div>
-            <div className="featured-stat">
-              <p className="featured-stat-label">Durasi</p>
-              <p className="featured-stat-value">{simulasiPkg?.duration_sec && simulasiPkg.duration_sec > 0 ? `${Math.round(simulasiPkg.duration_sec / 60)} mnt` : (simulasiPkg ? 'tanpa timer' : '—')}</p>
-            </div>
-            <div className="featured-stat">
-              <p className="featured-stat-label">Skor Terakhir</p>
-              <p className="featured-stat-value">{lastSimScore || '—'}</p>
-            </div>
-            <div className="featured-stat">
-              <p className="featured-stat-label">Skor Terbaik</p>
-              <p className="featured-stat-value">{bestSimScore || '—'}</p>
-            </div>
-          </div>
-          <button className="continue-btn" type="button" style={{ width: '100%' }} onClick={() => onTab('simulasi')}>
-            Mulai Simulasi
-          </button>
         </div>
-      </div>
+      )}
 
     </div>
   );

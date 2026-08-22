@@ -2587,3 +2587,146 @@ html.dark .seg { color: var(--muted-light); } html.dark input[type="text"],html.
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Student Quick Actions */
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.quick-action-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.quick-action-card:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+.quick-action-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.quick-action-latihan .quick-action-icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.quick-action-simulasi .quick-action-icon {
+  background: var(--gold-soft, #fffbeb);
+  color: var(--gold, #f59e0b);
+}
+.quick-action-info {
+  flex: 1;
+  min-width: 0;
+}
+.quick-action-info h3 {
+  margin: 0 0 2px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.quick-action-info p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quick-action-arrow {
+  color: var(--muted);
+  font-size: 18px;
+  transition: transform 0.2s ease;
+}
+.quick-action-card:hover .quick-action-arrow {
+  transform: translateX(3px);
+  color: var(--accent);
+}
+
+/* Responsive Navigation */
+@media (max-width: 768px) {
+  .quick-actions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Landscape mode - show sidebar */
+@media (max-width: 768px) and (orientation: landscape) {
+  .shell-mobile {
+    flex-direction: row;
+  }
+  .shell-mobile .shell-sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 200px;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--card-border);
+    z-index: 100;
+  }
+  .shell-mobile .shell-sidebar-header {
+    padding: 12px;
+  }
+  .shell-mobile .shell-nav {
+    flex: 1;
+    overflow-y: auto;
+  }
+  .shell-mobile .shell-nav button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    width: 100%;
+    border: none;
+    background: none;
+    color: var(--sidebar-text);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .shell-mobile .shell-nav button.on {
+    color: var(--sidebar-text-active);
+    background: rgba(255,255,255,0.1);
+  }
+  .shell-mobile .shell-user {
+    padding: 12px;
+    text-align: center;
+    color: var(--sidebar-text);
+    font-size: 12px;
+  }
+  .shell-mobile .shell-bar {
+    display: none;
+  }
+  .shell-mobile .shell-main-mobile {
+    margin-left: 200px;
+    margin-bottom: 0;
+    width: calc(100% - 200px);
+  }
+  .shell-mobile .shell-mobile-nav {
+    display: none;
+  }
+}
+
+/* Sidebar styles for mobile landscape */
+.shell-mobile .shell-sidebar {
+  display: none;
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .shell-mobile .shell-sidebar {
+    display: flex !important;
+  }
+}
