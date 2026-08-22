@@ -41,6 +41,26 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
   const matchPairs = parseMatchPairs(item);
   const reveal = (showBahas || review) && !hideKeys;
 
+  const pgKompleksSortedIdx = reveal && item.item_type === 'pg_kompleks' && Array.isArray(key)
+    ? [...opts.map((_, i) => i)].sort((a, b) => {
+        const aOk = key.includes(LETTERS[a]);
+        const bOk = key.includes(LETTERS[b]);
+        if (aOk && !bOk) return -1;
+        if (!aOk && bOk) return 1;
+        return a - b;
+      })
+    : opts.map((_, i) => i);
+
+  const pernyataanSortedIdx = reveal && item.item_type === 'pernyataan_bs' && Array.isArray(key)
+    ? [...statements.map((_, i) => i)].sort((a, b) => {
+        const aOk = bs[a] === key[a];
+        const bOk = bs[b] === key[b];
+        if (aOk && !bOk) return -1;
+        if (!aOk && bOk) return 1;
+        return a - b;
+      })
+    : statements.map((_, i) => i);
+
   // Review mode: re-show the student's previously saved answer so reveal
   // highlight (benar/salah) reflects what they actually chose.
   useEffect(() => {
@@ -201,9 +221,10 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
 
       {item.item_type === 'pg_kompleks' && (
         <div className="choices">
-          <p className="type-lab">Centang semua yang benar.</p>
-          {opts.map((t, idx) => {
-            const L = LETTERS[idx];
+          <p className="type-lab">Centang semua yang benar.{reveal && ' (Diurutkan: benar duluan)'}</p>
+          {pgKompleksSortedIdx.map((sortedIdx) => {
+            const t = opts[sortedIdx];
+            const L = LETTERS[sortedIdx];
             const on = kom.includes(L);
             const keys = Array.isArray(key) ? key : [];
             return (
@@ -235,30 +256,32 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
                 <th>Pernyataan</th>
                 <th className="center">Benar</th>
                 <th className="center">Salah</th>
+                {reveal && <th className="center">Hasil</th>}
               </tr>
             </thead>
             <tbody>
-              {statements.map((s, idx) => {
-                const chosen = bs[idx];
-                const rowKey = Array.isArray(key) && idx < key.length ? key[idx] : undefined;
+              {pernyataanSortedIdx.map((origIdx, displayIdx) => {
+                const s = statements[origIdx];
+                const chosen = bs[origIdx];
+                const rowKey = Array.isArray(key) && origIdx < key.length ? key[origIdx] : undefined;
                 const correctRow = rowKey !== undefined;
                 const isWrong = correctRow && chosen != null && chosen !== rowKey;
                 return (
-                  <tr key={idx}>
-                    <td className="center" style={{ paddingTop: 10 }}>{idx + 1}</td>
+                  <tr key={origIdx}>
+                    <td className="center" style={{ paddingTop: 10 }}>{displayIdx + 1}</td>
                     <td>
-                      <MathText text={(s && s.trim()) ? s : ((opts[idx] as string) || '')} />
+                      <MathText text={(s && s.trim()) ? s : ((opts[origIdx] as string) || '')} />
                       {reveal && isWrong && <span className="type-lab" style={{ color: '#dc2626', marginLeft: 6 }}>salah</span>}
                     </td>
                     <td className="center" style={{ paddingTop: 8 }}>
                       <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}>
                         <input
                           type="radio"
-                          name={`bs-${idx}`}
+                          name={`bs-${origIdx}`}
                           value="B"
                           checked={chosen === 'B'}
                           disabled={locked && (showBahas || review)}
-                          onChange={() => pickBs(idx, 'B')}
+                          onChange={() => pickBs(origIdx, 'B')}
                         />
                         <span>Benar</span>
                       </label>
@@ -267,11 +290,11 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
                       <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}>
                         <input
                           type="radio"
-                          name={`bs-${idx}`}
+                          name={`bs-${origIdx}`}
                           value="S"
                           checked={chosen === 'S'}
                           disabled={locked && (showBahas || review)}
-                          onChange={() => pickBs(idx, 'S')}
+                          onChange={() => pickBs(origIdx, 'S')}
                         />
                         <span>Salah</span>
                       </label>
