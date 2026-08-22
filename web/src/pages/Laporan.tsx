@@ -48,6 +48,14 @@ function calcDuration(startIso: string, endIso: string | null): string {
   return `${m} mnt ${s} dtk`;
 }
 
+function escapeCsv(val: string | number | null | undefined): string {
+  const str = String(val ?? '');
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
 function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | 'latihan' | 'simulasi' | 'inbox' | 'soal' | 'paket' | 'kelas' | 'pengumuman' | 'laporan' | 'admin' | 'profil') => void }) {
   const [rows, setRows] = useState<Attempt[]>([]);
   const [pkgs, setPkgs] = useState<Pkg[]>([]);
@@ -61,8 +69,7 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
     const { data: aData, error: aErr } = await insforge.database
       .from('attempts')
       .select('id, package_id, student_id, status, score, started_at, submitted_at')
-      .eq('student_id', me.id)
-      .eq('is_archived', false);
+      .eq('student_id', me.id);
     if (aErr) setErr(aErr.message);
     else {
       const sorted = ((aData || []) as Attempt[]).sort((x, y) => {
@@ -77,7 +84,6 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
     setLoading(false);
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, [me.id]);
 
   const pkgMap = useMemo(() => new Map(pkgs.map((p) => [p.id, p])), [pkgs]);
@@ -116,9 +122,42 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
     })).sort((a, b) => a.avg - b.avg);
   }, [submittedRows, pkgMap]);
 
+  function downloadCSV() {
+    const headers = ['No', 'Tanggal', 'Jenis', 'Judul', 'Mapel', 'Durasi', 'Nilai', 'Status'];
+    const lines = [headers.join(',')];
+    filteredRows.forEach((r, idx) => {
+      const p = r.package_id ? pkgMap.get(r.package_id) : null;
+      const title = p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan Bebas');
+      const mapel = p?.mapel || '—';
+      const kind = p?.kind || 'latihan';
+      const durasi = calcDuration(r.started_at, r.submitted_at);
+      const isSubmitted = r.status === 'submitted';
+      const row = [
+        idx + 1,
+        fmtDate(r.submitted_at || r.started_at),
+        kind,
+        title,
+        mapel,
+        durasi,
+        isSubmitted ? String(r.score ?? 0) : '—',
+        isSubmitted ? 'Selesai' : 'Belum Selesai',
+      ].map(escapeCsv);
+      lines.push(row.join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `laporan-${me.full_name || 'siswa'}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="dashboard-page">
-      <header className="page-header" style={{ marginBottom: 20 }}>
+      <header className="page-header">
         <p className="page-subtitle">Hasil belajar Anda</p>
         <h1 className="page-title">Laporan Hasil</h1>
         <p className="page-subtitle">Riwayat pengerjaan paket simulasi dan latihan bebas.</p>
@@ -130,47 +169,41 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
         </div>
       )}
 
-      {/* Score summary card */}
-      <section className="card" style={{ marginBottom: 20, textAlign: 'center', padding: '28px 24px' }}>
-        <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>Rata-rata Nilai</p>
-         <div style={{ fontSize: 64, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.03em', lineHeight: 1, margin: '0 0 8px' }}>
-          {avgScore == null ? '—' : avgScore}<small style={{ fontSize: 24, fontWeight: 500, color: 'var(--muted)' }}>/100</small>
-        </div>
-        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 20px' }}>
-          {totalSesi === 0 ? 'Belum ada sesi terkumpul' : `Berdasarkan ${totalSesi} sesi selesai`}
-        </p>
-        <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <div>
-            <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', margin: '0 0 4px' }}>Tertinggi</p>
-            <p style={{ fontSize: 22, fontWeight: 700,               color: 'var(--accent)', margin: 0 }}>{maxScore == null ? '—' : maxScore}</p>
+      <section className="card stat-card" style={{ marginBottom: 20 }}>
+        <div className="stat-card-content">
+          <div className="stat-main">
+            <p className="stat-label">Rata-rata Nilai</p>
+            <p className="stat-value-large">{avgScore == null ? '—' : avgScore}<small>/100</small></p>
+            <p className="stat-sub">{totalSesi === 0 ? 'Belum ada sesi terkumpul' : `Berdasarkan ${totalSesi} sesi selesai`}</p>
           </div>
-          <div>
-            <p style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', margin: '0 0 4px' }}>Total Sesi</p>
-            <p style={{ fontSize: 22, fontWeight: 700,               color: 'var(--accent)', margin: 0 }}>{totalSesi}</p>
+          <div className="stat-side">
+            <div className="stat-item">
+              <p className="stat-label">Tertinggi</p>
+              <p className="stat-value">{maxScore == null ? '—' : maxScore}</p>
+            </div>
+            <div className="stat-item">
+              <p className="stat-label">Total Sesi</p>
+              <p className="stat-value">{totalSesi}</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Domain performance */}
       {domainStats.length > 0 && (
         <section className="card" style={{ marginBottom: 20 }}>
-          <h3 className="card-title" style={{ marginBottom: 14 }}>Performa per Mapel</h3>
+          <h3 className="card-title">Performa per Mapel</h3>
           {domainStats.map((d) => (
             <div key={d.name} className="analysis-bar-row">
-              <span className="analysis-bar-label" style={{ width: 120 }}>{d.name}</span>
+              <span className="analysis-bar-label">{d.name}</span>
               <div className="analysis-bar-track">
                 <div className="analysis-bar-fill" style={{ width: `${d.avg}%`, background: d.avg < 50 ? 'var(--warn)' : d.avg < 70 ? 'var(--gold)' : 'var(--accent)' }} />
               </div>
               <span className="analysis-bar-pct">{d.avg}%</span>
-              <span className={`analysis-bar-tag ${d.avg < 50 ? 'analysis-bar-tag-improve' : 'analysis-bar-tag-strong'}`}>
-                {d.avg < 50 ? 'Perlu ditingkatkan' : 'Cukup'}
-              </span>
             </div>
           ))}
         </section>
       )}
 
-      {/* Recommendation */}
       {domainStats.length > 0 && domainStats[0]?.avg < 70 && (
         <section className="rec-card" style={{ marginBottom: 20 }}>
           <div className="rec-icon">💡</div>
@@ -182,27 +215,27 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
         </section>
       )}
 
-      {/* Filter + Table */}
       <section className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-          <h3 className="card-title" style={{ margin: 0 }}>Riwayat Pengerjaan</h3>
-          <div className="lap-tab" role="tablist">
-            <button type="button" role="tab"
-              className={`lap-tab-btn ${filterKind === 'semua' ? 'active' : ''}`}
-              onClick={() => setFilterKind('semua')}>Semua</button>
-            <button type="button" role="tab"
-              className={`lap-tab-btn ${filterKind === 'latihan' ? 'active' : ''}`}
-              onClick={() => setFilterKind('latihan')}>Latihan</button>
-            <button type="button" role="tab"
-              className={`lap-tab-btn ${filterKind === 'ujian' ? 'active' : ''}`}
-              onClick={() => setFilterKind('ujian')}>Ujian</button>
+        <div className="lap-header">
+          <h3 className="card-title">Riwayat Pengerjaan</h3>
+          <div className="lap-actions">
+            <div className="lap-tab" role="tablist">
+              <button type="button" role="tab" className={`lap-tab-btn ${filterKind === 'semua' ? 'active' : ''}`} onClick={() => setFilterKind('semua')}>Semua</button>
+              <button type="button" role="tab" className={`lap-tab-btn ${filterKind === 'latihan' ? 'active' : ''}`} onClick={() => setFilterKind('latihan')}>Latihan</button>
+              <button type="button" role="tab" className={`lap-tab-btn ${filterKind === 'ujian' ? 'active' : ''}`} onClick={() => setFilterKind('ujian')}>Ujian</button>
+            </div>
+            {filteredRows.length > 0 && (
+              <button type="button" className="btn btn-outline" onClick={downloadCSV}>
+                📥 Download
+              </button>
+            )}
           </div>
         </div>
 
         {loading ? (
-          <p style={{ color: 'var(--muted)', fontSize: 13 }}>Memuat riwayat…</p>
+          <div className="loading-state"><p>Memuat riwayat…</p></div>
         ) : filteredRows.length === 0 ? (
-          <div className="empty-state" style={{ padding: '32px 16px' }}>
+          <div className="empty-state">
             <div className="empty-state-icon">📋</div>
             <h3 className="empty-state-title">Belum ada riwayat</h3>
             <p className="empty-state-text">Silakan kerjakan soal di menu Latihan atau Simulasi.</p>
@@ -233,17 +266,15 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
                       <td>{fmtDate(r.submitted_at || r.started_at)}</td>
                       <td>
                         <strong>{title}</strong>
-                        {p?.kind && <span style={{ display: 'block', fontSize: 11, color: 'var(--muted)' }}>{p.kind}</span>}
+                        {p?.kind && <span className="table-meta">{p.kind}</span>}
                       </td>
                       <td>{mapel}</td>
-                      <td style={{ color: 'var(--muted)' }}>{durasi}</td>
+                      <td className="text-muted">{durasi}</td>
                       <td>
                         {isSubmitted ? (
-                          <strong style={{               color: 'var(--accent)', fontSize: 15 }}>
-                            {r.score ?? 0} <small style={{ fontSize: 11, fontWeight: 400 }}>/ 100</small>
-                          </strong>
+                          <strong className="score-value">{r.score ?? 0}<small>/100</small></strong>
                         ) : (
-                          <span style={{ color: 'var(--warn)', fontSize: 12 }}>Belum Selesai</span>
+                          <span className="score-pending">Belum Selesai</span>
                         )}
                       </td>
                     </tr>
@@ -254,9 +285,7 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
           </div>
         )}
 
-        <p style={{ fontSize: 11, color: 'var(--outline)', marginTop: 16 }}>
-          SMART-TKA tidak berafiliasi dengan Kemendikdasmen. Angka ini hasil latihan/simulasi internal.
-        </p>
+        <p className="disclaimer">SMART-TKA tidak berafiliasi dengan Kemendikdasmen. Angka ini hasil latihan/simulasi internal.</p>
       </section>
     </div>
   );
@@ -333,7 +362,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
         }
       }
     }
-    const a = await insforge.database.from('attempts').select('id, package_id, student_id, status, score, started_at, submitted_at, tab_leave_count').eq('is_archived', false);
+    const a = await insforge.database.from('attempts').select('id, package_id, student_id, status, score, started_at, submitted_at, tab_leave_count');
     if (a.error) setErr(a.error.message.includes('does not exist') ? 'Tabel attempts belum ada.' : a.error.message);
     else setRows((a.data || []) as Attempt[]);
 
@@ -355,7 +384,6 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
     if (!m.error) setCs((m.data || []) as CS[]);
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, []);
 
   const pkgMap = useMemo(() => new Map(pkgs.map((p) => [p.id, p])), [pkgs]);
@@ -402,8 +430,10 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   });
 
   async function hapusAttempt(id: string) {
-    if (!confirm('Arsipkan riwayat pengerjaan ini? Data tidak akan ditampilkan lagi di laporan.')) return;
-    const { error } = await insforge.database.from('attempts').update({ is_archived: true }).eq('id', id);
+    if (!confirm('Hapus riwayat pengerjaan ini? Semua jawaban dan history terkait akan dihapus permanen.')) return;
+    const { error: aaErr } = await insforge.database.from('attempt_answers').delete().eq('attempt_id', id);
+    if (aaErr) { setErr(aaErr.message); return; }
+    const { error } = await insforge.database.from('attempts').delete().eq('id', id);
     if (error) setErr(error.message);
     else {
       setRows((c) => c.filter((r) => r.id !== id));
@@ -412,13 +442,47 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   }
 
   async function hapusTerpilih() {
-    if (!confirm(`Arsipkan ${selected.size} riwayat yang dipilih? Data tidak akan ditampilkan lagi di laporan.`)) return;
+    if (!confirm(`Hapus ${selected.size} riwayat yang dipilih? Semua jawaban dan history terkait akan dihapus permanen.`)) return;
     const ids = Array.from(selected);
     for (const id of ids) {
-      await insforge.database.from('attempts').update({ is_archived: true }).eq('id', id);
+      await insforge.database.from('attempt_answers').delete().eq('attempt_id', id);
+      const { error } = await insforge.database.from('attempts').delete().eq('id', id);
+      if (error) { setErr(error.message); return; }
     }
     setRows((c) => c.filter((r) => !selected.has(r.id)));
     setSelected(new Set());
+  }
+
+  function downloadCSV() {
+    const headers = ['No', 'Siswa', 'Kelas', 'Paket', 'Mapel', 'Skor', 'Pindah Tab', 'Waktu', 'Status'];
+    const lines = [headers.join(',')];
+    sorted.forEach((r, idx) => {
+      const p = r.package_id ? pkgMap.get(r.package_id) : null;
+      const title = p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan bebas');
+      const mapel = p?.mapel || '—';
+      const isSubmitted = r.status === 'submitted';
+      const row = [
+        idx + 1,
+        namaMap.get(r.student_id) || r.student_id.slice(0, 8),
+        kelasSiswa.get(r.student_id) || '—',
+        title,
+        mapel,
+        isSubmitted ? String(r.score ?? '—') : '—',
+        r.tab_leave_count ?? 0,
+        fmt(r.submitted_at || r.started_at),
+        isSubmitted ? 'Selesai' : 'Belum Selesai',
+      ].map(escapeCsv);
+      lines.push(row.join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `laporan-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   function toggleAll() {
@@ -455,7 +519,6 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
     }
   }, [pkgMap, namaMap, kelasSiswa]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const sorted = useMemo(() => {
     const arr = [...filtered];
     arr.sort((a, b) => {
@@ -476,7 +539,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
 
   return (
     <div className="dashboard-page">
-      <header className="page-header" style={{ marginBottom: 20 }}>
+      <header className="page-header">
         <p className="page-subtitle">Laporan hasil paket</p>
         <h1 className="page-title">Laporan Kelas</h1>
         <p className="page-subtitle">Skor dari pengumpulan simulasi/paket. Bukan prediksi nilai TKA resmi.</p>
@@ -488,57 +551,57 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div className="stat-card" style={{ flex: '1 1 140px' }}>
+      <div className="stats-row">
+        <div className="stat-card">
           <p className="stat-label">Pengumpulan</p>
-          <p className="stat-value" style={{ fontSize: 24 }}>{filtered.length}</p>
+          <p className="stat-value">{filtered.length}</p>
         </div>
-        <div className="stat-card" style={{ flex: '1 1 140px' }}>
+        <div className="stat-card">
           <p className="stat-label">Rata-rata skor</p>
-          <p className="stat-value" style={{ fontSize: 24 }}>{avg}</p>
+          <p className="stat-value">{avg}</p>
         </div>
       </div>
 
-      <section className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', flex: 1 }}>
-            <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
-              <label className="form-label">Filter paket</label>
-              <select className="input" value={fPkg} onChange={(e) => setFPkg(e.target.value)}>
+      <section className="card">
+        <div className="filter-bar">
+          <div className="filter-row">
+            <div className="filter-group">
+              <label className="filter-label">Paket</label>
+              <select className="filter-select" value={fPkg} onChange={(e) => setFPkg(e.target.value)}>
                 <option value="">Semua paket</option>
                 {pkgs.map((p) => (
                   <option key={p.id} value={p.id}>{p.title} ({p.mapel})</option>
                 ))}
               </select>
             </div>
-            <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
-              <label className="form-label">Filter mapel</label>
-              <select className="input" value={fMapel} onChange={(e) => setFMapel(e.target.value)}>
+            <div className="filter-group">
+              <label className="filter-label">Mapel</label>
+              <select className="filter-select" value={fMapel} onChange={(e) => setFMapel(e.target.value)}>
                 <option value="">Semua mapel</option>
                 {mapelList.map((m) => (
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
             </div>
-            <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
-              <label className="form-label">Dari tanggal</label>
-              <input className="input" type="date" value={fDateFrom} onChange={(e) => setFDateFrom(e.target.value)} />
-            </div>
-            <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
-              <label className="form-label">Sampai tanggal</label>
-              <input className="input" type="date" value={fDateTo} onChange={(e) => setFDateTo(e.target.value)} />
-            </div>
-            <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
-              <label className="form-label">Filter kelas</label>
-              <select className="input" value={fKelas} onChange={(e) => setFKelas(e.target.value)}>
+            <div className="filter-group">
+              <label className="filter-label">Kelas</label>
+              <select className="filter-select" value={fKelas} onChange={(e) => setFKelas(e.target.value)}>
                 <option value="">Semua kelas</option>
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
-            <div className="form-group" style={{ flex: '1 1 260px', marginBottom: 0 }}>
-              <label className="form-label">Jenis</label>
+            <div className="filter-group">
+              <label className="filter-label">Dari</label>
+              <input className="filter-input" type="date" value={fDateFrom} onChange={(e) => setFDateFrom(e.target.value)} />
+            </div>
+            <div className="filter-group">
+              <label className="filter-label">Sampai</label>
+              <input className="filter-input" type="date" value={fDateTo} onChange={(e) => setFDateTo(e.target.value)} />
+            </div>
+            <div className="filter-group">
+              <label className="filter-label">Jenis</label>
               <div className="lap-tab" role="tablist">
                 <button type="button" role="tab" className={`lap-tab-btn ${fKind === 'semua' ? 'active' : ''}`} onClick={() => setFKIND('semua')}>Semua</button>
                 <button type="button" role="tab" className={`lap-tab-btn ${fKind === 'latihan' ? 'active' : ''}`} onClick={() => setFKIND('latihan')}>Latihan</button>
@@ -546,63 +609,73 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
               </div>
             </div>
           </div>
-          {selected.size > 0 && (
-            <button type="button" className="btn btn-danger" onClick={hapusTerpilih}>
-              Hapus {selected.size} terpilih
-            </button>
-          )}
+          <div className="filter-actions">
+            {selected.size > 0 && (
+              <button type="button" className="btn btn-danger" onClick={hapusTerpilih}>
+                🗑️ Hapus {selected.size} terpilih
+              </button>
+            )}
+            {filtered.length > 0 && (
+              <button type="button" className="btn btn-outline" onClick={downloadCSV}>
+                📥 Download
+              </button>
+            )}
+          </div>
         </div>
 
-        {filtered.length === 0 && (
-          <div className="empty-state" style={{ padding: '24px 16px' }}>
-            <p className="empty-state-title">Belum ada data</p>
+        {filtered.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">📊</div>
+            <h3 className="empty-state-title">Belum ada data</h3>
             <p className="empty-state-text">Siswa harus mengumpulkan paket di menu Simulasi.</p>
+          </div>
+        ) : (
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th style={{ width: 40 }}>
+                    <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleAll} />
+                  </th>
+                  <th><button type="button" className="col-sort" onClick={() => toggleSort('siswa')}>Siswa {arrow('siswa')}</button></th>
+                  <th><button type="button" className="col-sort" onClick={() => toggleSort('kelas')}>Kelas {arrow('kelas')}</button></th>
+                  <th><button type="button" className="col-sort" onClick={() => toggleSort('paket')}>Paket {arrow('paket')}</button></th>
+                  <th><button type="button" className="col-sort" onClick={() => toggleSort('mapel')}>Mapel {arrow('mapel')}</button></th>
+                  <th><button type="button" className="col-sort" onClick={() => toggleSort('skor')}>Skor {arrow('skor')}</button></th>
+                  <th><button type="button" className="col-sort" onClick={() => toggleSort('tab')}>Pindah tab {arrow('tab')}</button></th>
+                  <th><button type="button" className="col-sort" onClick={() => toggleSort('waktu')}>Waktu {arrow('waktu')}</button></th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((r) => {
+                  const p = r.package_id ? pkgMap.get(r.package_id) : null;
+                  return (
+                    <tr key={r.id}>
+                      <td>
+                        <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
+                      </td>
+                      <td>{namaMap.get(r.student_id) || r.student_id.slice(0, 8)}</td>
+                      <td>{kelasSiswa.get(r.student_id) || '—'}</td>
+                      <td>{p?.title || (r.package_id ? r.package_id.slice(0, 8) : 'Latihan bebas')}</td>
+                      <td>{p?.mapel || '—'}</td>
+                      <td><strong>{r.score ?? '—'}</strong></td>
+                      <td>{r.tab_leave_count ?? 0}</td>
+                      <td className="text-muted">{fmt(r.submitted_at || r.started_at)}</td>
+                      <td>
+                        <button type="button" className="btn-icon btn-danger" onClick={() => hapusAttempt(r.id)} title="Hapus riwayat">
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
 
-        <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th style={{ width: 40 }}>
-                  <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleAll} />
-                </th>
-                <th><button type="button" className="col-sort" onClick={() => toggleSort('siswa')}>Siswa {arrow('siswa')}</button></th>
-                <th><button type="button" className="col-sort" onClick={() => toggleSort('kelas')}>Kelas {arrow('kelas')}</button></th>
-                <th><button type="button" className="col-sort" onClick={() => toggleSort('paket')}>Paket {arrow('paket')}</button></th>
-                <th><button type="button" className="col-sort" onClick={() => toggleSort('mapel')}>Mapel {arrow('mapel')}</button></th>
-                <th><button type="button" className="col-sort" onClick={() => toggleSort('skor')}>Skor {arrow('skor')}</button></th>
-                <th><button type="button" className="col-sort" onClick={() => toggleSort('tab')}>Pindah tab {arrow('tab')}</button></th>
-                <th><button type="button" className="col-sort" onClick={() => toggleSort('waktu')}>Waktu {arrow('waktu')}</button></th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((r) => {
-                const p = r.package_id ? pkgMap.get(r.package_id) : null;
-                return (
-                  <tr key={r.id}>
-                    <td>
-                      <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
-                    </td>
-                    <td>{namaMap.get(r.student_id) || r.student_id.slice(0, 8)}</td>
-                    <td>{kelasSiswa.get(r.student_id) || '—'}</td>
-                    <td>{p?.title || (r.package_id ? r.package_id.slice(0, 8) : 'Latihan bebas')}</td>
-                    <td>{p?.mapel || '—'}</td>
-                    <td><strong>{r.score ?? '—'}</strong></td>
-                    <td>{r.tab_leave_count ?? 0}</td>
-                    <td style={{ color: 'var(--muted)' }}>{fmt(r.submitted_at || r.started_at)}</td>
-                    <td>
-                      <button type="button" className="btn btn-danger" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => hapusAttempt(r.id)} title="Hapus riwayat">
-                        🗑️
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <p className="disclaimer">SMART-TKA tidak berafiliasi dengan Kemendikdasmen. Angka ini hasil latihan/simulasi internal.</p>
       </section>
     </div>
   );
