@@ -75,15 +75,19 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [mySubjects, setMySubjects] = useState<string[]>([]);
   const [mapelOptions, setMapelOptions] = useState<string[]>([]);
   const isGuru = profile.role === 'guru';
+  const isAdmin = profile.role === 'admin' || profile.role === 'konten';
 
   const discuss = kind === 'latihan';
   const durationSec = kind === 'latihan' ? (menit > 0 ? menit * 60 : null) : Math.max(5, menit) * 60;
 
   async function load() {
-       const p = await insforge.database
+       let q = insforge.database
           .from('packages')
-          .select('id, title, kind, mapel, materi, info, jenjang, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal, ai_config')
-          .eq('created_by', profile.id);
+          .select('id, title, kind, mapel, materi, info, jenjang, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal, ai_config');
+        if (!isAdmin) {
+          q = q.eq('created_by', profile.id);
+        }
+        const p = await q;
         if (p.error) setErr(p.error.message);
         else setPkgs((p.data || []) as Pkg[]);
     }
@@ -95,7 +99,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
-    if (!isGuru) return;
+    if (!isGuru && !isAdmin) return;
     void (async () => {
       const { data, error } = await insforge.database
         .from('teacher_subjects')
@@ -104,7 +108,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         .eq('is_active', true);
       if (!error && data) setMySubjects((data as { subject: string }[]).map((r) => r.subject));
     })();
-  }, [profile.id, isGuru]);
+  }, [profile.id, isGuru, isAdmin]);
 
   useEffect(() => {
     void (async () => {
@@ -116,13 +120,13 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   }, [jenjang]);
 
   useEffect(() => {
-    if (isGuru && mySubjects.length > 0 && !mapel) {
+    if ((isGuru || isAdmin) && mySubjects.length > 0 && !mapel) {
       const first = mySubjects[0];
       setMapel(first);
       setMateri('');
       setSelectedMateris(new Set());
     }
-  }, [isGuru, mySubjects, mapel]);
+  }, [isGuru, isAdmin, mySubjects, mapel]);
 
   useEffect(() => {
     if (!mapel) {
@@ -134,6 +138,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         .from('items')
         .select('id, stem, mapel, materi, item_type, difficulty')
         .eq('mapel', mapel)
+        .neq('status', 'retired')
         .order('mapel')
         .order('materi');
       if (error) setErr(error.message);
@@ -461,7 +466,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             <select
               className="select"
               value={mapel}
-              disabled={isGuru}
+              disabled={isGuru && !isAdmin}
               required
               onChange={(e) => {
                 const m = e.target.value;
@@ -471,7 +476,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               }}
             >
               <option value="" disabled>Pilih mapel</option>
-              {(isGuru ? mySubjects : mapelOptions).map((m) => (
+              {((isGuru && !isAdmin) ? mySubjects : mapelOptions).map((m) => (
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>

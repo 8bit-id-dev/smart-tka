@@ -63,9 +63,10 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
 
   const [mySubjects, setMySubjects] = useState<string[]>([]);
   const isGuru = profile.role === 'guru';
+  const isAdmin = profile.role === 'admin' || profile.role === 'konten';
 
   async function loadMySubjects() {
-    if (!isGuru) return;
+    if (!isGuru && !isAdmin) return;
     const { data, error } = await insforge.database
       .from('teacher_subjects')
       .select('subject')
@@ -88,7 +89,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
       } else {
         q = q.eq('author_id', profile.id);
       }
-    } else {
+    } else if (!isAdmin) {
       q = q.eq('author_id', profile.id);
     }
     const { data, error } = await q;
@@ -455,7 +456,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
                    pilihMapelName={mapel}
                    pilihMateriName={materi}
                    allowedSubjects={isGuru ? mySubjects : undefined}
-                   isAdmin={profile.role !== 'guru'}
+                   isAdmin={isAdmin || profile.role !== 'guru'}
                    onPilih={(mp: MapelRow | null, mt: MateriRow | null) => {
                      if (isGuru && mp && !mySubjects.includes(mp.name)) {
                        setErr(`Anda tidak mengajar "${mp.name}". Hubungi admin untuk assignment.`);
