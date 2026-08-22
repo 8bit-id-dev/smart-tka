@@ -75,6 +75,53 @@ function SimpleLineChart({ data, labels, color = 'var(--accent)' }: { data: numb
 
 type AnalysisTab = 'mapel' | 'jenis' | 'kesulitan' | 'materi';
 
+const RecIcons = {
+  book: (filled: boolean) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  ),
+  pencil: (filled: boolean) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+    </svg>
+  ),
+  target: (filled: boolean) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
+    </svg>
+  ),
+  document: (filled: boolean) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  ),
+  trendUp: (filled: boolean) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+      <polyline points="17 6 23 6 23 12" />
+    </svg>
+  ),
+  trendDown: (filled: boolean) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+      <polyline points="17 18 23 18 23 12" />
+    </svg>
+  ),
+  flask: (filled: boolean) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 3h6M10 9h4M10.5 3l-1 6a4 4 0 0 0 1 3.5L12 14.5l1.5-2a4 4 0 0 0 1-3.5l-1-6" />
+      <path d="M5 21h14" />
+    </svg>
+  ),
+};
+
 function AbilityAnalysis({
   stats,
   subjectStats,
@@ -102,6 +149,26 @@ function AbilityAnalysis({
     { id: 'materi', label: 'Materi' },
   ];
 
+  const getStrengths = () => {
+    const strengths: string[] = [];
+    const weaknesses: string[] = [];
+    Object.entries(subjectStats).forEach(([name, v]) => {
+      const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+      if (v.total >= 3 && pct >= 75) strengths.push(name);
+      if (v.total >= 3 && pct < 50) weaknesses.push(name);
+    });
+    return { strengths, weaknesses };
+  };
+
+  const { strengths, weaknesses } = useMemo(getStrengths, [subjectStats]);
+
+  const getTag = (pct: number) => {
+    if (pct >= 80) return { label: 'Sangat Kuat', cls: 'analysis-bar-tag-strong' };
+    if (pct >= 65) return { label: 'Kuat', cls: 'analysis-bar-tag-strong' };
+    if (pct >= 50) return { label: 'Cukup', cls: 'analysis-bar-tag-improve' };
+    return { label: 'Perlu Latihan', cls: 'analysis-bar-tag-improve' };
+  };
+
   return (
     <div className="section">
       <div className="card" style={{ padding: '20px' }}>
@@ -126,27 +193,44 @@ function AbilityAnalysis({
           <p className="type-lab">Kerjakan soal untuk melihat analisis.</p>
         ) : (
           <>
-            <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 120, textAlign: 'center', padding: '12px 8px', backgroundColor: 'var(--surface-2)', borderRadius: 8 }}>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)' }}>{stats.akurasi}%</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Akurasi</div>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 100, textAlign: 'center', padding: '14px 10px', backgroundColor: 'var(--surface-2)', borderRadius: 10 }}>
+                <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)' }}>{stats.akurasi}%</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Akurasi</div>
               </div>
-              <div style={{ flex: 1, minWidth: 120, textAlign: 'center', padding: '12px 8px', backgroundColor: 'var(--surface-2)', borderRadius: 8 }}>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--success)' }}>{stats.jawabanBenar}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Jawaban Benar</div>
+              <div style={{ flex: 1, minWidth: 100, textAlign: 'center', padding: '14px 10px', backgroundColor: 'var(--surface-2)', borderRadius: 10 }}>
+                <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--success)' }}>{stats.jawabanBenar}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Jawaban Benar</div>
               </div>
-              <div style={{ flex: 1, minWidth: 120, textAlign: 'center', padding: '12px 8px', backgroundColor: 'var(--surface-2)', borderRadius: 8 }}>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--gold)' }}>{stats.soalDikerjakan}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Soal Selesai</div>
+              <div style={{ flex: 1, minWidth: 100, textAlign: 'center', padding: '14px 10px', backgroundColor: 'var(--surface-2)', borderRadius: 10 }}>
+                <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gold)' }}>{stats.soalDikerjakan}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Soal Selesai</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 100, textAlign: 'center', padding: '14px 10px', backgroundColor: 'var(--surface-2)', borderRadius: 10 }}>
+                <div style={{ fontSize: 28, fontWeight: 700, color: stats.rataSkor >= 70 ? 'var(--success)' : stats.rataSkor >= 50 ? 'var(--gold)' : 'var(--danger)' }}>{stats.rataSkor}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Rata-rata Skor</div>
               </div>
             </div>
 
+            {strengths.length > 0 && (
+              <div style={{ marginBottom: 16, padding: '10px 14px', backgroundColor: 'var(--success-bg)', borderRadius: 8, borderLeft: '3px solid var(--success)' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--success)', marginBottom: 4 }}>Kekuatan</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>{strengths.map((s) => `${s} (${Math.round((subjectStats[s].correct / subjectStats[s].total) * 100)}%)`).join(', ')}</div>
+              </div>
+            )}
+            {weaknesses.length > 0 && (
+              <div style={{ marginBottom: 16, padding: '10px 14px', backgroundColor: 'var(--danger-bg, #fef2f2)', borderRadius: 8, borderLeft: '3px solid var(--danger)' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', marginBottom: 4 }}>Perlu Ditingkatkan</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>{weaknesses.map((w) => `${w} (${Math.round((subjectStats[w].correct / subjectStats[w].total) * 100)}%)`).join(', ')}</div>
+              </div>
+            )}
+
             {tab === 'mapel' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {Object.entries(subjectStats).map(([mapel, v]) => {
+                {Object.entries(subjectStats).sort(([, a], [, b]) => (b.correct / b.total) - (a.correct / a.total)).map(([mapel, v]) => {
                   const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
-                  const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
-                  return <AnalysisBar key={mapel} label={mapel} pct={pct} tag={tag} />;
+                  const tag = getTag(pct);
+                  return <AnalysisBar key={mapel} label={mapel} pct={pct} tag={tag.label} tagCls={tag.cls} subtitle={`${v.correct}/${v.total} soal`} />;
                 })}
               </div>
             )}
@@ -156,8 +240,8 @@ function AbilityAnalysis({
                 {Object.entries(typeStats).map(([type, v]) => {
                   const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
                   const label = type === 'pg' ? 'Pilihan Ganda' : type === 'pg_kompleks' ? 'PG Kompleks' : type === 'uraian' ? 'Uraian' : type === 'pernyataan_bs' ? 'Benar/Salah' : type === 'mencocokkan' ? 'Mencocokkan' : type;
-                  const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
-                  return <AnalysisBar key={type} label={label} pct={pct} tag={tag} />;
+                  const tag = getTag(pct);
+                  return <AnalysisBar key={type} label={label} pct={pct} tag={tag.label} tagCls={tag.cls} subtitle={`${v.correct}/${v.total} soal`} />;
                 })}
               </div>
             )}
@@ -168,8 +252,8 @@ function AbilityAnalysis({
                   const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
                   const diffNum = Number(diff);
                   const label = diffNum === 1 ? 'Mudah' : diffNum === 2 ? 'Sedang' : diffNum === 3 ? 'Sulit' : `Level ${diff}`;
-                  const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
-                  return <AnalysisBar key={diff} label={label} pct={pct} tag={tag} />;
+                  const tag = getTag(pct);
+                  return <AnalysisBar key={diff} label={label} pct={pct} tag={tag.label} tagCls={tag.cls} subtitle={`${v.correct}/${v.total} soal`} />;
                 })}
               </div>
             )}
@@ -178,22 +262,20 @@ function AbilityAnalysis({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {Object.entries(materiStats).sort(([, a], [, b]) => (a.correct / a.total) - (b.correct / b.total)).map(([materi, v]) => {
                   const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
-                  const tag = pct >= 75 ? 'Kuat' : pct >= 50 ? 'Cukup' : 'Perlu ditingkatkan';
-                  return <AnalysisBar key={materi} label={materi + (v.mapel ? ` (${v.mapel})` : '')} pct={pct} tag={tag} />;
+                  const tag = getTag(pct);
+                  return <AnalysisBar key={materi} label={materi + (v.mapel ? ` (${v.mapel})` : '')} pct={pct} tag={tag.label} tagCls={tag.cls} subtitle={`${v.correct}/${v.total} soal`} />;
                 })}
               </div>
             )}
 
-            <div style={{ marginTop: 20 }}>
-              <h4 style={{ fontSize: 13, fontWeight: 600, margin: '0 0 8px' }}>Tren Skor</h4>
-              <div className="chart-svg-wrap" style={{ height: 120 }}>
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+              <h4 style={{ fontSize: 13, fontWeight: 600, margin: '0 8px 10px' }}>Tren Skor (7 Terakhir)</h4>
+              <div className="chart-svg-wrap" style={{ height: 100 }}>
                 <SimpleLineChart data={activityChart.data} labels={activityChart.labels} />
               </div>
-              {trend !== 'neutral' && (
-                <p style={{ fontSize: 11, color: 'var(--muted)', margin: '6px 0 0', textAlign: 'center' }}>
-                  {trend === 'up' ? '📈 Tren meningkat' : '📉 Tren menurun'}
-                </p>
-              )}
+              <p style={{ fontSize: 11, color: 'var(--muted)', margin: '8px 0 0', textAlign: 'center' }}>
+                {trend === 'up' ? '📈 Tren meningkat — pertahankan!' : trend === 'down' ? '📉 Tren menurun — review salah jawab' : '📊 Belum ada tren yang signifikan'}
+              </p>
             </div>
           </>
         )}
@@ -202,16 +284,15 @@ function AbilityAnalysis({
   );
 }
 
-function AnalysisBar({ label, pct, tag }: { label: string; pct: number; tag: string }) {
-  const tagClass = pct >= 75 ? 'analysis-bar-tag-strong' : 'analysis-bar-tag-improve';
+function AnalysisBar({ label, pct, tag, tagCls, subtitle }: { label: string; pct: number; tag: string; tagCls: string; subtitle?: string }) {
   return (
     <div className="analysis-bar-row">
-      <span className="analysis-bar-label">{label}</span>
+      <span className="analysis-bar-label">{label}{subtitle && <span style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 6 }}>{subtitle}</span>}</span>
       <div className="analysis-bar-track">
         <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
       </div>
       <span className="analysis-bar-pct">{pct}%</span>
-      <span className={`analysis-bar-tag ${tagClass}`}>{tag}</span>
+      <span className={`analysis-bar-tag ${tagCls}`}>{tag}</span>
     </div>
   );
 }
@@ -402,32 +483,32 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
   }, [attempts]);
 
   const recommendations = useMemo(() => {
-    const recs: { icon: string; title: string; desc: string; action: Tab; actionLabel: string; priority: number }[] = [];
+    const recs: { icon: 'book' | 'pencil' | 'target' | 'document' | 'trendUp' | 'trendDown' | 'flask'; title: string; desc: string; action: Tab; actionLabel: string; priority: number }[] = [];
     if (recMapel && recMapel.akurasi < 70) {
-      recs.push({ icon: '📚', title: `Perkuat ${recMapel.name}`, desc: `Akurasi ${recMapel.akurasi}% (${recMapel.soal} soal). Fokus pada topik yang belum dikuasai.`, action: 'latihan', actionLabel: 'Latihan', priority: 1 });
+      recs.push({ icon: 'book', title: `Perkuat ${recMapel.name}`, desc: `Akurasi ${recMapel.akurasi}% (${recMapel.soal} soal). Fokus pada topik yang belum dikuasai.`, action: 'latihan', actionLabel: 'Latihan', priority: 1 });
     }
     const weakTypes = Object.entries(typeStats).filter(([, v]) => v.total >= 3 && (v.correct / v.total) < 0.5);
     for (const [t] of weakTypes) {
       const typeLabel = t === 'pg' ? 'Pilihan Ganda' : t === 'pg_kompleks' ? 'PG Kompleks' : t === 'uraian' ? 'Uraian' : t === 'pernyataan_bs' ? 'Benar/Salah' : t === 'mencocokkan' ? 'Mencocokkan' : t;
-      recs.push({ icon: '✍️', title: `Latih soal ${typeLabel}`, desc: 'Akurasi jenis soal ini masih rendah. Kerjakan lebih banyak latihan.', action: 'latihan', actionLabel: 'Latihan', priority: 2 });
+      recs.push({ icon: 'pencil', title: `Latih soal ${typeLabel}`, desc: 'Akurasi jenis soal ini masih rendah. Kerjakan lebih banyak latihan.', action: 'latihan', actionLabel: 'Latihan', priority: 2 });
     }
     const weakDiffs = Object.entries(diffStats).filter(([, v]) => v.total >= 2 && (v.correct / v.total) < 0.4);
     for (const [d] of weakDiffs) {
       const label = d === '1' ? 'Mudah' : d === '2' ? 'Sedang' : d === '3' ? 'Sulit' : `Level ${d}`;
-      recs.push({ icon: '🎯', title: `Tingkatkan soal ${label}`, desc: `Soal tingkat ${label} masih sering salah. Mulai dari tingkat lebih mudah dulu.`, action: 'latihan', actionLabel: 'Latihan', priority: 3 });
+      recs.push({ icon: 'target', title: `Tingkatkan soal ${label}`, desc: `Soal tingkat ${label} masih sering salah. Mulai dari tingkat lebih mudah dulu.`, action: 'latihan', actionLabel: 'Latihan', priority: 3 });
     }
     const weakMateris = Object.entries(materiStats).filter(([, v]) => v.total >= 2 && (v.correct / v.total) < 0.5);
     for (const [m, v] of weakMateris) {
       const pct = Math.round((v.correct / v.total) * 100);
-      recs.push({ icon: '📝', title: `Review materi: ${m}`, desc: `${pct}% akurasi di ${v.mapel}. Pelajari kembali konsep dasar materi ini.`, action: 'latihan', actionLabel: 'Latihan', priority: 4 });
+      recs.push({ icon: 'document', title: `Review materi: ${m}`, desc: `${pct}% akurasi di ${v.mapel}. Pelajari kembali konsep dasar materi ini.`, action: 'latihan', actionLabel: 'Latihan', priority: 4 });
     }
     if (trend === 'down') {
-      recs.push({ icon: '📉', title: 'Skor menurun', desc: 'Skor beberapa tes terakhir menurun. Ambil jeda, review salah jawab, coba lagi.', action: 'latihan', actionLabel: 'Coba Lagi', priority: 5 });
+      recs.push({ icon: 'trendDown', title: 'Skor menurun', desc: 'Skor beberapa tes terakhir menurun. Ambil jeda, review salah jawab, coba lagi.', action: 'latihan', actionLabel: 'Coba Lagi', priority: 5 });
     } else if (trend === 'up') {
-      recs.push({ icon: '📈', title: 'Teruskan!', desc: 'Skor konsisten meningkat. Pertahankan ritme latihan dan coba soal lebih sulit.', action: 'simulasi', actionLabel: 'Simulasi', priority: 6 });
+      recs.push({ icon: 'trendUp', title: 'Teruskan!', desc: 'Skor konsisten meningkat. Pertahankan ritme latihan dan coba soal lebih sulit.', action: 'simulasi', actionLabel: 'Simulasi', priority: 6 });
     }
     if (stats.simulasiSelesai < 3) {
-      recs.push({ icon: '🧪', title: 'Perbanyak simulasi', desc: `Kamu baru ${stats.simulasiSelesai} simulasi. Target minimal 5 simulasi untuk pembiasaan.`, action: 'simulasi', actionLabel: 'Simulasi', priority: 7 });
+      recs.push({ icon: 'flask', title: 'Perbanyak simulasi', desc: `Kamu baru ${stats.simulasiSelesai} simulasi. Target minimal 5 simulasi untuk pembiasaan.`, action: 'simulasi', actionLabel: 'Simulasi', priority: 7 });
     }
     return recs.sort((a, b) => a.priority - b.priority).slice(0, 4);
   }, [recMapel, typeStats, diffStats, materiStats, trend, stats]);
@@ -636,7 +717,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
           <div className="rec-grid">
             {recommendations.map((rec, i) => (
               <div key={i} className="rec-card">
-                <div className="rec-icon">{rec.icon}</div>
+                <div className="rec-icon-svg">{RecIcons[rec.icon](true)}</div>
                 <div className="rec-info">
                   <h3>{rec.title}</h3>
                   <p>{rec.desc}</p>
