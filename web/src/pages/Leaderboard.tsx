@@ -13,9 +13,34 @@ type GpRow = {
 };
 
 type FilterRange = 'all' | 'month' | 'week';
-type FilterRole = 'all' | 'siswa' | 'guru';
 
 type ClassRow = { id: string; name: string };
+
+const ROMAN_NUMERALS: Record<string, number> = {
+  I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10,
+  XI: 11, XII: 12, XIII: 13, XIV: 14, XV: 15,
+};
+
+function parseClassName(name: string): { roman: string; romanNum: number; num: number } {
+  const match = name.match(/^([IVXLCDM]+)(?:\.(\d+))?$/i);
+  if (match) {
+    const roman = match[1].toUpperCase();
+    const num = match[2] ? parseInt(match[2], 10) : 0;
+    return { roman, romanNum: ROMAN_NUMERALS[roman] || 0, num };
+  }
+  return { roman: '', romanNum: 0, num: 0 };
+}
+
+function sortClassesByName(classes: ClassRow[]): ClassRow[] {
+  return [...classes].sort((a, b) => {
+    const parsedA = parseClassName(a.name);
+    const parsedB = parseClassName(b.name);
+    if (parsedA.romanNum !== parsedB.romanNum) {
+      return parsedA.romanNum - parsedB.romanNum;
+    }
+    return parsedA.num - parsedB.num;
+  });
+}
 
 function MedalIcon({ rank }: { rank: number }) {
   const medals = [
@@ -86,9 +111,9 @@ export function Leaderboard({ me }: { me: AppProfile }) {
   const [view, setView] = useState<'leaderboard' | 'store'>('leaderboard');
   const [owned, setOwned] = useState<string[]>([]);
   const [filterRange, setFilterRange] = useState<FilterRange>('all');
-  const [filterRole, setFilterRole] = useState<FilterRole>('all');
   const [filterKelas, setFilterKelas] = useState<string>('');
   const [filterMapel, setFilterMapel] = useState<string>('');
+  const [filterKind, setFilterKind] = useState<string>('');
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [mapelList, setMapelList] = useState<string[]>([]);
 
@@ -106,7 +131,7 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         .from('classes')
         .select('id, name')
         .eq('school_id', me.school_id);
-      if (classesData) setClasses(classesData as ClassRow[]);
+      if (classesData) setClasses(sortClassesByName(classesData as ClassRow[]));
 
       const { data: packagesData } = await insforge.database
         .from('packages')
@@ -119,10 +144,9 @@ export function Leaderboard({ me }: { me: AppProfile }) {
 
       const { data: studentsData, error: studentsErr } = await insforge.database
         .from('profiles')
-        .select('id, full_name, role, school_id, gamification_profiles(xp, level, streak_current, streak_best, updated_at)')
+        .select('id, full_name, role, school_id')
         .eq('school_id', me.school_id)
-        .eq('role', 'siswa')
-        .order('role', { ascending: true });
+        .eq('role', 'siswa');
 
       if (studentsErr) {
         setErr(studentsErr.message);
@@ -130,16 +154,33 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         return;
       }
 
-      let mapped = ((studentsData || []) as any[]).map((r) => ({
-        profile_id: r.id,
-        xp: r.gamification_profiles?.xp ?? 0,
-        level: r.gamification_profiles?.level ?? 1,
-        streak_current: r.gamification_profiles?.streak_current ?? 0,
-        streak_best: r.gamification_profiles?.streak_best ?? 0,
-        full_name: r.full_name ?? 'Pengguna',
-        role: r.role ?? 'siswa',
-        updated_at: r.gamification_profiles?.updated_at,
-      }));
+      const studentIds = ((studentsData || []) as any[]).map((r) => r.id);
+      const gpMap = new Map<string, { xp: number; level: number; streak_current: number; streak_best: number; updated_at?: string }>();
+      if (studentIds.length > 0) {
+        const { data: gpData } = await insforge.database
+          .from('gamification_profiles')
+          .select('profile_id, xp, level, streak_current, streak_best, updated_at')
+          .in('profile_id', studentIds);
+        if (gpData) {
+          for (const gp of gpData as any[]) {
+            gpMap.set(gp.profile_id, gp);
+          }
+        }
+      }
+
+      let mapped = ((studentsData || []) as any[]).map((r) => {
+        const gp = gpMap.get(r.id);
+        return {
+          profile_id: r.id,
+          xp: gp?.xp ?? 0,
+          level: gp?.level ?? 1,
+          streak_current: gp?.streak_current ?? 0,
+          streak_best: gp?.streak_best ?? 0,
+          full_name: r.full_name ?? 'Pengguna',
+          role: r.role ?? 'siswa',
+          updated_at: gp?.updated_at,
+        };
+      });
 
       if (filterRange === 'month') {
         const since = new Date();
@@ -149,10 +190,6 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         const since = new Date();
         since.setDate(since.getDate() - 7);
         mapped = mapped.filter((r) => !r.updated_at || new Date(r.updated_at) >= since);
-      }
-
-      if (filterRole !== 'all') {
-        mapped = mapped.filter((r) => r.role === filterRole);
       }
 
       if (filterKelas) {
@@ -177,6 +214,17 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         }
       }
 
+      if (filterKind) {
+        const { data: attemptsData } = await insforge.database
+          .from('attempts')
+          .select('student_id, package_id, packages!inner(kind)')
+          .eq('packages.kind', filterKind);
+        if (attemptsData) {
+          const studentIds = new Set((attemptsData as { student_id: string }[]).map((a) => a.student_id));
+          mapped = mapped.filter((r) => studentIds.has(r.profile_id));
+        }
+      }
+
       mapped.sort((a, b) => b.xp - a.xp);
 
       setRows(mapped);
@@ -191,7 +239,7 @@ export function Leaderboard({ me }: { me: AppProfile }) {
       setMyRank(idx >= 0 ? idx + 1 : null);
       setLoading(false);
     })();
-  }, [me.id, me.school_id, filterRange, filterRole, filterKelas, filterMapel]);
+  }, [me.id, me.school_id, filterRange, filterKelas, filterMapel, filterKind]);
 
   const [storeErr, setStoreErr] = useState('');
 
@@ -309,30 +357,6 @@ export function Leaderboard({ me }: { me: AppProfile }) {
                 </button>
               </div>
               <div className="filter-group">
-                <span className="filter-label">Peran:</span>
-                <button
-                  type="button"
-                  className={filterRole === 'all' ? 'filter-chip active' : 'filter-chip'}
-                  onClick={() => setFilterRole('all')}
-                >
-                  Semua
-                </button>
-                <button
-                  type="button"
-                  className={filterRole === 'siswa' ? 'filter-chip active' : 'filter-chip'}
-                  onClick={() => setFilterRole('siswa')}
-                >
-                  Siswa
-                </button>
-                <button
-                  type="button"
-                  className={filterRole === 'guru' ? 'filter-chip active' : 'filter-chip'}
-                  onClick={() => setFilterRole('guru')}
-                >
-                  Guru
-                </button>
-              </div>
-              <div className="filter-group">
                 <span className="filter-label">Kelas:</span>
                 <select
                   className="filter-select"
@@ -356,6 +380,19 @@ export function Leaderboard({ me }: { me: AppProfile }) {
                   {mapelList.map((m) => (
                     <option key={m} value={m}>{m}</option>
                   ))}
+                </select>
+              </div>
+              <div className="filter-group">
+                <span className="filter-label">Jenis:</span>
+                <select
+                  className="filter-select"
+                  value={filterKind}
+                  onChange={(e) => setFilterKind(e.target.value)}
+                >
+                  <option value="">Semua Jenis</option>
+                  <option value="latihan">Latihan</option>
+                  <option value="simulasi">Simulasi</option>
+                  <option value="ujian_kelas">Ujian</option>
                 </select>
               </div>
             </div>

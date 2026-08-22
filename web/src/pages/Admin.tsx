@@ -19,6 +19,32 @@ type CsvRow = {
   kode_kelas: string;
 };
 
+const ROMAN_NUMERALS: Record<string, number> = {
+  I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10,
+  XI: 11, XII: 12, XIII: 13, XIV: 14, XV: 15,
+};
+
+function parseClassName(name: string): { roman: string; romanNum: number; num: number } {
+  const match = name.match(/^([IVXLCDM]+)(?:\.(\d+))?$/i);
+  if (match) {
+    const roman = match[1].toUpperCase();
+    const num = match[2] ? parseInt(match[2], 10) : 0;
+    return { roman, romanNum: ROMAN_NUMERALS[roman] || 0, num };
+  }
+  return { roman: '', romanNum: 0, num: 0 };
+}
+
+function sortClassesByName(classes: ClassRow[]): ClassRow[] {
+  return [...classes].sort((a, b) => {
+    const parsedA = parseClassName(a.name);
+    const parsedB = parseClassName(b.name);
+    if (parsedA.romanNum !== parsedB.romanNum) {
+      return parsedA.romanNum - parsedB.romanNum;
+    }
+    return parsedA.num - parsedB.num;
+  });
+}
+
 const ROLES = ['siswa', 'orang_tua', 'guru', 'admin', 'kepsek'] as const;
 const JENJANG_OPTS = ['sd', 'smp', 'sma', 'smk'] as const;
 
@@ -699,8 +725,7 @@ export function Admin({ me }: { me: AppProfile }) {
                   {buka && role !== 'siswa' && grup.map((u) => barisUser(u))}
                   {buka && role === 'siswa' && (
                     <>
-                      {[...classes]
-                        .sort((a, b) => a.name.localeCompare(b.name, 'id', { sensitivity: 'base' }))
+                      {sortClassesByName(classes)
                         .map((kl) => {
                           const ids = new Set(anggota.filter((x) => x.class_id === kl.id).map((x) => x.profile_id));
                           const isi = grup.filter((u) => ids.has(u.id)).sort(urutNama);

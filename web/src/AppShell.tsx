@@ -372,7 +372,7 @@ export function AppShell({
       { id: 'laporan', label: 'Laporan' }
     );
     if (['admin', 'kepsek'].includes(role)) items.push({ id: 'admin', label: 'Admin' });
-    items.push({ id: 'profil', label: 'Profil' });
+    items.push({ id: 'leaderboard', label: 'Peringkat' }, { id: 'profil', label: 'Profil' });
   }
 
   const isDesktopRole = ['guru', 'admin', 'konten', 'kepsek'].includes(role);

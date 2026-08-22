@@ -61,7 +61,8 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
     const { data: aData, error: aErr } = await insforge.database
       .from('attempts')
       .select('id, package_id, student_id, status, score, started_at, submitted_at')
-      .eq('student_id', me.id);
+      .eq('student_id', me.id)
+      .eq('is_archived', false);
     if (aErr) setErr(aErr.message);
     else {
       const sorted = ((aData || []) as Attempt[]).sort((x, y) => {
@@ -332,7 +333,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
         }
       }
     }
-    const a = await insforge.database.from('attempts').select('id, package_id, student_id, status, score, started_at, submitted_at, tab_leave_count');
+    const a = await insforge.database.from('attempts').select('id, package_id, student_id, status, score, started_at, submitted_at, tab_leave_count').eq('is_archived', false);
     if (a.error) setErr(a.error.message.includes('does not exist') ? 'Tabel attempts belum ada.' : a.error.message);
     else setRows((a.data || []) as Attempt[]);
 
@@ -401,8 +402,8 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   });
 
   async function hapusAttempt(id: string) {
-    if (!confirm('Hapus riwayat pengerjaan ini? Semua jawaban dan history terkait akan dihapus permanen.')) return;
-    const { error } = await insforge.database.from('attempts').delete().eq('id', id);
+    if (!confirm('Arsipkan riwayat pengerjaan ini? Data tidak akan ditampilkan lagi di laporan.')) return;
+    const { error } = await insforge.database.from('attempts').update({ is_archived: true }).eq('id', id);
     if (error) setErr(error.message);
     else {
       setRows((c) => c.filter((r) => r.id !== id));
@@ -411,10 +412,10 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   }
 
   async function hapusTerpilih() {
-    if (!confirm(`Hapus ${selected.size} riwayat yang dipilih? Semua jawaban dan history terkait akan dihapus permanen.`)) return;
+    if (!confirm(`Arsipkan ${selected.size} riwayat yang dipilih? Data tidak akan ditampilkan lagi di laporan.`)) return;
     const ids = Array.from(selected);
     for (const id of ids) {
-      await insforge.database.from('attempts').delete().eq('id', id);
+      await insforge.database.from('attempts').update({ is_archived: true }).eq('id', id);
     }
     setRows((c) => c.filter((r) => !selected.has(r.id)));
     setSelected(new Set());

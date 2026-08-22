@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { assignSiswaKeKelas } from '../lib/kelas';
 import { insforge, type AppProfile } from '../lib/insforge';
 
@@ -7,18 +7,38 @@ type Siswa = { id: string; full_name: string | null; user_id: string; jenjang: s
 type Anggota = { profile_id: string };
 
 const JENJANG_OPTS = ['sd', 'smp', 'sma', 'smk'] as const;
-const JENJANG_LABEL: Record<string, string> = {
-  sd: 'SD',
-  smp: 'SMP',
-  sma: 'SMA',
-  smk: 'SMK',
+
+const ROMAN_NUMERALS: Record<string, number> = {
+  I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10,
+  XI: 11, XII: 12, XIII: 13, XIV: 14, XV: 15,
 };
+
+function parseClassName(name: string): { romanNum: number; num: number } {
+  const match = name.match(/^([IVXLCDM]+)(?:\.(\d+))?$/i);
+  if (match) {
+    const roman = match[1].toUpperCase();
+    const num = match[2] ? parseInt(match[2], 10) : 0;
+    return { romanNum: ROMAN_NUMERALS[roman] || 0, num };
+  }
+  return { romanNum: 0, num: 0 };
+}
+
+function sortClassesByName(classes: Cls[]): Cls[] {
+  return [...classes].sort((a, b) => {
+    const parsedA = parseClassName(a.name);
+    const parsedB = parseClassName(b.name);
+    if (parsedA.romanNum !== parsedB.romanNum) {
+      return parsedA.romanNum - parsedB.romanNum;
+    }
+    return parsedA.num - parsedB.num;
+  });
+}
 
 export function Kelas({ profile }: { profile: AppProfile }) {
   const [rows, setRows] = useState<Cls[]>([]);
   const [siswa, setSiswa] = useState<Siswa[]>([]);
   const [anggota, setAnggota] = useState<Record<string, string[]>>({});
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [name, setName] = useState('Kelas XII.1');
   const [jenjang, setJenjang] = useState(profile.jenjang || 'sma');
   const [kode, setKode] = useState('');
@@ -32,6 +52,30 @@ export function Kelas({ profile }: { profile: AppProfile }) {
   const [naikKe, setNaikKe] = useState<Record<string, string>>({});
 
   const sudahDiKelas = new Set(Object.values(anggota).flat());
+
+  const sortedClasses = useMemo(() => sortClassesByName(rows), [rows]);
+
+  const selectedClass = useMemo(
+    () => rows.find((c) => c.id === selectedClassId) || null,
+    [rows, selectedClassId]
+  );
+
+  const selectedClassMemberIds = selectedClass ? anggota[selectedClass.id] || [] : [];
+
+  const selectedClassStudents = useMemo(() => {
+    if (!selectedClass) return [];
+    const idSet = new Set(selectedClassMemberIds);
+    return siswa
+      .filter((s) => idSet.has(s.id))
+      .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '', 'id', { sensitivity: 'base' }));
+  }, [selectedClass, siswa, selectedClassMemberIds]);
+
+  const availableStudents = useMemo(() => {
+    if (!selectedClass) return [];
+    return siswa
+      .filter((s) => !sudahDiKelas.has(s.id))
+      .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '', 'id', { sensitivity: 'base' }));
+  }, [selectedClass, siswa, sudahDiKelas]);
 
   async function load() {
     setErr('');
@@ -57,6 +101,12 @@ export function Kelas({ profile }: { profile: AppProfile }) {
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    if (!selectedClassId && sortedClasses.length > 0) {
+      setSelectedClassId(sortedClasses[0].id);
+    }
+  }, [sortedClasses, selectedClassId]);
 
   async function buat(e: React.FormEvent) {
     e.preventDefault();
@@ -108,7 +158,10 @@ export function Kelas({ profile }: { profile: AppProfile }) {
     if (!confirm('Hapus kelas ini? Siswa hanya dilepas dari kelas, profil tetap ada.')) return;
     const { error } = await insforge.database.from('classes').delete().eq('id', id);
     if (error) setErr(error.message);
-    else await load();
+    else {
+      if (selectedClassId === id) setSelectedClassId('');
+      await load();
+    }
   }
 
   async function masukkan(classId: string, profileId: string) {
@@ -183,14 +236,6 @@ export function Kelas({ profile }: { profile: AppProfile }) {
   const namaSiswa = (id: string) =>
     siswa.find((s) => s.id === id)?.full_name || siswa.find((s) => s.id === id)?.user_id || id.slice(0, 8);
 
-  const byJenjang = JENJANG_OPTS.map((j) => ({
-    jenjang: j,
-    label: JENJANG_LABEL[j],
-    kelas: rows
-      .filter((c) => c.jenjang === j)
-      .sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' })),
-  })).filter((g) => g.kelas.length > 0);
-
   if (!['guru', 'admin', 'kepsek'].includes(profile.role)) {
     return (
       <div className="page">
@@ -203,9 +248,9 @@ export function Kelas({ profile }: { profile: AppProfile }) {
   }
 
   return (
-    <div className="page">
+    <div className="dashboard-page">
       <header className="page-header">
-        <h1 className="page-title">Kelas</h1>
+        <h1 className="page-title">Manajemen Kelas</h1>
         <p className="page-subtitle">Kelola kelas dan anggotanya. Satu siswa hanya di satu kelas.</p>
       </header>
 
@@ -220,208 +265,238 @@ export function Kelas({ profile }: { profile: AppProfile }) {
         </div>
       )}
 
-      <div className="page-split">
-        <div className="form-sticky">
-          <form onSubmit={buat} className="form-container">
-            <div className="form-card">
-              <header className="card-header">
-                <h2 className="card-title">Buat kelas + kode</h2>
-            <p className="card-subtitle">Satu siswa hanya di satu kelas. Import CSV memakai kolom kode_kelas = kode undangan ini.</p>
-          </header>
-
-          <div className="form-section">
-            <div className="form-row">
-              <div className="form-group">
-                <div className="form-section-title">Nama kelas <span className="req"></span></div>
-                <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <div className="form-section-title">Kode kelas (undangan)</div>
-                <input
-                  className="input"
-                  value={kode}
-                  onChange={(e) => setKode(e.target.value.toUpperCase())}
-                  placeholder="Contoh: 9A-2026 (kosong = otomatis)"
-                />
-              </div>
+      <div className="card" style={{ padding: 16, marginBottom: 24 }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Buat Kelas Baru</h3>
+        <form onSubmit={buat}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div className="form-group" style={{ flex: 1, minWidth: 150 }}>
+              <label className="form-label">Nama Kelas</label>
+              <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
+            <div className="form-group" style={{ flex: 1, minWidth: 150 }}>
+              <label className="form-label">Kode Undangan</label>
+              <input
+                className="input"
+                value={kode}
+                onChange={(e) => setKode(e.target.value.toUpperCase())}
+                placeholder="Kosong = otomatis"
+              />
+            </div>
+            <div className="form-group" style={{ minWidth: 100 }}>
+              <label className="form-label">Jenjang</label>
+              <select className="select" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
+                {JENJANG_OPTS.map((j) => (
+                  <option key={j} value={j}>
+                    {j.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button className="btn btn-primary" type="submit" disabled={busy}>
+              {busy ? 'Membuat…' : 'Buat Kelas'}
+            </button>
           </div>
+        </form>
+      </div>
 
-          <div className="form-section">
-            <div className="form-section-title">Jenjang <span className="req"></span></div>
-            <select className="select" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
-              {JENJANG_OPTS.map((j) => (
-                <option key={j} value={j}>
-                  {j.toUpperCase()}
+      <div className="kelas-layout">
+        <div className="kelas-sidebar">
+          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+            <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Pilih Kelas</label>
+            <select
+              className="input"
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              <option value="">-- Pilih Kelas --</option>
+              {sortedClasses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.jenjang.toUpperCase()})
                 </option>
               ))}
             </select>
           </div>
+
+          {selectedClass && (
+            <div className="card" style={{ padding: 16 }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Info Kelas</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--muted)', fontSize: 13 }}>Nama Kelas</span>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedClass.name}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--muted)', fontSize: 13 }}>Jenjang</span>
+                  <span style={{ fontSize: 13 }}>{selectedClass.jenjang.toUpperCase()}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--muted)', fontSize: 13 }}>Kode Undangan</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: 13 }}>{selectedClass.invite_code}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--muted)', fontSize: 13 }}>Jumlah Siswa</span>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedClassMemberIds.length} siswa</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    setEditId(selectedClass.id);
+                    setEditName(selectedClass.name);
+                    setEditKode(selectedClass.invite_code);
+                  }}
+                >
+                  Ubah
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: 'var(--danger)' }}
+                  onClick={() => hapusKelas(selectedClass.id)}
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="actions">
-          <button className="btn btn-primary" type="submit" disabled={busy}>
-            {busy ? 'Membuat…' : 'Buat kelas'}
-          </button>
-        </div>
-      </form>
-        </div>
-        <div>
-
-      {rows.length === 0 && (
-        <div className="empty-state" style={{ marginTop: 24 }}>
-          <div className="empty-state-icon">🏫</div>
-          <h3 className="empty-state-title">Belum ada kelas</h3>
-          <p className="empty-state-text">Buat kelas pertama di formulir di atas.</p>
-        </div>
-      )}
-
-      {byJenjang.map((g) => (
-        <div key={g.jenjang} className="form-section" style={{ marginTop: 24 }}>
-          <div className="form-section-title">{g.label} ({g.kelas.length})</div>
-          <div className="kelas-grid">
-            {g.kelas.map((c) => {
-              const ids = anggota[c.id] || [];
-              const belum = siswa.filter((s) => !sudahDiKelas.has(s.id));
-              const terbuka = openId === c.id;
-              return (
-                <div key={c.id}>
-                  <button
-                    type="button"
-                    className="kelas-card"
-                    onClick={() => setOpenId((cur) => (cur === c.id ? null : c.id))}
-                    aria-expanded={terbuka}
-                  >
-                     <div className="kelas-card-top">
-                      <h3 className="kelas-name">{c.name}</h3>
-                      <div className="kelas-code">{c.invite_code}</div>
+        <div className="kelas-main">
+          {selectedClass ? (
+            <>
+              {editId === selectedClass.id && (
+                <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+                  <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Edit Kelas</h3>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <div className="form-group" style={{ flex: 1, minWidth: 150 }}>
+                      <label className="form-label">Nama Kelas</label>
+                      <input className="input" value={editName} onChange={(e) => setEditName(e.target.value)} />
                     </div>
-                    <div className="kelas-meta">
-                      <span className="kelas-badge-jenjang">{c.jenjang}</span>
-                      <span className="kelas-badge-siswa">{ids.length} siswa</span>
+                    <div className="form-group" style={{ flex: 1, minWidth: 150 }}>
+                      <label className="form-label">Kode Undangan</label>
+                      <input className="input" value={editKode} onChange={(e) => setEditKode(e.target.value.toUpperCase())} />
                     </div>
-                  </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => void simpanKelas(selectedClass.id)} disabled={busy}>
+                      {busy ? 'Menyimpan…' : 'Simpan'}
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditId(null)}>
+                      Batal
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                  {terbuka && (
-                    <div className="form-card" style={{ marginTop: 12, padding: '24px 28px' }}>
-                      {editId === c.id ? (
-                        <div className="form-container" style={{ marginTop: 16 }}>
-                          <div className="form-group">
-                            <div className="form-section-title">Nama</div>
-                            <input className="input" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                          </div>
-                          <div className="form-group">
-                            <div className="form-section-title">Kode kelas</div>
-                            <input className="input" value={editKode} onChange={(e) => setEditKode(e.target.value.toUpperCase())} />
-                          </div>
-                          <div className="actions">
-                            <button type="button" className="btn btn-primary btn-sm" onClick={() => void simpanKelas(c.id)} disabled={busy}>
-                              {busy ? 'Menyimpan…' : 'Simpan nama & kode'}
-                            </button>
-                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditId(null)}>
-                              Batal
-                            </button>
+              <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 16 }}>Siswa di {selectedClass.name}</h3>
+                  <span className="badge badge-info">{selectedClassStudents.length} siswa</span>
+                </div>
+                {selectedClassStudents.length === 0 ? (
+                  <p style={{ color: 'var(--muted)', fontSize: 13 }}>Belum ada siswa di kelas ini.</p>
+                ) : (
+                  <div className="student-list">
+                    {selectedClassStudents.map((s, idx) => (
+                      <div key={s.id} className="student-item">
+                        <div className="student-info">
+                          <span className="student-number">{idx + 1}</span>
+                          <div>
+                            <span className="student-name">{s.full_name || s.user_id}</span>
+                            <span className="student-meta">{s.jenjang?.toUpperCase() || '-'}</span>
                           </div>
                         </div>
-                      ) : null}
-
-                      <div className="actions" style={{ marginTop: 12 }}>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => {
-                            setEditId(c.id);
-                            setEditName(c.name);
-                            setEditKode(c.invite_code);
-                          }}
-                        >
-                          Ubah nama & kode
-                        </button>
-                        <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => hapusKelas(c.id)}>
-                          Hapus kelas
-                        </button>
-                      </div>
-
-                      <h3 className="type-hm" style={{ marginTop: 16, marginBottom: 8 }}>
-                        Siswa di kelas ({ids.length})
-                      </h3>
-                      {ids.length === 0 && <p className="type-lab">Belum ada siswa.</p>}
-                      {ids
-                        .slice()
-                        .sort((a, b) => namaSiswa(a).localeCompare(namaSiswa(b), 'id', { sensitivity: 'base' }))
-                        .map((pid) => (
-                          <div key={pid} className="actions" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                            <span style={{ flex: '1 1 140px' }}>{namaSiswa(pid)}</span>
-                            <select className="select" style={{ maxWidth: 200 }} value={pindahKe[pid] || ''} onChange={(e) => setPindahKe((m) => ({ ...m, [pid]: e.target.value }))}>
-                              <option value="">Pindah ke…</option>
-                              {rows
-                                .filter((k) => k.id !== c.id)
-                                .map((k) => (
-                                  <option key={k.id} value={k.id}>
-                                    {k.name}
-                                  </option>
-                                ))}
-                            </select>
-                            <button type="button" className="btn btn-sm" style={{ maxWidth: 120 }} onClick={() => void pindah(c.id, pid)}>
-                              Pindah
-                            </button>
-                            <button type="button" className="btn btn-ghost btn-sm" style={{ maxWidth: 120 }} onClick={() => keluarkan(c.id, pid)}>
-                              Keluarkan
-                            </button>
-                          </div>
-                        ))}
-
-                      <div className="hint-panel" style={{ marginTop: 16 }}>
-                        <span className="hint-kicker">Kenaikan kelas (semua siswa di sini)</span>
-                        <div className="hint-row">
+                        <div className="student-actions">
                           <select
                             className="select"
-                            value={naikKe[c.id] || ''}
-                            onChange={(e) => setNaikKe((m) => ({ ...m, [c.id]: e.target.value }))}
+                            style={{ maxWidth: 140, fontSize: 12 }}
+                            value={pindahKe[s.id] || ''}
+                            onChange={(e) => setPindahKe((m) => ({ ...m, [s.id]: e.target.value }))}
                           >
-                            <option value="">— kelas tujuan —</option>
+                            <option value="">Pindah ke…</option>
                             {rows
-                              .filter((k) => k.id !== c.id)
+                              .filter((k) => k.id !== selectedClass.id)
                               .map((k) => (
                                 <option key={k.id} value={k.id}>
-                                  {k.name} ({k.jenjang})
+                                  {k.name}
                                 </option>
                               ))}
                           </select>
-                          <button type="button" className="btn" onClick={() => void naikkanSemua(c.id)} disabled={busy}>
-                            {busy ? 'Memindah…' : 'Naikkan semua'}
+                          <button type="button" className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => void pindah(selectedClass.id, s.id)}>
+                            Pindah
+                          </button>
+                          <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 12 }} onClick={() => keluarkan(selectedClass.id, s.id)}>
+                            Keluarkan
                           </button>
                         </div>
-                        <p className="hint-note">Satu siswa tetap satu kelas. Jenjang profil mengikuti kelas tujuan. Buat kelas baru dulu (mis. 11 IPA 1) sebelum menaikkan dari 10.</p>
                       </div>
+                    ))}
+                  </div>
+                )}
 
-                      <h3 className="type-hm" style={{ marginTop: 16, marginBottom: 8 }}>
-                        Masukkan siswa yang belum punya kelas
-                      </h3>
-                      {siswa.length === 0 && <p className="type-lab">Belum ada profil siswa. Buat di menu Admin dulu.</p>}
-                      {belum.length === 0 && siswa.length > 0 && (
-                        <p className="type-lab">Semua siswa sudah di satu kelas. Keluarkan dulu untuk memindah.</p>
-                      )}
-                      {belum.map((s) => (
-                        <div key={s.id} className="actions" style={{ alignItems: 'center' }}>
-                          <span style={{ flex: '1 1 140px' }}>
-                            {s.full_name || s.user_id} <span className="type-lab">{s.jenjang}</span>
-                          </span>
-                          <button type="button" className="btn" style={{ maxWidth: 160 }} onClick={() => masukkan(c.id, s.id)}>
-                            Masukkan
-                          </button>
-                        </div>
-                      ))}
+                {selectedClassStudents.length > 0 && (
+                  <div className="hint-panel" style={{ marginTop: 16 }}>
+                    <span className="hint-kicker">Kenaikan kelas (semua siswa di sini)</span>
+                    <div className="hint-row">
+                      <select
+                        className="select"
+                        value={naikKe[selectedClass.id] || ''}
+                        onChange={(e) => setNaikKe((m) => ({ ...m, [selectedClass.id]: e.target.value }))}
+                      >
+                        <option value="">— kelas tujuan —</option>
+                        {rows
+                          .filter((k) => k.id !== selectedClass.id)
+                          .map((k) => (
+                            <option key={k.id} value={k.id}>
+                              {k.name} ({k.jenjang})
+                            </option>
+                          ))}
+                      </select>
+                      <button type="button" className="btn" onClick={() => void naikkanSemua(selectedClass.id)} disabled={busy}>
+                        {busy ? 'Memindah…' : 'Naikkan semua'}
+                      </button>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+                    <p className="hint-note">Satu siswa tetap satu kelas. Jenjang profil mengikuti kelas tujuan.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="card" style={{ padding: 16 }}>
+                <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>Masukkan Siswa</h3>
+                {availableStudents.length === 0 ? (
+                  <p style={{ color: 'var(--muted)', fontSize: 13 }}>Semua siswa sudah di kelas.</p>
+                ) : (
+                  <div className="student-list">
+                    {availableStudents.map((s) => (
+                      <div key={s.id} className="student-item">
+                        <div className="student-info">
+                          <div>
+                            <span className="student-name">{s.full_name || s.user_id}</span>
+                            <span className="student-meta">{s.jenjang?.toUpperCase() || '-'}</span>
+                          </div>
+                        </div>
+                        <button type="button" className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => masukkan(selectedClass.id, s.id)}>
+                          Masukkan
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-icon">🏫</div>
+              <h3 className="empty-state-title">Pilih Kelas</h3>
+              <p className="empty-state-text">Pilih kelas dari dropdown di samping untuk melihat dan mengelola siswa.</p>
+            </div>
+          )}
         </div>
       </div>
+
     </div>
   );
 }
