@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>SMART-TKA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --ink:#111; --muted:#6b6b6b; --line:#e6e1d8; --yellow:#f0b429; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+      background: #fff;
+      color: var(--ink);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 24px calc(28px + env(safe-area-inset-bottom));
+      text-align: center;
+    }
+    .brand { font-weight: 750; letter-spacing: -0.04em; font-size: 22px; margin: 8px 0 12px; }
+    .hero {
+      width: min(340px, 88vw);
+      height: auto;
+      margin: 4px 0 16px;
+      background: #fff;
+      display: block;
+    }
+    h1 {
+      font-size: clamp(20px, 5.4vw, 26px);
+      line-height: 1.25;
+      letter-spacing: -0.03em;
+      font-weight: 700;
+      margin: 0 0 12px;
+      max-width: 22rem;
+    }
+    h1 { font-weight: 400; }
+    h1 .ac { color: #111; font-weight: 800; }
+    .lead {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+      margin: 0 0 28px;
+      max-width: 22rem;
+    }
+    .slide {
+      position: relative;
+      width: min(240px, 100%);
+      height: 44px;
+      margin-top: auto;
+      border: 0;
+      border-radius: 999px;
+      background: #f4f5f7;
+      user-select: none;
+      touch-action: none;
+    }
+    .slide-label {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.02em; color: var(--muted);
+      pointer-events: none;
+    }
+    .slide-thumb {
+      position: absolute; left: 6px; top: 6px;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--yellow); color: #1a1a1a;
+      display: flex; align-items: center; justify-content: center;
+      cursor: grab; touch-action: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+    .slide-thumb:active { cursor: grabbing; background: #e8a317; }
+    .powered {
+      margin-top: 14px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 11px; letter-spacing: 0.02em; color: var(--muted);
+    }
+    .powered img { width: 22px; height: 22px; border-radius: 6px; }
+    .legal { font-size: 11px; color: #9aa0a6; margin: 8px 0 0; }
+    @media (min-width: 880px) {
+      body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto 1fr auto;
+        max-width: 1080px;
+        margin: 0 auto;
+        text-align: left;
+        align-items: center;
+        column-gap: 48px;
+        padding: 48px;
+      }
+      .brand { grid-column: 2; }
+      .hero { grid-column: 1; grid-row: 1 / span 3; width: min(420px, 100%); }
+      h1, .lead, .slide { grid-column: 2; }
+      .powered, .legal { grid-column: 1 / -1; text-align: center; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <p class="brand">SMART-TKA</p>
+  <img class="hero" src="./hero.png" alt="" />
+  <h1>
+    <span class="ac">S</span>ystem for
+    <span class="ac">M</span>astery,
+    <span class="ac">A</span>chieve,
+    <span class="ac">R</span>eadiness, and
+    <span class="ac">T</span>raining for
+    <span class="ac">TKA</span>
+  </h1>
+  <p class="lead">Latihan dan simulasi Tes Kemampuan Akademik agar siswa menguasai materi dan siap menghadapi TKA.</p>
+  <div class="slide" id="slide">
+    <span class="slide-label">Geser ke kanan untuk masuk</span>
+    <div class="slide-thumb" id="slideThumb" role="button" tabindex="0" aria-label="Geser ke kanan untuk masuk">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+    </div>
+  </div>
+  <p class="powered"><span>powered by</span><img src="./logo-8bit.png" alt="8bit.id" /><span>8bit.id</span></p>
+<script>
+(function () {
+  var track = document.getElementById('slide');
+  var thumb = document.getElementById('slideThumb');
+  var max = 0, startX = 0, dragging = false, done = false;
+  function begin(e) {
+    dragging = true; done = false;
+    startX = e.clientX;
+    max = track.clientWidth - thumb.offsetWidth - 12;
+    thumb.setPointerCapture(e.pointerId);
+  }
+  function move(e) {
+    if (!dragging) return;
+    var dx = e.clientX - startX;
+    var o = Math.max(0, Math.min(max, dx));
+    thumb.style.transform = 'translateX(' + o + 'px)';
+    if (o >= max - 4) done = true;
+  }
+  function end() {
+    if (!dragging) return;
+    dragging = false;
+    if (done) { window.location.href = './'; }
+    else { thumb.style.transform = 'translateX(0)'; }
+  }
+  thumb.addEventListener('pointerdown', begin);
+  thumb.addEventListener('pointermove', move);
+  thumb.addEventListener('pointerup', end);
+  thumb.addEventListener('pointercancel', end);
+})();</script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2ff51fe1e5bea7d',t:'MTc4NzU0MjY2NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

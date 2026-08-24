@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Masuk — SMART-TKA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root { --ink: #111; --muted: #6b6b6b; --line: #e6e1d8; --yellow: #f0b429; --field: #f4f5f7; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100dvh; background: #fff; color: var(--ink);
+      font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    }
+    main { width: 100%; max-width: 400px; text-align: center; }
+    .brand { font-weight: 800; letter-spacing: -0.04em; font-size: 22px; margin: 0 0 8px; }
+    .hero { width: min(300px, 88vw); height: auto; margin: 4px auto 12px; display: block; }
+    h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin: 4px 0 8px; }
+    .lead { margin: 0 0 20px; font-size: 15px; }
+    form { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+    .pill {
+      display: flex; align-items: center; gap: 10px;
+      height: 52px; min-height: 52px; padding: 0 8px 0 16px;
+      border-radius: 999px; background: var(--field); color: #8a8f94;
+    }
+    .pill input {
+      border: 0; outline: 0; background: transparent; flex: 1; min-width: 0;
+      font: inherit; font-size: 15px; color: var(--ink); padding: 14px 0;
+    }
+    .pill:focus-within { box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.12); }
+    .eye {
+      position: relative;
+      border: 0; background: none; width: 40px; height: 40px; border-radius: 50%;
+      color: #8a8f94; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    }
+    .eye.on { color: #111; }
+    .eye.on::after {
+      content: ''; position: absolute; width: 18px; height: 1.6px; background: currentColor;
+      transform: rotate(-45deg); border-radius: 2px;
+    }
+    .cta {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; height: 52px; min-height: 52px; margin-top: 4px; padding: 0 10px;
+      border: 1px solid #d9d4cb; border-radius: 999px;
+      background: #fff; color: var(--ink); font-weight: 700; font-size: 16px;
+      cursor: pointer; font-family: inherit;
+    }
+    .cta i {
+      width: 32px; height: 32px; border-radius: 50%; background: var(--yellow);
+      display: inline-flex; align-items: center; justify-content: center; font-style: normal;
+    }
+    .hint { margin: 18px 0 0; font-size: 13px; line-height: 1.45; }
+    .hint a { color: #111; font-weight: 700; text-underline-offset: 2px; }
+    .powered {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin: 22px 0 0; font-size: 13px; color: var(--muted);
+    }
+    .powered img { width: 22px; height: 22px; border-radius: 6px; object-fit: cover; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+    @media (min-width: 880px) {
+      main {
+        max-width: 880px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: 48px;
+        align-items: center;
+        text-align: left;
+      }
+      .hero { grid-column: 1; grid-row: 1 / 7; width: 100%; margin: 0; }
+      .brand, h1, .lead, form, .hint { grid-column: 2; }
+      .powered { grid-column: 1 / -1; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="brand">SMART-TKA</p>
+    <img class="hero" src="./hero.png" alt="" />
+    <h1>Masuk</h1>
+    <p class="lead">Pakai email dan kata sandi dari admin sekolah.</p>
+    <form action="./" method="get">
+      <label class="pill">
+        <span class="sr">Email</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+        <input type="email" name="email" placeholder="Email" required autocomplete="username" />
+      </label>
+      <label class="pill">
+        <span class="sr">Kata sandi</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+        <input id="pw" type="password" name="password" placeholder="Kata sandi" required minlength="8" autocomplete="current-password" />
+        <button type="button" class="eye" id="eye" aria-label="Tampilkan kata sandi" aria-pressed="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </label>
+      <button class="cta" type="submit">Masuk <i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></button>
+    </form>
+    <p class="hint">Belum punya akun? Minta ke <a id="wa-admin" class="wa" href="https://wa.me/6285800644841?text=Halo%20admin%20SMART-TKA%2C%20saya%20ingin%20dibuatkan%20akun.">admin sekolah</a>.</p>
+    <p class="powered"><span>powered by</span><img src="./logo-8bit.png" alt="" /><span>8bit.id</span></p>
+  </main>
+  <script>
+    const pw = document.getElementById('pw');
+    const btn = document.getElementById('eye');
+    btn.addEventListener('click', () => {
+      const show = pw.type === 'password';
+      pw.type = show ? 'text' : 'password';
+      btn.classList.toggle('on', show);
+      btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+      btn.setAttribute('aria-label', show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
+    });
+    document.getElementById('wa-admin').addEventListener('click', (e) => {
+      const url = e.currentTarget.href;
+      const w = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!w) {
+        e.preventDefault();
+        try { if (window.top && window.top !== window) window.top.location.href = url; else window.location.href = url; }
+        catch { window.location.href = url; }
+      }
+    });
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2ff8f43593314a6',t:'MTc4NzU0NTE3NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

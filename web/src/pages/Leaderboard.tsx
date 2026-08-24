@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
+import { romanize } from '../lib/roman';
 
 type GpRow = {
   profile_id: string;
@@ -410,7 +411,7 @@ export function Leaderboard({ me }: { me: AppProfile }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontWeight: 600, fontSize: 14 }}>{getInitials(me.full_name ?? '')}</span>
                     <span style={{ fontSize: 12, color: 'var(--muted)' }}>{me.full_name}</span>
-                    {myGp && <span className="level-badge">L{myGp.level}</span>}
+                    {myGp && <span className="level-badge">{romanize(myGp.level)}</span>}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
                     {myGp?.xp ?? 0} XP · {myGp?.streak_current ?? 0} hari streak
@@ -447,7 +448,7 @@ export function Leaderboard({ me }: { me: AppProfile }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 600 }}>{r.full_name}</span>
-                      <span className="level-badge">L{r.level}</span>
+                      <span className="level-badge">{romanize(r.level)}</span>
                       {isTop3 && <MedalIcon rank={i} />}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--muted)' }}>

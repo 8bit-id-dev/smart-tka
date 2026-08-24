@@ -1,3 +1,6 @@
+import { romanize } from '../lib/roman';
+import fire from '../assets/icon/fire.gif';
+
 type GpRow = { xp: number; level: number; streak_current: number; streak_best: number };
 
 function xpForLevel(level: number): number {
@@ -17,14 +20,14 @@ export function GamifQuickView({ profile }: { profile: GpRow }) {
     <div className="gamif-quickview">
       <div className="gamif-qv-row">
         <div className="gamif-qv-level">
-          <div className="gamif-qv-level-badge">L{profile.level}</div>
+          <div className="gamif-qv-level-badge">{romanize(profile.level)}</div>
           <div>
             <div className="gamif-qv-label">Level {profile.level}</div>
             <div className="gamif-qv-xp">{xpCurrent} / {xpForNext} XP</div>
           </div>
         </div>
         <div className="gamif-qv-streak">
-          <div className="gamif-qv-streak-icon">🔥</div>
+          <img className="gamif-qv-streak-icon" src={fire} alt="Streak" />
           <div>
             <div className="gamif-qv-label">{profile.streak_current} hari</div>
             <div className="gamif-qv-sub">Best: {profile.streak_best}</div>

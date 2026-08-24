@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
 import { Icons } from '../AppShell';
+import { PhotoCropModal } from '../components/PhotoCropModal';
+import defaultPhoto from '../assets/profile.jpg';
 
 const JENJANG_LABEL: Record<string, string> = {
   sd: 'SD kelas 6',
@@ -33,8 +35,9 @@ export function Profil({
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoErr, setPhotoErr] = useState('');
   const [ortu, setOrtu] = useState<{ parent_id: string; nama: string }[]>([]);
-  const [photoUrl, setPhotoUrl] = useState(profile.photo_url || '');
+  const [photoUrl, setPhotoUrl] = useState(profile.photo_url || defaultPhoto);
   const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -82,8 +85,9 @@ export function Profil({
 
 
 
-  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setPhotoErr('Hanya file gambar (jpg, png, gif) yang diperbolehkan.');
@@ -93,12 +97,17 @@ export function Profil({
       setPhotoErr('Ukuran maksimal 2 MB.');
       return;
     }
+    setPhotoErr('');
+    setCropSrc(URL.createObjectURL(file));
+  }
+
+  async function uploadBlob(blob: Blob) {
     setPhotoLoading(true);
     setPhotoErr('');
-    const ext = file.type.split('/')[1];
+    const ext = blob.type.split('/')[1] || 'jpg';
     const path = `${profile.id}.${ext}`;
     try {
-      const { error, data } = await insforge.storage.from('profile-photos').upload(path, file);
+      const { error, data } = await insforge.storage.from('profile-photos').upload(path, blob);
       if (error) {
         setPhotoErr(error.message);
         return;
@@ -112,25 +121,29 @@ export function Profil({
       setPhotoErr(e instanceof Error ? e.message : 'Upload gagal.');
     }
     setPhotoLoading(false);
-    e.target.value = '';
+    if (cropSrc) {
+      URL.revokeObjectURL(cropSrc);
+      setCropSrc(null);
+    }
   }
 
   async function deletePhoto() {
-    if (!photoUrl) return;
     setPhotoLoading(true);
     setPhotoErr('');
-    const fname = photoUrl.substring(photoUrl.lastIndexOf('/') + 1);
-    try {
-      const { error } = await insforge.storage.from('profile-photos').remove([fname]);
-      if (error) {
-        setPhotoErr(error.message);
-      } else {
-        setPhotoUrl('');
-        await insforge.database.from('profiles').update({ photo_url: null }).eq('id', profile.id);
-      }
-    } catch (e) {
-      setPhotoErr(e instanceof Error ? e.message : 'Hapus gagal.');
+    if (!photoUrl || photoUrl === defaultPhoto) {
+      setPhotoLoading(false);
+      return;
     }
+    try {
+      const clean = photoUrl.split('?')[0];
+      const fname = clean.substring(clean.lastIndexOf('/') + 1);
+      await insforge.storage.from('profile-photos').remove([fname]);
+    } catch {
+      /* file mungkin sudah tidak ada — tetap lanjut ke foto default */
+    }
+    setPhotoUrl(defaultPhoto);
+    const { error } = await insforge.database.from('profiles').update({ photo_url: null }).eq('id', profile.id);
+    if (error) setPhotoErr(error.message);
     setPhotoLoading(false);
   }
 
@@ -145,15 +158,15 @@ export function Profil({
         {/* Avatar + info */}
          <div className="card" style={{ textAlign: 'center', minWidth: 200, flex: '1 1 260px' }}>
               <div style={{
-                width: 96, height: 96, borderRadius: 24,
+                width: 160, height: 160, borderRadius: 28, aspectRatio: '1 / 1',
                 background: photoUrl ? undefined : 'var(--card)', color: photoUrl ? '#fff' : 'var(--muted)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 32, fontWeight: 700, margin: '0 auto 12px',
+                fontSize: 44, fontWeight: 700, margin: '0 auto 16px',
                 overflow: 'hidden', objectFit: 'cover',
                 border: photoUrl ? '2px solid var(--accent-soft)' : '1px solid var(--card-border)',
                 cursor: 'pointer', userSelect: 'none',
               }} onClick={() => setPhotoMenuOpen(true)}>
-              {photoUrl ? <img src={photoUrl} alt="Foto profil" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 24 }} /> : Icons.profil(false)}
+              {photoUrl ? <img src={photoUrl} alt="Foto profil" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', borderRadius: 28 }} /> : Icons.profil(false)}
             </div>
             {photoErr && <p className="legal" style={{ color: '#f85149', marginTop: 4 }}>{photoErr}</p>}
             {photoMenuOpen && (
@@ -162,7 +175,7 @@ export function Profil({
                   <button type="button" className="photo-menu-item" onClick={() => { fileInputRef.current?.click(); setPhotoMenuOpen(false); }} disabled={photoLoading}>
                     Edit Foto
                   </button>
-                  {photoUrl && (
+                  {photoUrl && photoUrl !== defaultPhoto && (
                     <button type="button" className="photo-menu-item photo-menu-item-danger" onClick={() => { void deletePhoto(); setPhotoMenuOpen(false); }} disabled={photoLoading}>
                       Hapus Foto
                     </button>
@@ -170,7 +183,7 @@ export function Profil({
                 </div>
               </div>
             )}
-            <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={(e) => void uploadPhoto(e)} disabled={photoLoading} />
+            <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={onPickPhoto} disabled={photoLoading} />
            <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700 }}>{profile.full_name || 'Pengguna'}</h2>
            <span className="badge badge-info" style={{ marginBottom: 16 }}>{profile.role}</span>
 
@@ -248,6 +261,19 @@ export function Profil({
           </div>
         </div>
       </div>
+
+      {cropSrc && (
+        <PhotoCropModal
+          src={cropSrc}
+          onCancel={() => {
+            URL.revokeObjectURL(cropSrc);
+            setCropSrc(null);
+          }}
+          onSave={(blob) => {
+            void uploadBlob(blob);
+          }}
+        />
+      )}
     </div>
   );
 }

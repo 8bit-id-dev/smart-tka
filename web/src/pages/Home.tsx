@@ -3,6 +3,8 @@ import { insforge, type AppProfile } from '../lib/insforge';
 import type { Tab } from '../AppShell';
 import { Icons } from '../AppShell';
 import { GamifQuickView } from '../components/GamifQuickView';
+import { PhotoCropModal } from '../components/PhotoCropModal';
+import defaultPhoto from '../assets/profile.jpg';
 
 type AttemptRow = { id: string; score: number | null; status: string; submitted_at: string | null; package_id: string | null };
 type AARow = { attempt_id: string; item_id: string; is_correct: boolean; items: { mapel: string; item_type: string; difficulty: number | null; materi: string | null }[] };
@@ -10,19 +12,6 @@ type PkgRow = { id: string; title: string; mapel: string; kind: string; item_cou
 type ExamSchedule = { id: string; package_id: string; subject: string; materi: string | null; duration_sec: number | null; start_at: string; end_at: string; is_active: boolean };
 type ClassRow = { id: string; name: string; jenjang: string };
 type GpRow = { xp: number; level: number; streak_current: number; streak_best: number };
-
-const SUBJECT_ICONS: Record<string, string> = {
-  'Matematika': '∑',
-  'Bahasa Indonesia': 'Aa',
-  'Bahasa Inggris': 'Ab',
-  'IPA': '⚗',
-  'IPS': '🌏',
-};
-const SUBJECT_COLORS: Record<string, string> = {
-  'Matematika': 'subject-icon-math',
-  'Bahasa Indonesia': 'subject-icon-indo',
-  'Bahasa Inggris': 'subject-icon-inggris',
-};
 
 const JENJANG_LABEL: Record<string, string> = {
   sd: 'SD', smp: 'SMP', sma: 'SMA', smk: 'SMK',
@@ -69,6 +58,44 @@ function SimpleLineChart({ data, labels, color = 'var(--accent)' }: { data: numb
       <path d={pathD} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
       {dots}
       {xLabels}
+    </svg>
+  );
+}
+
+function MapelBarChart({ data }: { data: Record<string, { total: number; correct: number }> }) {
+  const entries = Object.entries(data).sort(
+    (a, b) => b[1].correct / b[1].total - a[1].correct / a[1].total
+  );
+  if (!entries.length) return null;
+  const w = 600;
+  const h = 220;
+  const pad = { top: 20, right: 10, bottom: 30, left: 10 };
+  const cw = w - pad.left - pad.right;
+  const ch = h - pad.top - pad.bottom;
+  const slot = cw / entries.length;
+  const barW = Math.min(46, slot * 0.55);
+  const shortName = (n: string) =>
+    n === 'Matematika' ? 'Mat' : n === 'Bahasa Indonesia' ? 'B.Indo' : n === 'Bahasa Inggris' ? 'B.Ing' : n.length > 8 ? `${n.slice(0, 7)}…` : n;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+      {entries.map(([name, v], i) => {
+        const pct = v.total > 0 ? Math.round((v.correct / v.total) * 100) : 0;
+        const x = pad.left + slot * i + (slot - barW) / 2;
+        const bh = Math.max((pct / 100) * ch, 3);
+        const y = pad.top + ch - bh;
+        const color = pct >= 75 ? 'var(--success)' : pct >= 50 ? 'var(--accent)' : 'var(--danger)';
+        return (
+          <g key={name}>
+            <rect x={x} y={y} width={barW} height={bh} rx={6} fill={color} opacity={0.9} />
+            <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize="11" fontWeight="700" fill="var(--ink)">
+              {pct}%
+            </text>
+            <text x={x + barW / 2} y={h - 10} textAnchor="middle" fontSize="9" fill="var(--muted)">
+              {shortName(name)}
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 }
@@ -174,19 +201,16 @@ function AbilityAnalysis({
       <div className="card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
           <h3 className="card-title" style={{ margin: 0 }}>Analisis Kemampuan</h3>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <select
+            className="analysis-select"
+            value={tab}
+            onChange={(e) => setTab(e.target.value as AnalysisTab)}
+            aria-label="Filter analisis"
+          >
             {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={tab === t.id ? 'seg-active' : 'seg'}
-                onClick={() => setTab(t.id)}
-                style={{ fontSize: 12, padding: '4px 10px' }}
-              >
-                {t.label}
-              </button>
+              <option key={t.id} value={t.id}>{t.label}</option>
             ))}
-          </div>
+          </select>
         </div>
 
         {!hasData ? (
@@ -222,6 +246,15 @@ function AbilityAnalysis({
               <div style={{ marginBottom: 16, padding: '10px 14px', backgroundColor: 'var(--danger-bg, #fef2f2)', borderRadius: 8, borderLeft: '3px solid var(--danger)' }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', marginBottom: 4 }}>Perlu Ditingkatkan</div>
                 <div style={{ fontSize: 12, color: 'var(--muted)' }}>{weaknesses.map((w) => `${w} (${Math.round((subjectStats[w].correct / subjectStats[w].total) * 100)}%)`).join(', ')}</div>
+              </div>
+            )}
+
+            {Object.keys(subjectStats).length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <h4 style={{ fontSize: 13, fontWeight: 600, margin: '0 8px 10px' }}>Akurasi per Mata Pelajaran</h4>
+                <div className="chart-svg-wrap" style={{ height: 'auto' }}>
+                  <MapelBarChart data={subjectStats} />
+                </div>
               </div>
             )}
 
@@ -291,8 +324,7 @@ function AnalysisBar({ label, pct, tag, tagCls, subtitle }: { label: string; pct
       <div className="analysis-bar-track">
         <div className="analysis-bar-fill" style={{ width: `${pct}%` }} />
       </div>
-      <span className="analysis-bar-pct">{pct}%</span>
-      <span className={`analysis-bar-tag ${tagCls}`}>{tag}</span>
+      <span className={tagCls}>{tag}</span>
     </div>
   );
 }
@@ -529,10 +561,11 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
     return { lastSimScore: Number(sorted[0].score), bestSimScore: Math.max(...sorted.map((a) => Number(a.score))) };
   }, [attempts]);
 
-  const [photoUrl, setPhotoUrl] = useState(profile.photo_url || '');
+  const [photoUrl, setPhotoUrl] = useState(profile.photo_url || defaultPhoto);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoErr, setPhotoErr] = useState('');
   const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function openPhotoMenu() {
@@ -540,8 +573,9 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
     setPhotoMenuOpen(true);
   }
 
-  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setPhotoErr('Hanya file gambar yang diperbolehkan.');
@@ -551,12 +585,17 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       setPhotoErr('Ukuran maksimal 2 MB.');
       return;
     }
+    setPhotoErr('');
+    setCropSrc(URL.createObjectURL(file));
+  }
+
+  async function uploadBlob(blob: Blob) {
     setPhotoLoading(true);
     setPhotoErr('');
-    const ext = file.type.split('/')[1];
+    const ext = blob.type.split('/')[1] || 'jpg';
     const path = `${profile.id}.${ext}`;
     try {
-      const { error, data } = await insforge.storage.from('profile-photos').upload(path, file);
+      const { error, data } = await insforge.storage.from('profile-photos').upload(path, blob);
       if (error) {
         setPhotoErr(error.message);
       } else {
@@ -568,41 +607,57 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       setPhotoErr(e instanceof Error ? e.message : 'Upload gagal.');
     }
     setPhotoLoading(false);
-    e.target.value = '';
+    if (cropSrc) {
+      URL.revokeObjectURL(cropSrc);
+      setCropSrc(null);
+    }
   }
 
   async function deletePhoto() {
-    if (!photoUrl) return;
     setPhotoLoading(true);
     setPhotoErr('');
-    const fname = photoUrl.substring(photoUrl.lastIndexOf('/') + 1);
-    try {
-      const { error } = await insforge.storage.from('profile-photos').remove(fname);
-      if (error) {
-        setPhotoErr(error.message);
-      } else {
-        setPhotoUrl('');
-        await insforge.database.from('profiles').update({ photo_url: null }).eq('id', profile.id);
-      }
-    } catch (e) {
-      setPhotoErr(e instanceof Error ? e.message : 'Hapus gagal.');
+    if (!photoUrl || photoUrl === defaultPhoto) {
+      setPhotoLoading(false);
+      return;
     }
+    try {
+      const clean = photoUrl.split('?')[0];
+      const fname = clean.substring(clean.lastIndexOf('/') + 1);
+      await insforge.storage.from('profile-photos').remove(fname);
+    } catch {
+      /* file mungkin sudah tidak ada — tetap lanjut ke foto default */
+    }
+    setPhotoUrl(defaultPhoto);
+    const { error } = await insforge.database.from('profiles').update({ photo_url: null }).eq('id', profile.id);
+    if (error) setPhotoErr(error.message);
     setPhotoLoading(false);
   }
 
   if (staf) {
-    const pintas: { id: Tab; t: string; d: string; detail: string; icon: React.ReactNode }[] = [
-      { id: 'soal', t: 'Soal', d: 'Tulis atau draf AI', detail: 'Buat, edit, dan kelola soal TKA', icon: Icons.soal(true) },
-      { id: 'paket', t: 'Paket', d: 'Rakit latihan / ujian', detail: 'Rakit dan atur paket latihan UTK', icon: Icons.paket(true) },
-      { id: 'kelas', t: 'Kelas', d: 'Siswa, pindah, kenaikan', detail: 'Kelola anggota dan kenaikan kelas', icon: Icons.kelas(true) },
-      { id: 'laporan', t: 'Laporan', d: 'Skor & cetak PDF', detail: 'Lihat rekap skor dan ekspor PDF', icon: Icons.laporan(true) },
-    ];
-    if (['admin', 'kepsek'].includes(profile.role)) pintas.push({ id: 'admin', t: 'Admin', d: 'Impor user & assignment', detail: 'Kelola pengguna dan assignment sekolah', icon: Icons.admin(true) });
+    const role = profile.role;
+    const isAdmin = role === 'admin';
+    const isKepsek = role === 'kepsek';
+    const pintas: { id: Tab; t: string; d: string; detail: string; icon: React.ReactNode }[] = [];
+    if (isKepsek) {
+      pintas.push(
+        { id: 'laporan', t: 'Laporan', d: 'Rekap & ekspor', detail: 'Pantau skor dan unduh CSV/PDF', icon: Icons.laporan(true) },
+        { id: 'kelas', t: 'Kelas', d: 'Lihat struktur', detail: 'Tinjau kelas dan keanggotaan siswa', icon: Icons.kelas(true) },
+        { id: 'pengumuman', t: 'Pengumuman', d: 'Informasi sekolah', detail: 'Kelola pengumuman untuk siswa', icon: Icons.pengumuman(true) },
+      );
+    } else {
+      pintas.push(
+        { id: 'soal', t: 'Soal', d: 'Tulis atau draf AI', detail: 'Buat, edit, dan kelola soal TKA', icon: Icons.soal(true) },
+        { id: 'paket', t: 'Paket', d: 'Rakit latihan / ujian', detail: 'Rakit dan atur paket latihan UTK', icon: Icons.paket(true) },
+        { id: 'kelas', t: 'Kelas', d: 'Siswa, pindah, kenaikan', detail: 'Kelola anggota dan kenaikan kelas', icon: Icons.kelas(true) },
+        { id: 'laporan', t: 'Laporan', d: 'Skor & cetak PDF', detail: 'Lihat rekap skor dan ekspor PDF', icon: Icons.laporan(true) },
+      );
+    }
+    if (isAdmin || isKepsek) pintas.push({ id: 'admin', t: 'Admin', d: 'Impor user & assignment', detail: 'Kelola pengguna dan assignment sekolah', icon: Icons.admin(true) });
     return (
       <div className="dashboard-page">
         <header className="page-header">
           <p className="page-subtitle">Halo, {name}</p>
-          <h1 className="page-title">Kerja sekolah</h1>
+          <h1 className="page-title">{isKepsek ? 'Ringkasan sekolah' : isAdmin ? 'Panel admin' : 'Kerja sekolah'}</h1>
           <p className="page-subtitle" style={{ maxWidth: 500 }}>
             SMART-TKA persiapan internal. Bukan aplikasi resmi Kemendikdasmen. Tes Kemampuan Akademik.
           </p>
@@ -658,7 +713,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
                 <button type="button" className="photo-menu-item" onClick={() => { fileInputRef.current?.click(); setPhotoMenuOpen(false); }} disabled={photoLoading}>
                   Ganti Foto
                 </button>
-                {photoUrl && (
+                {photoUrl && photoUrl !== defaultPhoto && (
                   <button type="button" className="photo-menu-item photo-menu-item-danger" onClick={() => { void deletePhoto(); setPhotoMenuOpen(false); }} disabled={photoLoading}>
                     Hapus Foto
                   </button>
@@ -666,7 +721,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
               </div>
             </div>
           )}
-          <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={uploadPhoto} disabled={photoLoading} />
+          <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={onPickPhoto} disabled={photoLoading} />
         </div>
         <div className="greeting-text">
           <h1>Selamat datang, {name}!</h1>
@@ -700,16 +755,44 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
           <p className="stat-value">{stats.akurasi}%</p>
         </div>
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>★</div>
+          <div className="stat-icon" style={{ background: 'var(--warn-bg)', color: 'var(--warn)' }}>★</div>
           <p className="stat-label">Rata-rata Skor</p>
           <p className="stat-value">{stats.rataSkor}</p>
         </div>
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>⏱</div>
+          <div className="stat-icon" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>⏱</div>
           <p className="stat-label">Simulasi Selesai</p>
           <p className="stat-value">{stats.simulasiSelesai}</p>
         </div>
       </div>
+
+      <AbilityAnalysis
+        stats={stats}
+        subjectStats={subjectStats}
+        typeStats={typeStats}
+        diffStats={diffStats}
+        materiStats={materiStats}
+        trend={trend}
+        activityChart={activityChart}
+      />
+
+      {recommendations.length > 0 && (
+        <div className="section">
+          <h2 className="section-title">Rekomendasi Untukmu</h2>
+          <div className="rec-grid">
+            {recommendations.map((rec, i) => (
+              <div key={i} className="rec-card">
+                 <div className="rec-icon-svg">{RecIcons[rec.icon](false)}</div>
+                <div className="rec-info">
+                  <h3>{rec.title}</h3>
+                  <p>{rec.desc}</p>
+                </div>
+                <button className="continue-btn" type="button" onClick={() => onTab(rec.action)}>{rec.actionLabel}</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="section">
         <div className="quick-actions-grid">
@@ -744,56 +827,18 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         </div>
       </div>
 
-      {recommendations.length > 0 && (
-        <div className="section">
-          <h2 className="section-title">Rekomendasi Untukmu</h2>
-          <div className="rec-grid">
-            {recommendations.map((rec, i) => (
-              <div key={i} className="rec-card">
-                 <div className="rec-icon-svg">{RecIcons[rec.icon](false)}</div>
-                <div className="rec-info">
-                  <h3>{rec.title}</h3>
-                  <p>{rec.desc}</p>
-                </div>
-                <button className="continue-btn" type="button" onClick={() => onTab(rec.action)}>{rec.actionLabel}</button>
-              </div>
-            ))}
-          </div>
-        </div>
+      {cropSrc && (
+        <PhotoCropModal
+          src={cropSrc}
+          onCancel={() => {
+            URL.revokeObjectURL(cropSrc);
+            setCropSrc(null);
+          }}
+          onSave={(blob) => {
+            void uploadBlob(blob);
+          }}
+        />
       )}
-
-      <AbilityAnalysis
-        stats={stats}
-        subjectStats={subjectStats}
-        typeStats={typeStats}
-        diffStats={diffStats}
-        materiStats={materiStats}
-        trend={trend}
-        activityChart={activityChart}
-      />
-
-      {pkgs.filter((p) => p.kind === 'latihan').length > 0 && (
-        <div className="section">
-          <h2 className="section-title">Paket Latihan Tersedia</h2>
-          <div className="subject-hscroll">
-            {pkgs.filter((p) => p.kind === 'latihan').slice(0, 8).map((p) => (
-              <div key={p.id} className="subject-card" onClick={() => onTab('latihan')}>
-                <div className="subject-card-header">
-                  <div className={`subject-icon ${SUBJECT_COLORS[p.mapel] || 'subject-icon-other'}`}>
-                    {SUBJECT_ICONS[p.mapel] || '📚'}
-                  </div>
-                  <div className="subject-meta">
-                    <h4>{p.mapel || p.title}</h4>
-                    <p>{p.item_count || 0} soal</p>
-                  </div>
-                </div>
-                <button className="continue-btn" type="button" style={{ width: '100%' }}>Mulai</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

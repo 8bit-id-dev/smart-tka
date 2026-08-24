@@ -25,7 +25,7 @@ export function Inbox({ profileId }: { profileId: string }) {
     <div className="dashboard-page">
       <header className="page-header" style={{ marginBottom: 20 }}>
         <p className="page-subtitle">Pengumuman dan tugas</p>
-        <h1 className="page-title">Kotak Masuk</h1>
+        <h1 className="page-title">Komunikasi</h1>
       </header>
 
       {err && (
