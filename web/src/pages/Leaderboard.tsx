@@ -88,29 +88,12 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-type StoreItem = {
-  id: string;
-  name: string;
-  desc: string;
-  cost: number;
-  icon: string;
-};
-
-const STORE_ITEMS: StoreItem[] = [
-  { id: 'gold_frame', name: 'Gold Frame', desc: 'Bingkai avatar emas', cost: 100, icon: '🥇' },
-  { id: 'diamond_frame', name: 'Diamond Frame', desc: 'Bingkai avatar berlian', cost: 500, icon: '💎' },
-  { id: 'master_title', name: 'Master Title', desc: 'Judul badge tambahan', cost: 200, icon: '🏆' },
-  { id: 'cosmic_theme', name: 'Cosmic Theme', desc: 'Tema cosmic', cost: 300, icon: '🌌' },
-];
-
 export function Leaderboard({ me }: { me: AppProfile }) {
   const [rows, setRows] = useState<GpRow[]>([]);
   const [myGp, setMyGp] = useState<{ xp: number; level: number; streak_current: number } | null>(null);
   const [myRank, setMyRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
-  const [view, setView] = useState<'leaderboard' | 'store'>('leaderboard');
-  const [owned, setOwned] = useState<string[]>([]);
   const [filterRange, setFilterRange] = useState<FilterRange>('all');
   const [filterKelas, setFilterKelas] = useState<string>('');
   const [filterMapel, setFilterMapel] = useState<string>('');
@@ -230,37 +213,11 @@ export function Leaderboard({ me }: { me: AppProfile }) {
 
       setRows(mapped);
 
-      const inv = await insforge.database
-        .from('store_inventory')
-        .select('item_id')
-        .eq('profile_id', me.id);
-      if (!inv.error && inv.data) setOwned((inv.data as { item_id: string }[]).map((r) => r.item_id));
-
       const idx = mapped.findIndex((r) => r.profile_id === me.id);
       setMyRank(idx >= 0 ? idx + 1 : null);
       setLoading(false);
     })();
   }, [me.id, me.school_id, filterRange, filterKelas, filterMapel, filterKind]);
-
-  const [storeErr, setStoreErr] = useState('');
-
-  async function buyItem(item: StoreItem) {
-    setStoreErr('');
-    if (!myGp || myGp.xp < item.cost) { setStoreErr('XP tidak cukup untuk membeli item ini.'); return; }
-    if (owned.includes(item.id)) { setStoreErr('Item sudah dimiliki.'); return; }
-    const { error: invErr } = await insforge.database
-      .from('store_inventory')
-      .insert({ profile_id: me.id, item_id: item.id });
-    if (invErr) { setStoreErr(invErr.message); return; }
-    const { error: xpErr } = await insforge.database
-      .from('gamification_profiles')
-      .update({ xp: myGp.xp - item.cost })
-      .eq('profile_id', me.id);
-    if (xpErr) { setStoreErr(xpErr.message); return; }
-    setMyGp({ ...myGp, xp: myGp.xp - item.cost });
-    const newOwned = [...owned, item.id];
-    setOwned(newOwned);
-  }
 
   if (loading) {
     return (
@@ -288,8 +245,6 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         <p className="page-subtitle">Peringkat kelas / sekolah</p>
         <h1 className="page-title">Papan Peringkat SMART-TKA</h1>
         <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button type="button" className={view === 'leaderboard' ? 'seg-active' : 'seg'} onClick={() => setView('leaderboard')}>Peringkat</button>
-          <button type="button" className={view === 'store' ? 'seg-active' : 'seg'} onClick={() => setView('store')}>Toko</button>
           {myGp && <span style={{ fontSize: 13, color: 'var(--muted)', marginLeft: 'auto' }}>💰 {myGp.xp} XP</span>}
         </div>
         <p className="page-subtitle" style={{ maxWidth: 500 }}>
@@ -297,65 +252,19 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         </p>
       </header>
 
-      {view === 'store' && (
-        <section className="section">
-          <h2 style={{ fontSize: 18, fontWeight: 650, marginBottom: 12 }}>Toko Item</h2>
-          {storeErr && <div className="banner banner-danger" style={{ marginBottom: 12 }}><p className="banner-text">{storeErr}</p></div>}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
-            {STORE_ITEMS.map((item) => {
-              const isOwned = owned.includes(item.id);
-              const canAfford = !!myGp && myGp.xp >= item.cost;
-              return (
-                <div key={item.id} className="card" style={{ textAlign: 'center', padding: 16 }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>{item.icon}</div>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 650 }}>{item.name}</h3>
-                  <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 8px' }}>{item.desc}</p>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>{item.cost} XP</div>
-                  {isOwned ? (
-                    <button type="button" style={{ marginTop: 8, fontSize: 12, opacity: 0.6, cursor: 'default' }} disabled>Dimiliki</button>
-                  ) : (
-                    <button type="button" className="btn" onClick={() => void buyItem(item)} disabled={!canAfford} style={{ marginTop: 8, fontSize: 12, cursor: canAfford ? 'pointer' : 'not-allowed' }}>
-                      {canAfford ? 'Beli' : 'XP Kurang'}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {owned.length > 0 && (
-            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
-              Item dimiliki: {owned.length} — {owned.map((id) => STORE_ITEMS.find((i) => i.id === id)?.name).filter(Boolean).join(', ')}
-            </p>
-          )}
-        </section>
-      )}
-      {view === 'leaderboard' && (
-        <>
-          <section className="section">
-            <div className="leaderboard-filters">
+      <section className="section">
+        <div className="leaderboard-filters">
               <div className="filter-group">
                 <span className="filter-label">Periode:</span>
-                <button
-                  type="button"
-                  className={filterRange === 'all' ? 'filter-chip active' : 'filter-chip'}
-                  onClick={() => setFilterRange('all')}
+                <select
+                  className="filter-select"
+                  value={filterRange}
+                  onChange={(e) => setFilterRange(e.target.value as FilterRange)}
                 >
-                  Semua Waktu
-                </button>
-                <button
-                  type="button"
-                  className={filterRange === 'month' ? 'filter-chip active' : 'filter-chip'}
-                  onClick={() => setFilterRange('month')}
-                >
-                  Bulan Ini
-                </button>
-                <button
-                  type="button"
-                  className={filterRange === 'week' ? 'filter-chip active' : 'filter-chip'}
-                  onClick={() => setFilterRange('week')}
-                >
-                  Minggu Ini
-                </button>
+                  <option value="all">Semua Waktu</option>
+                  <option value="month">Bulan Ini</option>
+                  <option value="week">Minggu Ini</option>
+                </select>
               </div>
               <div className="filter-group">
                 <span className="filter-label">Kelas:</span>
@@ -471,8 +380,6 @@ export function Leaderboard({ me }: { me: AppProfile }) {
           <h3 className="empty-state-title">Belum ada peringkat</h3>
           <p className="empty-state-text">Jadilah yang pertama menyelesaikan latihan atau simulasi untuk masuk ke papan peringkat.</p>
         </div>
-      )}
-        </>
       )}
     </div>
   );

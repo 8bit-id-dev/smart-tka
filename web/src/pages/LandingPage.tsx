@@ -182,17 +182,17 @@ export function UnlinkedScreen({ authId, status, linkMsg, onLink, onSignOut }: U
         <h1 className="lp-unlinked-title">Akun belum terhubung ke sekolah.</h1>
         <p className="lp-unlinked-lead">Login berhasil, tapi akun Anda belum ditautkan ke data sekolah.</p>
         {status && <p className="lp-msg">{status}</p>}
-        <div className="lp-id-box">
-          <span className="lp-id-label">Berikan ID ini ke admin</span>
-          <code className="lp-id-value">{authId}</code>
-        </div>
-        <p className="lp-unlinked-copy">Admin akan menautkan ID ini ke profil. Jangan bagikan kata sandi.</p>
+        <p className="lp-unlinked-copy">Admin akan menautkan akun ini ke profil. Jangan bagikan kata sandi.</p>
         {linkMsg && <p className="lp-msg">{linkMsg}</p>}
         <button className="lp-btn-outline" type="button" onClick={onSignOut}>
           Keluar
         </button>
         <details className="lp-dev" open={showDev} onToggle={(e) => setShowDev((e.target as HTMLDetailsElement).open)}>
           <summary className="lp-dev-summary">Mode pengembang</summary>
+          <div className="lp-id-box">
+            <span className="lp-id-label">Berikan ID ini ke admin</span>
+            <code className="lp-id-value">{authId}</code>
+          </div>
           <div className="lp-dev-actions">
             <button className="lp-btn-dev" type="button" onClick={() => onLink('admin')}>Hubungkan sebagai admin</button>
             <button className="lp-btn-dev" type="button" onClick={() => onLink('guru')}>Hubungkan sebagai guru</button>

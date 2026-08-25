@@ -3,6 +3,7 @@ import { insforge, type AppProfile } from './lib/insforge';
 import { romanize } from './lib/roman';
 import { XpReward } from './components/XpReward';
 import AppIcon from './assets/smart.png';
+import defaultPhoto from './assets/profile.jpg';
 import home from './assets/icon/home.png';
 import homeActive from './assets/icon/home (1).png';
 import clock from './assets/icon/clock.png';
@@ -199,12 +200,6 @@ function timeAgo(iso: string | undefined): string {
   return `${days}h`;
 }
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
-
 export function AppShell({
   tab,
   onTab,
@@ -381,19 +376,17 @@ export function AppShell({
     return IconComponent ? IconComponent(isActive) : null;
   };
 
-  const initials = getInitials(name);
-
    return (
-     <div className={`shell ${showSidebar ? 'shell-desktop sidebar-collapsed' : 'shell-mobile'}`}>
+     <div className={`shell ${showSidebar ? 'shell-desktop' : 'shell-mobile'}`}>
         {showSidebar ? (
          <>
-           <aside className="shell-sidebar">
-             <div className="shell-sidebar-header">
-               <strong className="brand">
-                 <span className="brand-icon">TKA</span>
-                 <span>SMART-TKA</span>
-               </strong>
-             </div>
+            <aside className="shell-sidebar">
+              <div className="shell-sidebar-header">
+                <button type="button" className="brand brand-btn" title="Beranda" onClick={() => onTab('beranda')}>
+                  <img className="brand-icon" src={AppIcon} alt="SMART-TKA" />
+                  <span>SMART-TKA</span>
+                </button>
+              </div>
              <nav className="shell-nav">
                {items.map((i) => {
                  const isActive = tab === i.id;
@@ -411,10 +404,10 @@ export function AppShell({
                  );
               })}
             </nav>
-             <span className="shell-user">
-               {initials}
-             </span>
-          </aside>
+             <button type="button" className="sidebar-avatar" title="Profil" onClick={() => onTab('profil')}>
+               <img src={profile.photo_url || defaultPhoto} alt={name} className="sidebar-avatar-img" />
+             </button>
+           </aside>
            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
              <header className="shell-header">
                <div className="shell-header-right">
@@ -457,8 +450,8 @@ export function AppShell({
                        )}
                      </div>
                     )}
-                   <button type="button" className="header-avatar" title={name}>
-                     {initials}
+                   <button type="button" className="header-avatar" title="Profil" onClick={() => onTab('profil')}>
+                     <img src={profile.photo_url || defaultPhoto} alt={name} className="header-avatar-img" />
                      {gp && role === 'siswa' && <span className="level-badge">{romanize(gp.level)}</span>}
                    </button>
                  </div>
@@ -532,9 +525,10 @@ export function AppShell({
                     )}
                   </div>
                 )}
-                <span className="shell-user">
-                  {name} Â· {role}
-                </span>
+                <button type="button" className="header-avatar" title="Profil" onClick={() => onTab('profil')}>
+                  <img src={profile.photo_url || defaultPhoto} alt={name} className="header-avatar-img" />
+                  {gp && role === 'siswa' && <span className="level-badge">{romanize(gp.level)}</span>}
+                </button>
               </div>
             </div>
           </header>

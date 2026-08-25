@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { assignSiswaKeKelas, cariKelasByKode } from '../lib/kelas';
 import { adminCreateAuthUser, insforge, summarizeAuthError, type AppProfile } from '../lib/insforge';
 import { DirectoryGalleryAdmin } from './DirectoryGalleryAdmin';
+import { Icons } from '../AppShell';
 
 type UserRow = AppProfile;
 type ClassRow = { id: string; name: string; jenjang: string; invite_code?: string };
@@ -584,7 +585,7 @@ export function Admin({ me }: { me: AppProfile }) {
       <form onSubmit={importCsv} className="form-container">
         <div className="form-card">
           <header className="card-header">
-            <h2 className="card-title">Import CSV</h2>
+            <h2 className="card-title"><span className="admin-title-icon">{Icons.admin(true)}</span>Import CSV</h2>
             <p className="card-subtitle">
               Wajib file <b>.csv</b>. Email yang sudah di Auth akan ditautkan (bukan dibuat ulang) jika password CSV sama,
               atau jika daftar user Auth bisa dibaca. Auto-confirm email diatur di dashboard InsForge, bukan di tombol import.
@@ -615,7 +616,7 @@ export function Admin({ me }: { me: AppProfile }) {
       <form onSubmit={createUser} className="form-container" style={{ marginTop: 24 }}>
         <div className="form-card">
           <header className="card-header">
-            <h2 className="card-title">Buat user (tanpa Daftar)</h2>
+            <h2 className="card-title"><span className="admin-title-icon">{Icons.profil(true)}</span>Buat user (tanpa Daftar)</h2>
             <p className="card-subtitle">Siswa langsung masuk dengan email/password yang Anda isi.</p>
           </header>
 
@@ -707,6 +708,7 @@ export function Admin({ me }: { me: AppProfile }) {
       <div className="collapsible-section" style={{ marginTop: 24 }}>
         <button type="button" className="collapsible-header" onClick={() => setOpenUsers((v) => !v)} aria-expanded={openUsers}>
           <h2 className="collapsible-title" style={{ margin: 0 }}>
+            <span className="admin-title-icon">{Icons.kelas(true)}</span>
             User & peran ({users.length})
           </h2>
           <span className="collapsible-toggle">{openUsers ? '▲' : '▼'}</span>
@@ -769,6 +771,7 @@ export function Admin({ me }: { me: AppProfile }) {
       <div className="collapsible-section" style={{ marginTop: 24 }}>
         <button type="button" className="collapsible-header" onClick={() => setOpenTs((v) => !v)} aria-expanded={openTs}>
           <h2 className="collapsible-title" style={{ margin: 0 }}>
+            <span className="admin-title-icon">{Icons.soal(true)}</span>
             Mapel Guru
           </h2>
           <span className="collapsible-toggle">{openTs ? '▲' : '▼'}</span>
@@ -844,6 +847,7 @@ export function Admin({ me }: { me: AppProfile }) {
       <div className="collapsible-section" style={{ marginTop: 24 }}>
         <button type="button" className="collapsible-header" onClick={() => setOpenAsg((v) => !v)} aria-expanded={openAsg}>
           <h2 className="collapsible-title" style={{ margin: 0 }}>
+            <span className="admin-title-icon">{Icons.paket(true)}</span>
             Assignment ({asgs.length})
           </h2>
           <span className="collapsible-toggle">{openAsg ? '▲' : '▼'}</span>

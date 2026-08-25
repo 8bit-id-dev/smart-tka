@@ -158,7 +158,7 @@ export function Profil({
         {/* Avatar + info */}
          <div className="card" style={{ textAlign: 'center', minWidth: 200, flex: '1 1 260px' }}>
               <div style={{
-                width: 160, height: 160, borderRadius: 28, aspectRatio: '1 / 1',
+                width: 160, height: 160, borderRadius: '30%', aspectRatio: '1 / 1',
                 background: photoUrl ? undefined : 'var(--card)', color: photoUrl ? '#fff' : 'var(--muted)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 44, fontWeight: 700, margin: '0 auto 16px',
@@ -166,7 +166,7 @@ export function Profil({
                 border: photoUrl ? '2px solid var(--accent-soft)' : '1px solid var(--card-border)',
                 cursor: 'pointer', userSelect: 'none',
               }} onClick={() => setPhotoMenuOpen(true)}>
-              {photoUrl ? <img src={photoUrl} alt="Foto profil" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', borderRadius: 28 }} /> : Icons.profil(false)}
+              {photoUrl ? <img src={photoUrl} alt="Foto profil" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', borderRadius: '30%' }} /> : Icons.profil(false)}
             </div>
             {photoErr && <p className="legal" style={{ color: '#f85149', marginTop: 4 }}>{photoErr}</p>}
             {photoMenuOpen && (

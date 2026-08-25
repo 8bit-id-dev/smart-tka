@@ -15,7 +15,7 @@
   --radius-lg: 22px;
   --font: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Consolas, monospace;
-  --sidebar-w: 240px;
+  --sidebar-w: 160px;
   --header-h: 56px;
   --sidebar-bg: #26241e;
   --sidebar-text: rgba(255, 255, 255, 0.66);
@@ -205,9 +205,9 @@ body { margin: 0; background: var(--canvas); min-height: 100vh; overflow-x: hidd
 .greeting-class { font-size: 13px; color: var(--ink-light); margin-top: 4px; font-weight: 500; }
 
 .avatar-wrap {
-  width: 128px;
-  height: 128px;
-  border-radius: 50%;
+  width: 144px;
+  height: 144px;
+  border-radius: 30%;
   overflow: hidden;
   position: relative;
   flex-shrink: 0;
@@ -932,8 +932,8 @@ body { margin: 0; background: var(--canvas); min-height: 100vh; overflow-x: hidd
   width: 44px;
   height: 44px;
   border-radius: var(--radius-sm);
-  background: var(  --accent-soft);
-  color: var(  --accent);
+  background: var(--canvas);
+  color: var(--ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1428,100 +1428,85 @@ pre.debug {
 /* Shell layouts */
 .shell { min-height: 100vh; }
 
-/* Desktop sidebar for admin/guru/konten/kepsek */
+/* Desktop sidebar — same theme & style as mobile bottom bar */
 .shell-desktop { display: flex; }
 .shell-desktop .shell-sidebar {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 20px 12px;
+  padding: 20px 10px;
   width: var(--sidebar-w);
   min-height: 100vh;
-  background: var(--sidebar-bg);
+  background: var(--card);
+  border-right: 1px solid var(--card-border);
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
   position: fixed;
   left: 0;
   top: 0;
   z-index: 30;
   transition: width 0.25s ease, padding 0.25s ease;
-  box-shadow: 4px 0 20px rgba(0,0,0,0.12);
+  box-shadow: 2px 0 16px rgba(0,0,0,0.05);
 }
 .shell-sidebar-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
-  padding: 4px 8px 12px;
+  padding: 4px 4px 12px;
   margin-bottom: 4px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid var(--card-border);
 }
 .brand {
   font-size: 18px;
   font-weight: 700;
-  color: var(--sidebar-text-active);
+  color: var(--ink);
   letter-spacing: -0.02em;
   display: flex;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
 }
-.brand-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--accent-fill);
-  color: var(--accent-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: 800;
-  flex-shrink: 0;
-}
-.sidebar-toggle {
-  width: 28px;
-  height: 28px;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
-  background: rgba(255,255,255,0.06);
-  color: var(--sidebar-text);
+.brand-btn {
+  background: none;
+  border: 0;
+  padding: 0;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-  flex-shrink: 0;
+  font-family: inherit;
 }
-.sidebar-toggle:hover {
-  background: rgba(255,255,255,0.12);
-  color: #fff;
-  border-color: rgba(255,255,255,0.2);
+.brand-btn:hover {
+  opacity: 0.8;
+}
+.brand-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+  border-radius: 30%;
 }
 .shell-desktop .shell-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .shell-desktop .shell-nav button {
-  background: none; border: 0; padding: 10px 12px; border-radius: var(--radius-sm);
-  cursor: pointer; font-weight: 500; font-size: 13px; color: var(--sidebar-text);
+  background: none; border: 0; padding: 8px 10px; border-radius: 8px;
+  cursor: pointer; font-weight: 500; font-size: 14px; color: var(--ink);
   text-align: left;
   transition: all 0.15s;
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   position: relative;
 }
 .shell-desktop .shell-nav button:hover {
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--sidebar-text-active);
+  background: var(--canvas);
+  color: var(--ink);
 }
-.shell-desktop .shell-nav button:hover .nav-icon { color: var(--accent-fill); }
+.shell-desktop .shell-nav button:hover .nav-icon { color: var(--ink); }
 .shell-desktop .shell-nav button.on {
-  background: var(--accent-fill);
-  color: var(--accent-ink);
-  font-weight: 600;
-  box-shadow: 0 2px 10px rgba(240, 180, 41, 0.35);
+  background: var(--canvas);
+  color: var(--ink);
+  font-weight: 700;
 }
-.shell-desktop .shell-nav button.on .nav-icon { color: var(--accent-ink); }
+.shell-desktop .shell-nav button.on .nav-icon { color: var(--ink); }
 .shell-desktop .shell-nav .nav-icon {
   width: 20px;
   height: 20px;
@@ -1529,25 +1514,27 @@ pre.debug {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--sidebar-text);
+  color: var(--ink);
   transition: color 0.15s;
 }
 .shell-desktop .shell-nav .nav-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 .shell-desktop .shell-user {
   font-size: 12px;
-  color: var(--sidebar-text);
+  color: var(--muted);
   margin-top: auto;
   padding-top: 16px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid var(--card-border);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   padding-left: 12px;
   padding-right: 12px;
+  text-align: center;
 }
 .shell-desktop .shell-main {
   padding: 28px 32px 48px;
@@ -1556,71 +1543,6 @@ pre.debug {
   min-height: 100vh;
   transition: margin-left 0.25s ease;
   background: var(--canvas);
-}
-
-/* Collapsed sidebar (default for guru/admin) â€” expands on hover */
-.shell-desktop.sidebar-collapsed .shell-sidebar {
-  width: 72px;
-  padding: 20px 8px;
-  align-items: center;
-}
-.shell-desktop.sidebar-collapsed .shell-sidebar-header {
-  justify-content: center;
-  padding: 4px 4px 12px;
-}
-.shell-desktop.sidebar-collapsed .brand span { display: none; }
-.shell-desktop.sidebar-collapsed .shell-nav button {
-  padding: 10px 0;
-  justify-content: center;
-}
-.shell-desktop.sidebar-collapsed .shell-nav .nav-label {
-  display: none;
-}
-.shell-desktop.sidebar-collapsed .shell-nav button.on {
-  background: var(  --accent);
-  color: #fff;
-}
-.shell-desktop.sidebar-collapsed .shell-nav button.on .nav-icon {
-  color: #fff;
-}
-.shell-desktop.sidebar-collapsed .shell-user {
-  text-align: center;
-  font-size: 14px;
-  font-weight: 600;
-  padding-left: 4px;
-  padding-right: 4px;
-}
-.shell-desktop.sidebar-collapsed .shell-main {
-  margin-left: 72px;
-}
-
-/* Hover expand for collapsed sidebar */
-.shell-desktop.sidebar-collapsed .shell-sidebar:hover {
-  width: var(--sidebar-w);
-  padding: 20px 12px;
-  align-items: flex-start;
-}
-.shell-desktop.sidebar-collapsed .shell-sidebar:hover .shell-sidebar-header {
-  justify-content: flex-start;
-  padding: 4px 8px 12px;
-}
-.shell-desktop.sidebar-collapsed .shell-sidebar:hover .brand span {
-  display: inline;
-}
-.shell-desktop.sidebar-collapsed .shell-sidebar:hover .shell-nav button {
-  padding: 10px 12px;
-  justify-content: flex-start;
-}
-.shell-desktop.sidebar-collapsed .shell-sidebar:hover .shell-nav .nav-label {
-  display: inline;
-}
-.shell-desktop.sidebar-collapsed .shell-sidebar:hover .shell-user {
-  text-align: left;
-  padding-left: 12px;
-  padding-right: 12px;
-}
-.shell-desktop.sidebar-collapsed .shell-sidebar:hover ~ .shell-main {
-  margin-left: var(--sidebar-w);
 }
 
 /* Mobile-first: top bar for siswa/orang_tua */
@@ -1642,13 +1564,13 @@ pre.debug {
 .shell-mobile .shell-nav { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
 .shell-mobile .shell-nav button {
   background: none; border: 0; padding: 6px 10px; border-radius: var(--radius-sm);
-  cursor: pointer; font-weight: 550; font-size: 12px; color: var(--muted);
+  cursor: pointer; font-weight: 550; font-size: 12px; color: var(--ink);
   display: flex;
   align-items: center;
   gap: 6px;
 }
 .shell-mobile .shell-nav button:hover { background: var(--canvas); color: var(--ink); }
-.shell-mobile .shell-nav button.on { background: var(--accent-fill); color: var(--accent-ink); font-weight: 650; }
+.shell-mobile .shell-nav button.on { background: var(--canvas); color: var(--ink); font-weight: 600; }
 .shell-mobile .shell-nav .nav-icon-mobile {
   width: 16px;
   height: 16px;
@@ -1658,45 +1580,6 @@ pre.debug {
 }
 .shell-mobile .shell-user { font-size: 12px; color: var(--muted-light); }
 .shell-main-mobile { padding: 24px 12px 88px; flex: 1; min-height: 100vh; overflow-x: hidden; max-width: 100%; margin: 0 auto; }
-
-/* Desktop sidebar responsive collapse */
-@media (max-width: 1024px) {
-  :root { --sidebar-w: 72px; }
-  .shell-desktop .shell-sidebar {
-    width: 72px;
-    padding: 20px 6px;
-    align-items: center;
-  }
-  .shell-desktop .shell-sidebar-header {
-    justify-content: center;
-    padding: 4px 2px 12px;
-  }
-  .shell-desktop .brand span { display: none; }
-  .shell-desktop .shell-nav button {
-    padding: 11px 0;
-    justify-content: center;
-  }
-  .shell-desktop .shell-nav button.on {
-    background: none;
-    color: var(  --accent);
-  }
-  .shell-desktop .shell-nav button.on .nav-icon {
-    background: var(  --accent);
-    color: #fff;
-    border-radius: 8px;
-  }
-  .shell-desktop .shell-user {
-    text-align: center;
-    font-size: 14px;
-    font-weight: 600;
-    padding-left: 2px;
-    padding-right: 2px;
-  }
-  .shell-desktop .shell-main {
-    margin-left: 72px;
-    padding: 24px 20px 48px;
-  }
-}
 
 /* Top header for desktop shells */
 .shell-header {
@@ -1740,8 +1623,8 @@ pre.debug {
 .header-avatar {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: var(--accent);
+  border-radius: 30%;
+  background: var(--card);
   color: #fff;
   display: flex;
   align-items: center;
@@ -1749,11 +1632,37 @@ pre.debug {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  border: none;
+  border: 1px solid var(--card-border);
   transition: filter 0.15s;
   position: relative;
+  overflow: hidden;
 }
 .header-avatar:hover { filter: brightness(1.1); }
+.header-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 30%;
+  object-fit: cover;
+  display: block;
+}
+.sidebar-avatar {
+  background: none;
+  border: 0;
+  padding: 14px 0 0;
+  cursor: pointer;
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid var(--card-border);
+}
+.sidebar-avatar-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 30%;
+  object-fit: cover;
+  display: block;
+}
+.sidebar-avatar:hover { opacity: 0.85; }
 
 /* === Gamification Toasts === */
 .xp-toast {
@@ -1985,7 +1894,7 @@ pre.debug {
 .shell-bar-right-end { display: flex; align-items: center; gap: 8px; }
 .shell-bar .brand { color: var(--ink); }
 .app-logo-wrapper { display: flex; align-items: center; gap: 6px; }
-.app-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; border: 2px solid var(--card-border); border-radius: 8px; box-sizing: border-box; background: #000; }
+.app-logo { width: 32px; height: 32px; object-fit: cover; flex-shrink: 0; border: 2px solid var(--card-border); border-radius: 30%; box-sizing: border-box; background: #000; }
 .hamburger-btn {
   width: 36px; height: 36px;
   border-radius: var(--radius-sm);
@@ -2084,7 +1993,7 @@ pre.debug {
   gap: 8px;
 }
 .mobile-menu button:hover { background: var(--canvas); }
-.mobile-menu button.on { background: var(--accent-fill); color: var(--accent-ink); font-weight: 650; }
+.mobile-menu button.on { background: var(--canvas); color: var(--ink); font-weight: 600; }
 .mobile-menu .nav-icon-mobile { width: 18px; height: 18px; }
 
 /* Mobile bottom nav */
@@ -2110,15 +2019,16 @@ pre.debug {
   padding: 4px 2px;
   border: 0;
   background: none;
-  color: var(--muted);
-  font-size: 10px;
+  color: var(--ink);
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   border-radius: 8px;
   transition: color 0.15s;
 }
 .shell-mobile-nav button.on {
-  color: var(  --accent);
+  color: var(--ink);
+  font-weight: 700;
 }
 .shell-mobile-nav button .nav-icon-mobile {
   width: 20px;
@@ -2729,8 +2639,8 @@ html.dark {
 }
 html.dark .shell-bar { background: rgba(18, 18, 18, 0.9); border-bottom-color: #2a2a2a; }
 html.dark .shell-mobile-nav { background: var(--card); border-top-color: #2a2a2a; }
-html.dark .shell-mobile-nav button { color: var(--muted); }
-html.dark .shell-mobile-nav button.on { color: var(--accent); }
+html.dark .shell-mobile-nav button { color: var(--ink); }
+html.dark .shell-mobile-nav button.on { color: var(--ink); font-weight: 600; }
 html.dark .mobile-menu-backdrop { background: rgba(0, 0, 0, 0.6); }
 html.dark .shell-user { color: var(--muted-light); }
 html.dark .header-icon-btn { color: var(--ink); }
@@ -2765,26 +2675,6 @@ html.dark .seg { color: var(--muted-light); } html.dark input[type="text"],html.
   font-weight: 600;
   color: var(--muted);
 }
-.filter-chip {
-  padding: 4px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--outline);
-  background: var(--card);
-  color: var(--ink-light);
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.filter-chip:hover {
-  border-color: var(--accent);
-  color: var(--ink);
-}
-.filter-chip.active {
-  background: var(--accent-fill);
-  color: var(--accent-ink);
-  border-color: var(--accent-fill);
-}
 .filter-select {
   padding: 4px 8px;
   border-radius: 6px;
@@ -2803,6 +2693,25 @@ html.dark .seg { color: var(--muted-light); } html.dark input[type="text"],html.
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* Admin page section icons — same set as sidebar */
+.admin-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-right: 8px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.admin-title-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Kelas Page Layout */
