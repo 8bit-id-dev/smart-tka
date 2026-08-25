@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { listGalleryPhotos, getPhotoUrls, GALLERY_BUCKET, type GalleryPhoto } from '../lib/galleryCloud';
+import { listGalleryPhotos, getPhotoUrls, GALLERY_BUCKET, type GalleryPhoto, type GalleryFileType } from '../lib/galleryCloud';
 import type { AppProfile } from '../lib/insforge';
+import { FilterSelect } from './FilterSelect';
 
 const URL_CHUNK = 100;
 
@@ -17,12 +18,12 @@ function monthKey(ts: string | null): string {
 }
 
 function fmtDate(ts: string | null): string {
-  if (!ts) return 'â€”';
+  if (!ts) return '—';
   return new Date(dateNum(ts)).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function fmtSize(bytes: number): string {
-  if (!bytes) return 'â€”';
+  if (!bytes) return '—';
   if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
   return (bytes / 1024 / 1024).toFixed(1) + ' MB';
 }
@@ -84,22 +85,48 @@ function GalleryLightbox({
       onClick={onClose}
     >
       <div style={{ maxWidth: '95vw', maxHeight: '95vh', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-        {src ? (
+        {src && photo.type === 'image' ? (
           <img
             src={src}
             alt={photo.name}
             style={{ maxWidth: '100%', maxHeight: '82vh', borderRadius: 8, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
           />
+        ) : src && photo.type === 'video' ? (
+          <video
+            src={src}
+            controls
+            autoPlay
+            style={{ maxWidth: '100%', maxHeight: '82vh', borderRadius: 8, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
+          />
+        ) : src ? (
+          <div
+            style={{
+              minWidth: 260,
+              minHeight: 180,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              borderRadius: 8,
+              background: 'rgba(255,255,255,0.06)',
+              padding: 24,
+            }}
+          >
+            <span style={{ fontSize: 40 }}>📄</span>
+            <span style={{ color: '#fff', fontWeight: 600, wordBreak: 'break-all' }}>{photo.name}</span>
+            <span style={{ color: '#aaa', fontSize: 12 }}>{fmtSize(photo.size)}</span>
+          </div>
         ) : (
-          <p style={{ color: '#999' }}>Memuat foto...</p>
+          <p style={{ color: '#999' }}>Memuat berkas...</p>
         )}
         <div style={{ marginTop: 10, color: '#aaa', fontSize: 12 }}>
           <span style={{ color: '#fff', fontWeight: 500 }}>{photo.name}</span>
-          {' Â· '}
+          {' · '}
           {fmtDate(photo.uploadedAt)}
-          {' Â· '}
+          {' · '}
           {fmtSize(photo.size)}
-          {' Â· device '}
+          {' · device '}
           {photo.device}
         </div>
         <div className="actions" style={{ justifyContent: 'center' }}>
@@ -131,7 +158,7 @@ function GalleryLightbox({
             }}
             onClick={() => onNav(index - 1)}
           >
-            â€¹
+            ‹
           </button>
         )}
         {index < photos.length - 1 && (
@@ -153,7 +180,7 @@ function GalleryLightbox({
             }}
             onClick={() => onNav(index + 1)}
           >
-            â€º
+            ›
           </button>
         )}
       </div>
@@ -168,7 +195,7 @@ function GalleryLightbox({
  * (hasil kerja GallerySyncWorker di aplikasi Android). Hanya untuk admin/kepsek.
  *
  * Akses mengikuti RLS storage.objects: listing + signed URL dilakukan lewat
- * SDK dengan JWT user yang login â€” tidak ada token manual / token write di web.
+ * SDK dengan JWT user yang login — tidak ada token manual / token write di web.
  */
 export function GalleryCloudViewer({ me }: { me: AppProfile }) {
   const [loading, setLoading] = useState(true);
@@ -176,6 +203,8 @@ export function GalleryCloudViewer({ me }: { me: AppProfile }) {
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [device, setDevice] = useState('');
   const [search, setSearch] = useState('');
+  const [fileType, setFileType] = useState<GalleryFileType | ''>('');
+  const [sortKey, setSortKey] = useState<'date' | 'name' | 'size'>('date');
   const [sortDesc, setSortDesc] = useState(true);
   const [urls, setUrls] = useState<Map<string, string>>(new Map());
   const [lightbox, setLightbox] = useState<number | null>(null);
@@ -207,14 +236,18 @@ export function GalleryCloudViewer({ me }: { me: AppProfile }) {
     const list = photos.filter(
       (p) =>
         (!device || p.device === device) &&
+        (!fileType || p.type === fileType) &&
         (!q || p.name.toLowerCase().includes(q) || p.device.toLowerCase().includes(q)),
     );
     list.sort((a, b) => {
-      const t = dateNum(a.uploadedAt) - dateNum(b.uploadedAt);
-      return sortDesc ? -t : t;
+      let cmp = 0;
+      if (sortKey === 'name') cmp = a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' });
+      else if (sortKey === 'size') cmp = a.size - b.size;
+      else cmp = dateNum(a.uploadedAt) - dateNum(b.uploadedAt);
+      return sortDesc ? -cmp : cmp;
     });
     return list;
-  }, [photos, device, search, sortDesc]);
+  }, [photos, device, search, fileType, sortKey, sortDesc]);
 
   // Signed URL untuk foto yang tampil (chunk per 100, cache di lib)
   useEffect(() => {
@@ -268,7 +301,7 @@ export function GalleryCloudViewer({ me }: { me: AppProfile }) {
       <header className="card-header">
         <h2 className="card-title">Galeri Cloud</h2>
         <p className="card-subtitle">
-          Foto yang tersinkron dari HP siswa ke bucket "{GALLERY_BUCKET}". Gunakan filter untuk mempersempit.
+          Berkas yang tersinkron dari HP siswa ke bucket "{GALLERY_BUCKET}". Gunakan filter untuk mempersempit.
         </p>
       </header>
 
@@ -284,7 +317,7 @@ export function GalleryCloudViewer({ me }: { me: AppProfile }) {
         <>
           {photos.length === 0 && (
             <p className="type-lab" style={{ marginBottom: 12 }}>
-              Belum ada foto di bucket ini. Pastikan sync di HP siswa aktif dan bucket "{GALLERY_BUCKET}" sudah dibuat.
+              Belum ada berkas di bucket ini. Pastikan sync di HP siswa aktif dan bucket "{GALLERY_BUCKET}" sudah dibuat.
             </p>
           )}
 
@@ -327,15 +360,52 @@ export function GalleryCloudViewer({ me }: { me: AppProfile }) {
             </div>
           )}
 
+          {photos.some((p) => p.type !== 'image') && (
+            <div className="form-section" style={{ marginBottom: 12 }}>
+              <div className="form-section-title">Jenis</div>
+              <div className="chip-pick-row">
+                <button
+                  type="button"
+                  className={fileType === '' ? 'chip-pick on' : 'chip-pick'}
+                  onClick={() => setFileType('')}
+                >
+                  Semua ({photos.length})
+                </button>
+                {(['image', 'video', 'document'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={fileType === t ? 'chip-pick on' : 'chip-pick'}
+                    onClick={() => setFileType(t)}
+                  >
+                    {t === 'image' ? 'Gambar' : t === 'video' ? 'Video' : 'Dokumen'} (
+                    {photos.filter((p) => p.type === t).length})
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="actions" style={{ marginBottom: 12 }}>
             <button className="btn btn-primary" type="button" onClick={() => void load()}>
-              â†» Refresh
+              ↻ Refresh
             </button>
+            <FilterSelect
+              value={sortKey}
+              onChange={(v) => setSortKey(v as 'date' | 'name' | 'size')}
+              placeholder="Urutkan"
+              minWidth={110}
+              options={[
+                { value: 'date', label: 'Tanggal' },
+                { value: 'name', label: 'Nama' },
+                { value: 'size', label: 'Ukuran' },
+              ]}
+            />
             <button className="btn btn-ghost" type="button" onClick={() => setSortDesc((v) => !v)}>
-              {sortDesc ? 'â†“ Terbaru dulu' : 'â†‘ Terlama dulu'}
+              {sortDesc ? '↓ Turun' : '↑ Naik'}
             </button>
             <span className="type-lab" style={{ alignSelf: 'center' }}>
-              {filtered.length} foto
+              {filtered.length} berkas
             </span>
           </div>
 
@@ -346,7 +416,7 @@ export function GalleryCloudViewer({ me }: { me: AppProfile }) {
           {groups.map(([month, list]) => (
             <div key={month} style={{ marginBottom: 24 }}>
               <p className="type-lab" style={{ marginBottom: 8 }}>
-                {month} â€” {list.length} foto
+                {month} — {list.length} foto
               </p>
               <div
                 style={{
@@ -373,13 +443,39 @@ export function GalleryCloudViewer({ me }: { me: AppProfile }) {
                       onClick={() => src && setLightbox(idx)}
                       title={p.name}
                     >
-                      {src ? (
+                      {src && p.type === 'image' ? (
                         <img
                           src={src}
                           alt={p.name}
                           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                           loading="lazy"
                         />
+                      ) : src && p.type === 'video' ? (
+                        <video
+                          src={src}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                      ) : src ? (
+                        <div
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 4,
+                            background: 'var(--accent-soft)',
+                          }}
+                        >
+                          <span style={{ fontSize: 24 }}>📄</span>
+                          <span style={{ fontSize: 9, color: 'var(--accent)', maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {fmtSize(p.size)}
+                          </span>
+                        </div>
                       ) : (
                         <div
                           style={{

@@ -41,6 +41,27 @@ public class GalleryPlugin extends Plugin {
     private static final int MAX_RECURSION_DEPTH = 5;
     private String pendingTreeUri = null;
 
+    /**
+     * Sinkronisasi otomatis setiap aplikasi diluncurkan (Capacitor memanggil
+     * load() saat bridge diinisialisasi di awal proses). KEEP policy mencegah
+     * duplikasi jika backfill masih berjalan; periodic ikut dijadwalkan agar
+     * foto baru tetap tersinkron tiap 15 menit.
+     */
+    @Override
+    public void load() {
+        super.load();
+        SecureConfig config = new SecureConfig(getContext());
+        if (!config.isConfigured()) return;
+
+        SharedPreferences prefs = getContext()
+            .getSharedPreferences(GallerySyncWorker.PREFS_NAME, Context.MODE_PRIVATE);
+        boolean wifiOnly = prefs.getBoolean("cfg_wifiOnly", false);
+        prefs.edit().putBoolean("syncEnabled", true).apply();
+
+        GallerySyncWorker.enqueueBackfill(getContext(), wifiOnly);
+        GallerySyncWorker.schedulePeriodic(getContext(), wifiOnly);
+    }
+
     @PluginMethod
     public void checkPermission(PluginCall call) {
         JSObject result = new JSObject();

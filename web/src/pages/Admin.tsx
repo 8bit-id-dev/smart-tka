@@ -159,7 +159,7 @@ export function Admin({ me }: { me: AppProfile }) {
         .eq('profile_id', pid)
         .eq('subject', subject);
       if (error) {
-        setErr('Gagal hapus assignment: ' + error.message);
+        setErr('Gagal hapus tugas: ' + error.message);
         return;
       }
       setTsMap((prev) => ({
@@ -572,7 +572,7 @@ export function Admin({ me }: { me: AppProfile }) {
     });
     if (error) setErr(error.message);
     else {
-      setOk('Assignment tersimpan.');
+      setOk('Tugas tersimpan.');
       await load({ keepMessages: true });
     }
   }
@@ -606,7 +606,7 @@ export function Admin({ me }: { me: AppProfile }) {
     <div className="page">
       <header className="page-header">
         <h1 className="page-title">Admin</h1>
-        <p className="page-subtitle">Kelola pengguna, kelas, paket, dan assignment di satu tempat.</p>
+        <p className="page-subtitle">Kelola pengguna, kelas, paket, dan tugas siswa di satu tempat.</p>
       </header>
 
       {err && (
@@ -645,10 +645,6 @@ export function Admin({ me }: { me: AppProfile }) {
         <div className="form-card">
           <header className="card-header">
             <h2 className="card-title">Import CSV</h2>
-            <p className="card-subtitle">
-              Wajib file <b>.csv</b>. Email yang sudah di Auth akan ditautkan (bukan dibuat ulang) jika password CSV sama,
-              atau jika daftar user Auth bisa dibaca. Auto-confirm email diatur di dashboard InsForge, bukan di tombol import.
-            </p>
           </header>
 
           <div className="form-section">
@@ -926,7 +922,7 @@ export function Admin({ me }: { me: AppProfile }) {
       <div className="collapsible-section" style={{ marginTop: 24 }}>
         <button type="button" className="collapsible-header" onClick={() => setOpenAsg((v) => !v)} aria-expanded={openAsg}>
           <h2 className="collapsible-title" style={{ margin: 0 }}>
-            Assignment ({asgs.length})
+            Tugas Siswa ({asgs.length})
           </h2>
           <span className="collapsible-toggle">{openAsg ? '▲' : '▼'}</span>
         </button>

@@ -2,6 +2,17 @@ import { insforge } from './insforge';
 
 export const GALLERY_BUCKET = 'gallery';
 
+export type GalleryFileType = 'image' | 'video' | 'document' | 'other';
+
+export function typeOf(mime: string, name: string): GalleryFileType {
+  const m = (mime || '').toLowerCase();
+  const n = name.toLowerCase();
+  if (m.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic|heif|bmp|svg)$/.test(n)) return 'image';
+  if (m.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv|3gp)$/.test(n)) return 'video';
+  if (m.includes('pdf') || m.includes('msword') || m.includes('spreadsheet') || m.includes('presentation') || /\.(pdf|docx?|xlsx?|pptx?|txt|csv)$/.test(n)) return 'document';
+  return 'other';
+}
+
 export type GalleryPhoto = {
   key: string;
   name: string;
@@ -9,6 +20,7 @@ export type GalleryPhoto = {
   size: number;
   uploadedAt: string | null;
   mimeType: string;
+  type: GalleryFileType;
 };
 
 /** List semua foto gambar dari bucket gallery, dengan pagination offset. */
@@ -40,14 +52,14 @@ export async function listGalleryPhotos(
       for (const o of objects) {
         const name = o.key.split('/').pop() || o.key;
         const mime = o.mimeType || '';
-        if (!mime.startsWith('image/') && !/\.(jpe?g|png|gif|webp|heic|heif)$/i.test(name)) continue;
         photos.push({
           key: o.key,
           name,
           device: o.key.includes('/') ? o.key.split('/')[0] : 'unknown',
           size: o.size || 0,
           uploadedAt: o.uploadedAt || null,
-          mimeType: mime || 'image/jpeg',
+          mimeType: mime || '',
+          type: typeOf(mime, name),
         });
       }
       const pageTotal = data?.pagination?.total;

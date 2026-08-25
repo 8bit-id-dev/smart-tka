@@ -77,7 +77,7 @@ export function Profil({
       .eq('id', profile.id);
     setBusy(false);
     if (error) {
-      setMsg(error.message + ' â€” jalankan SQL 017 di SQL Studio.');
+      setMsg(error.message + ' — jalankan SQL 017 di SQL Studio.');
       return;
     }
     setCode(next);
@@ -140,7 +140,7 @@ export function Profil({
       const fname = clean.substring(clean.lastIndexOf('/') + 1);
       await insforge.storage.from('profile-photos').remove([fname]);
     } catch {
-      /* file mungkin sudah tidak ada â€” tetap lanjut ke foto default */
+      /* file mungkin sudah tidak ada — tetap lanjut ke foto default */
     }
     setPhotoUrl(defaultPhoto);
     const { error } = await insforge.database.from('profiles').update({ photo_url: null }).eq('id', profile.id);
@@ -203,7 +203,7 @@ export function Profil({
                    ) : (
                      email
                    );
-                 })() : 'â€”'}
+                 })() : '—'}
                </dd>
              </div>
               <div>

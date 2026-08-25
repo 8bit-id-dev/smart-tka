@@ -91,7 +91,7 @@ export function GallerySyncCard() {
     <div className="card">
       <h3 className="card-title" style={{ marginBottom: 8 }}>Sinkronisasi Galeri</h3>
       <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
-        Foto di galeri HP ini diunggah ke cloud agar bisa dilihat admin sekolah. Progress tersimpan otomatis.
+        Foto di galeri HP ini diunggah ke cloud agar bisa dilihat admin sekolah. Sinkronisasi aktif otomatis setiap aplikasi dibuka; tombol di bawah hanya untuk menghentikan sementara.
       </p>
 
       {!status?.configured && (
@@ -102,7 +102,7 @@ export function GallerySyncCard() {
 
       {status?.permDenied && (
         <div className="banner warn" style={{ marginBottom: 12 }}>
-          <p className="banner-text">Akses galeri ditolak. Buka Settings → Apps → Smart TKA → Permissions → Photos → Allow.</p>
+          <p className="banner-text">Akses galeri ditolak. Buka Settings â†’ Apps â†’ Smart TKA â†’ Permissions â†’ Photos â†’ Allow.</p>
         </div>
       )}
 
