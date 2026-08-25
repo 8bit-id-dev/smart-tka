@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { insforge, type AppProfile } from './lib/insforge';
 import { romanize } from './lib/roman';
 import { XpReward } from './components/XpReward';
@@ -57,24 +57,59 @@ function useOrientation() {
   return isLandscape;
 }
 
+function IconImg({
+  src,
+  activeSrc,
+  filled,
+  alt = '',
+}: {
+  src: string;
+  activeSrc: string;
+  filled: boolean;
+  alt?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <svg className="icon-img" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+        <path d="M12 17h.01" />
+      </svg>
+    );
+  }
+  return (
+    <img
+      className="icon-img"
+      src={filled ? activeSrc : src}
+      alt={alt}
+      width={20}
+      height={20}
+      loading="eager"
+      decoding="async"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 const Icons = {
   beranda: (filled: boolean) => (
-    <img className="icon-img" src={filled ? homeActive : home} alt="" width={20} height={20} />
+    <IconImg src={home} activeSrc={homeActive} filled={filled} />
   ),
   latihan: (filled: boolean) => (
-    <img className="icon-img" src={filled ? clockActive : clock} alt="" width={20} height={20} />
+    <IconImg src={clock} activeSrc={clockActive} filled={filled} />
   ),
   simulasi: (filled: boolean) => (
-    <img className="icon-img" src={filled ? testActive : test} alt="" width={20} height={20} />
+    <IconImg src={test} activeSrc={testActive} filled={filled} />
   ),
   inbox: (filled: boolean) => (
-    <img className="icon-img" src={filled ? messagesActive : messages} alt="" width={20} height={20} />
+    <IconImg src={messages} activeSrc={messagesActive} filled={filled} />
   ),
   soal: (filled: boolean) => (
-    <img className="icon-img" src={filled ? soalActive : soal} alt="" width={20} height={20} />
+    <IconImg src={soal} activeSrc={soalActive} filled={filled} />
   ),
   paket: (filled: boolean) => (
-    <img className="icon-img" src={filled ? paketActive : paket} alt="" width={20} height={20} />
+    <IconImg src={paket} activeSrc={paketActive} filled={filled} />
   ),
   kelas: (filled: boolean) => (
     <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -90,10 +125,10 @@ const Icons = {
     </svg>
   ),
   laporan: (filled: boolean) => (
-    <img className="icon-img" src={filled ? laporanActive : laporan} alt="" width={20} height={20} />
+    <IconImg src={laporan} activeSrc={laporanActive} filled={filled} />
   ),
   admin: (filled: boolean) => (
-    <img className="icon-img" src={filled ? adminActive : admin} alt="" width={20} height={20} />
+    <IconImg src={admin} activeSrc={adminActive} filled={filled} />
   ),
   profil: (filled: boolean) => (
     <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -108,7 +143,7 @@ const Icons = {
     </svg>
   ),
   leaderboard: (filled: boolean) => (
-    <img className="icon-img" src={filled ? rankingActive : ranking} alt="" width={20} height={20} />
+    <IconImg src={ranking} activeSrc={rankingActive} filled={filled} />
   ),
   search: () => (
     <svg pathLength={1} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -165,7 +200,16 @@ const Icons = {
     </svg>
   ),
   download: () => (
-    <img className="icon-img" src={download} alt="" width={20} height={20} />
+    <IconImg src={download} activeSrc={download} filled={false} />
+  ),
+  trash: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
   ),
 };
 
@@ -224,6 +268,7 @@ export function AppShell({
   profile,
   children,
   headerExtra,
+  immersive,
 }: {
   tab: Tab;
   onTab: (t: Tab) => void;
@@ -232,6 +277,7 @@ export function AppShell({
   profile: AppProfile;
   children: React.ReactNode;
   headerExtra?: React.ReactNode;
+  immersive?: boolean;
 }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const isLightOnlyRole = ['guru', 'admin', 'siswa'].includes(role);
@@ -392,6 +438,10 @@ export function AppShell({
     return IconComponent ? IconComponent(isActive) : null;
   };
 
+  if (immersive) {
+    return <>{children}</>;
+  }
+
    return (
      <div className={`shell ${showSidebar ? 'shell-desktop' : 'shell-mobile'}`}>
         {showSidebar ? (
@@ -450,7 +500,7 @@ export function AppShell({
                            <div key={n.id} className="notif-item">
                              <div className="notif-item-main">
                                <span className="notif-sender">{n.title}</span>
-                               <span className="notif-text">{n.body.slice(0, 80)}{n.body.length > 80 ? 'â€¦' : ''}</span>
+                               <span className="notif-text">{n.body.slice(0, 80)}{n.body.length > 80 ? '…' : ''}</span>
                                <span className="notif-time">{timeAgo(n.created_at)}</span>
                              </div>
                              <button
@@ -532,7 +582,7 @@ export function AppShell({
                         <div key={n.id} className="notif-item">
                           <div className="notif-item-main">
                             <span className="notif-sender">{n.title}</span>
-                            <span className="notif-text">{n.body.slice(0, 80)}{n.body.length > 80 ? 'â€¦' : ''}</span>
+                            <span className="notif-text">{n.body.slice(0, 80)}{n.body.length > 80 ? '…' : ''}</span>
                             <span className="notif-time">{timeAgo(n.created_at)}</span>
                           </div>
                           <button type="button" className="notif-remove" title="Hapus notifikasi" onClick={() => ackNotif(n.id)}>âœ•</button>

@@ -79,7 +79,7 @@ export function DirectoryGalleryAdmin({ me }: { me: AppProfile }) {
     if (dir?.treeUri) await loadFiles(dir.treeUri);
   }
 
-  if (!['admin', 'kepsek'].includes(me.role)) {
+  if (me.role !== 'admin') {
     return (
       <div className="page">
         <div className="form-card">
@@ -112,7 +112,7 @@ export function DirectoryGalleryAdmin({ me }: { me: AppProfile }) {
           </button>
           {perm.showRationale && (
             <p className="type-lab" style={{ marginTop: 10 }}>
-              Android memblokir akses. Buka Settings → Apps → Smart TKA → Permissions → Photos → Allow.
+              Android memblokir akses. Buka Settings â†’ Apps â†’ Smart TKA â†’ Permissions â†’ Photos â†’ Allow.
             </p>
           )}
         </div>
@@ -167,7 +167,7 @@ export function DirectoryGalleryAdmin({ me }: { me: AppProfile }) {
 
           {dir && (
             <p className="type-lab" style={{ marginBottom: 12 }}>
-              Folder: <strong>{dir.displayName}</strong> • {files.length} file
+              Folder: <strong>{dir.displayName}</strong> â€¢ {files.length} file
             </p>
           )}
 

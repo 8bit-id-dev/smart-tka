@@ -12,11 +12,13 @@ export function Practice({
   studentId,
   jenjang,
   onHome,
+  onImmersiveChange,
 }: {
   schoolId: string | null;
   studentId: string;
   jenjang: string | null;
   onHome: () => void;
+  onImmersiveChange?: (v: boolean) => void;
 }) {
   const [pool, setPool] = useState<DbItem[]>([]);
   const [mapels, setMapels] = useState<string[]>([]);
@@ -32,6 +34,10 @@ export function Practice({
   const [doubted, setDoubted] = useState<Set<number>>(new Set());
   const [listExpanded, setListExpanded] = useState(false);
   const [bookmarked, setBookmarked] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    onImmersiveChange?.(phase === 'run');
+  }, [phase, onImmersiveChange]);
 
   useEffect(() => {
     void (async () => {

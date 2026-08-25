@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
 import { Icons, type Tab } from '../AppShell';
 import { FilterSelect } from '../components/FilterSelect';
@@ -22,14 +22,14 @@ type Cls = { id: string; name: string };
 type CS = { class_id: string; profile_id: string };
 
 function fmt(iso: string | null) {
-  if (!iso) return 'â€”';
+  if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function fmtDate(iso: string | null) {
-  if (!iso) return 'â€”';
+  if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString('id-ID', {
@@ -37,11 +37,25 @@ function fmtDate(iso: string | null) {
   });
 }
 
+function SortIcon({ state, level }: { state: 'none' | 'asc' | 'desc'; level?: number }) {
+  const on = 'var(--accent)';
+  const off = 'var(--muted-light)';
+  return (
+    <span className="sort-wrap">
+      <svg width="12" height="14" viewBox="0 0 12 14" fill="none" aria-hidden>
+        <path d="M6 2 L9 6 H3 Z" fill={state === 'asc' ? on : off} />
+        <path d="M6 12 L9 8 H3 Z" fill={state === 'desc' ? on : off} />
+      </svg>
+      {level != null && <span className="sort-level">{level}</span>}
+    </span>
+  );
+}
+
 function calcDuration(startIso: string, endIso: string | null): string {
-  if (!endIso) return 'â€”';
+  if (!endIso) return '—';
   const start = new Date(startIso).getTime();
   const end = new Date(endIso).getTime();
-  if (isNaN(start) || isNaN(end) || end < start) return 'â€”';
+  if (isNaN(start) || isNaN(end) || end < start) return '—';
   const sec = Math.floor((end - start) / 1000);
   const m = Math.floor(sec / 60);
   const s = sec % 60;
@@ -129,7 +143,7 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
     filteredRows.forEach((r, idx) => {
       const p = r.package_id ? pkgMap.get(r.package_id) : null;
       const title = p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan Bebas');
-      const mapel = p?.mapel || 'â€”';
+      const mapel = p?.mapel || '—';
       const kind = p?.kind || 'latihan';
       const durasi = calcDuration(r.started_at, r.submitted_at);
       const isSubmitted = r.status === 'submitted';
@@ -140,7 +154,7 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
         title,
         mapel,
         durasi,
-        isSubmitted ? String(r.score ?? 0) : 'â€”',
+        isSubmitted ? String(r.score ?? 0) : '—',
         isSubmitted ? 'Selesai' : 'Belum Selesai',
       ].map(escapeCsv);
       lines.push(row.join(','));
@@ -174,13 +188,13 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
         <div className="stat-card-content">
           <div className="stat-main">
             <p className="stat-label">Rata-rata Nilai</p>
-            <p className="stat-value-large">{avgScore == null ? 'â€”' : avgScore}<small>/100</small></p>
+            <p className="stat-value-large">{avgScore == null ? '—' : avgScore}<small>/100</small></p>
             <p className="stat-sub">{totalSesi === 0 ? 'Belum ada sesi terkumpul' : `Berdasarkan ${totalSesi} sesi selesai`}</p>
           </div>
           <div className="stat-side">
             <div className="stat-item">
               <p className="stat-label">Tertinggi</p>
-              <p className="stat-value">{maxScore == null ? 'â€”' : maxScore}</p>
+              <p className="stat-value">{maxScore == null ? '—' : maxScore}</p>
             </div>
             <div className="stat-item">
               <p className="stat-label">Total Sesi</p>
@@ -207,7 +221,7 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
 
       {domainStats.length > 0 && domainStats[0]?.avg < 70 && (
         <section className="rec-card" style={{ marginBottom: 20 }}>
-          <div className="rec-icon">ðŸ’¡</div>
+          <div className="rec-icon">💡</div>
           <div className="rec-info">
             <h3>Perkuat {domainStats[0].name}</h3>
             <p>Rata-rata Anda di {domainStats[0].name} adalah {domainStats[0].avg}%. Lanjutkan latihan untuk meningkatkan pemahaman.</p>
@@ -234,10 +248,10 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
         </div>
 
         {loading ? (
-          <div className="loading-state"><p>Memuat riwayatâ€¦</p></div>
+          <div className="loading-state"><p>Memuat riwayat…</p></div>
         ) : filteredRows.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">ðŸ“‹</div>
+            <div className="empty-state-icon">📋</div>
             <h3 className="empty-state-title">Belum ada riwayat</h3>
             <p className="empty-state-text">Silakan kerjakan soal di menu Latihan atau Simulasi.</p>
           </div>
@@ -258,7 +272,7 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
                 {filteredRows.map((r, idx) => {
                   const p = r.package_id ? pkgMap.get(r.package_id) : null;
                   const title = p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan Bebas');
-                  const mapel = p?.mapel || 'â€”';
+                  const mapel = p?.mapel || '—';
                   const durasi = calcDuration(r.started_at, r.submitted_at);
                   const isSubmitted = r.status === 'submitted';
                   return (
@@ -325,60 +339,42 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   const [fDateFrom, setFDateFrom] = useState('');
   const [fDateTo, setFDateTo] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [sortKey, setSortKey] = useState<'siswa' | 'kelas' | 'paket' | 'mapel' | 'skor' | 'tab' | 'waktu'>('waktu');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  type SortKey = 'siswa' | 'kelas' | 'paket' | 'mapel' | 'skor' | 'tab' | 'waktu';
+  const [sortSpecs, setSortSpecs] = useState<{ key: SortKey; dir: 'asc' | 'desc' }[]>([
+    { key: 'waktu', dir: 'desc' },
+  ]);
 
   const isAdmin = me.role === 'admin';
 
-  function toggleSort(k: typeof sortKey) {
-    if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    else { setSortKey(k); setSortDir((k === 'skor' || k === 'tab' || k === 'waktu') ? 'desc' : 'asc'); }
+  function toggleSort(k: SortKey, multi = false) {
+    setSortSpecs((specs) => {
+      const existing = specs.find((s) => s.key === k);
+      if (multi) {
+        if (existing) {
+          return specs.map((s) => (s.key === k ? { ...s, dir: s.dir === 'asc' ? 'desc' : 'asc' } : s));
+        }
+        const next: { key: SortKey; dir: 'asc' | 'desc' } = {
+          key: k,
+          dir: k === 'skor' || k === 'tab' || k === 'waktu' ? 'desc' : 'asc',
+        };
+        return [...specs, next].slice(0, 3);
+      }
+      if (existing === specs[0]) {
+        return [{ ...specs[0], dir: specs[0].dir === 'asc' ? 'desc' : 'asc' }];
+      }
+      return [{ key: k, dir: k === 'skor' || k === 'tab' || k === 'waktu' ? 'desc' : 'asc' }];
+    });
   }
 
-  async function load() {
+  async function load(reset = true) {
     setErr('');
-    setSelected(new Set());
-    let subjects: string[] = [];
-    if (me.role === 'guru') {
-      const { data: tsData } = await insforge.database
-        .from('teacher_subjects')
-        .select('subject')
-        .eq('profile_id', me.id)
-        .eq('is_active', true);
-      if (tsData) subjects = (tsData as { subject: string }[]).map((r) => r.subject);
-
-      if (subjects.length > 0) {
-        const { data: sharedGurus } = await insforge.database
-          .from('teacher_subjects')
-          .select('profile_id')
-          .in('subject', subjects)
-          .eq('is_active', true);
-        const guruIds = Array.from(new Set((sharedGurus || []).map((r: any) => r.profile_id)));
-        if (guruIds.length > 0) {
-          const { data: allSubjects } = await insforge.database
-            .from('teacher_subjects')
-            .select('subject')
-            .in('profile_id', guruIds)
-            .eq('is_active', true);
-          const allSubj = Array.from(new Set((allSubjects || []).map((r: any) => r.subject)));
-          if (allSubj.length > 0) subjects = allSubj;
-        }
-      }
-    }
+    if (reset) setSelected(new Set());
     const a = await insforge.database.from('attempts').select('id, package_id, student_id, status, score, started_at, submitted_at, tab_leave_count');
     if (a.error) setErr(a.error.message.includes('does not exist') ? 'Tabel attempts belum ada.' : a.error.message);
     else setRows((a.data || []) as Attempt[]);
 
-    if (subjects.length > 0) {
-      const p = await insforge.database
-        .from('packages')
-        .select('id, title, mapel, kind')
-        .in('mapel', subjects);
-      if (!p.error) setPkgs((p.data || []) as Pkg[]);
-    } else {
-      const p = await insforge.database.from('packages').select('id, title, mapel, kind');
-      if (!p.error) setPkgs((p.data || []) as Pkg[]);
-    }
+    const p = await insforge.database.from('packages').select('id, title, mapel, kind');
+    if (!p.error) setPkgs((p.data || []) as Pkg[]);
     const pr = await insforge.database.from('profiles').select('id, full_name').eq('role', 'siswa');
     if (!pr.error) setProfs((pr.data || []) as Prof[]);
     const c = await insforge.database.from('classes').select('id, name');
@@ -387,7 +383,11 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
     if (!m.error) setCs((m.data || []) as CS[]);
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+    const t = window.setInterval(() => void load(false), 30000);
+    return () => window.clearInterval(t);
+  }, []);
 
   const pkgMap = useMemo(() => new Map(pkgs.map((p) => [p.id, p])), [pkgs]);
   const namaMap = useMemo(() => new Map(profs.map((p) => [p.id, p.full_name || p.id.slice(0, 8)])), [profs]);
@@ -462,15 +462,15 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
     sorted.forEach((r, idx) => {
       const p = r.package_id ? pkgMap.get(r.package_id) : null;
       const title = p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan bebas');
-      const mapel = p?.mapel || 'â€”';
+      const mapel = p?.mapel || '—';
       const isSubmitted = r.status === 'submitted';
       const row = [
         idx + 1,
         namaMap.get(r.student_id) || r.student_id.slice(0, 8),
-        kelasSiswa.get(r.student_id) || 'â€”',
+        kelasSiswa.get(r.student_id) || '—',
         title,
         mapel,
-        isSubmitted ? String(r.score ?? 'â€”') : 'â€”',
+        isSubmitted ? String(r.score ?? '—') : '—',
         r.tab_leave_count ?? 0,
         fmt(r.submitted_at || r.started_at),
         isSubmitted ? 'Selesai' : 'Belum Selesai',
@@ -508,13 +508,13 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
 
   const avg = filtered.length === 0 ? 0 : Math.round((filtered.reduce((s, r) => s + Number(r.score || 0), 0) / filtered.length) * 100) / 100;
 
-  const rowValue = useCallback((r: Attempt, k: typeof sortKey): string | number => {
+  const rowValue = useCallback((r: Attempt, k: SortKey): string | number => {
     const p = r.package_id ? pkgMap.get(r.package_id) : null;
     switch (k) {
       case 'siswa': return namaMap.get(r.student_id) || r.student_id.slice(0, 8);
       case 'kelas': return kelasSiswa.get(r.student_id) || '';
       case 'paket': return p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan bebas');
-      case 'mapel': return p?.mapel || 'â€”';
+      case 'mapel': return p?.mapel || '—';
       case 'skor': return Number(r.score || 0);
       case 'tab': return Number(r.tab_leave_count || 0);
       case 'waktu': return new Date(r.submitted_at || r.started_at).getTime() || 0;
@@ -525,19 +525,23 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   const sorted = useMemo(() => {
     const arr = [...filtered];
     arr.sort((a, b) => {
-      const va = rowValue(a, sortKey);
-      const vb = rowValue(b, sortKey);
-      const cmp = typeof va === 'number' && typeof vb === 'number'
-        ? va - vb
-        : String(va).localeCompare(String(vb), 'id');
-      return sortDir === 'asc' ? cmp : -cmp;
+      for (const { key, dir } of sortSpecs) {
+        const va = rowValue(a, key);
+        const vb = rowValue(b, key);
+        const cmp = typeof va === 'number' && typeof vb === 'number'
+          ? va - vb
+          : String(va).localeCompare(String(vb), 'id');
+        if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+      }
+      return 0;
     });
     return arr;
-  }, [filtered, sortKey, sortDir, rowValue]);
+  }, [filtered, sortSpecs, rowValue]);
 
-  function arrow(k: typeof sortKey) {
-    if (sortKey !== k) return 'â‡…';
-    return sortDir === 'asc' ? 'â†‘' : 'â†“';
+  function sortState(k: SortKey): { state: 'none' | 'asc' | 'desc'; level?: number } {
+    const idx = sortSpecs.findIndex((s) => s.key === k);
+    if (idx === -1) return { state: 'none' };
+    return { state: sortSpecs[idx].dir === 'asc' ? 'asc' : 'desc', level: idx + 1 };
   }
 
   return (
@@ -617,7 +621,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
           <div className="filter-actions">
             {isAdmin && selected.size > 0 && (
               <button type="button" className="btn btn-danger" onClick={hapusTerpilih}>
-                ðŸ—‘ï¸ Hapus {selected.size} terpilih
+                {Icons.trash()} Hapus {selected.size} terpilih
               </button>
             )}
 {filtered.length > 0 && (
@@ -630,7 +634,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
 
         {filtered.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">ðŸ“Š</div>
+            <div className="empty-state-icon">📊</div>
             <h3 className="empty-state-title">Belum ada data</h3>
             <p className="empty-state-text">Siswa harus mengumpulkan paket di menu Simulasi.</p>
           </div>
@@ -640,13 +644,13 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
               <thead>
                 <tr>
                   {isAdmin && <th style={{ width: 40 }}><input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleAll} /></th>}
-                  <th><button type="button" className="col-sort" onClick={() => toggleSort('siswa')}>Siswa {arrow('siswa')}</button></th>
-                  <th><button type="button" className="col-sort" onClick={() => toggleSort('kelas')}>Kelas {arrow('kelas')}</button></th>
-                  <th><button type="button" className="col-sort" onClick={() => toggleSort('paket')}>Paket {arrow('paket')}</button></th>
-                  <th><button type="button" className="col-sort" onClick={() => toggleSort('mapel')}>Mapel {arrow('mapel')}</button></th>
-                  <th><button type="button" className="col-sort" onClick={() => toggleSort('skor')}>Skor {arrow('skor')}</button></th>
-                  <th><button type="button" className="col-sort" onClick={() => toggleSort('tab')}>Pindah tab {arrow('tab')}</button></th>
-                  <th><button type="button" className="col-sort" onClick={() => toggleSort('waktu')}>Waktu {arrow('waktu')}</button></th>
+                  <th><button type="button" className="col-sort" onClick={(e) => toggleSort('siswa', e.shiftKey)} title="Klik: urutkan · Shift+Klik: level kedua">Siswa <SortIcon state={sortState('siswa').state} level={sortState('siswa').level} /></button></th>
+                  <th><button type="button" className="col-sort" onClick={(e) => toggleSort('kelas', e.shiftKey)} title="Klik: urutkan · Shift+Klik: level kedua">Kelas <SortIcon state={sortState('kelas').state} level={sortState('kelas').level} /></button></th>
+                  <th><button type="button" className="col-sort" onClick={(e) => toggleSort('paket', e.shiftKey)} title="Klik: urutkan · Shift+Klik: level kedua">Paket <SortIcon state={sortState('paket').state} level={sortState('paket').level} /></button></th>
+                  <th><button type="button" className="col-sort" onClick={(e) => toggleSort('mapel', e.shiftKey)} title="Klik: urutkan · Shift+Klik: level kedua">Mapel <SortIcon state={sortState('mapel').state} level={sortState('mapel').level} /></button></th>
+                  <th><button type="button" className="col-sort" onClick={(e) => toggleSort('skor', e.shiftKey)} title="Klik: urutkan · Shift+Klik: level kedua">Skor <SortIcon state={sortState('skor').state} level={sortState('skor').level} /></button></th>
+                  <th><button type="button" className="col-sort" onClick={(e) => toggleSort('tab', e.shiftKey)} title="Klik: urutkan · Shift+Klik: level kedua">Pindah tab <SortIcon state={sortState('tab').state} level={sortState('tab').level} /></button></th>
+                  <th><button type="button" className="col-sort" onClick={(e) => toggleSort('waktu', e.shiftKey)} title="Klik: urutkan · Shift+Klik: level kedua">Waktu <SortIcon state={sortState('waktu').state} level={sortState('waktu').level} /></button></th>
                   {isAdmin && <th>Aksi</th>}
                 </tr>
               </thead>
@@ -657,16 +661,16 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
                     <tr key={r.id}>
                       {isAdmin && <td><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} /></td>}
                       <td>{namaMap.get(r.student_id) || r.student_id.slice(0, 8)}</td>
-                      <td>{kelasSiswa.get(r.student_id) || 'â€”'}</td>
+                      <td>{kelasSiswa.get(r.student_id) || '—'}</td>
                       <td>{p?.title || (r.package_id ? r.package_id.slice(0, 8) : 'Latihan bebas')}</td>
-                      <td>{p?.mapel || 'â€”'}</td>
-                      <td><strong>{r.score ?? 'â€”'}</strong></td>
+                      <td>{p?.mapel || '—'}</td>
+                      <td><strong>{r.score ?? '—'}</strong></td>
                       <td>{r.tab_leave_count ?? 0}</td>
                       <td className="text-muted">{fmt(r.submitted_at || r.started_at)}</td>
                       {isAdmin && (
                         <td>
                           <button type="button" className="btn-icon btn-danger" onClick={() => hapusAttempt(r.id)} title="Hapus riwayat">
-                            ðŸ—‘ï¸
+                            {Icons.trash()}
                           </button>
                         </td>
                       )}

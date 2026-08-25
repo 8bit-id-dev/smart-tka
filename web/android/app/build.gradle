@@ -1,8 +1,22 @@
 apply plugin: 'com.android.application'
 
+// Credential InsForge untuk BuildConfig, dibaca dari local.properties
+// (opsional; jika kosong sync hanya menunggu sampai diisi).
+def insforgeProps = new Properties()
+def insforgePropsFile = rootProject.file('local.properties')
+if (insforgePropsFile.exists()) {
+    insforgeProps.load(new FileInputStream(insforgePropsFile))
+}
+def esc = { String s -> (s == null ? '' : s).replace('\\', '\\\\').replace('"', '\\"') }
+
 android {
     namespace = "com.smarttka.app"
     compileSdk = rootProject.ext.compileSdkVersion
+
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId "com.smarttka.app"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -10,6 +24,12 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "INSFORGE_BASE_URL", "\"${esc(insforgeProps.getProperty('insforge.baseUrl', ''))}\""
+        buildConfigField "String", "INSFORGE_S3_ACCESS_KEY", "\"${esc(insforgeProps.getProperty('insforge.s3AccessKey', ''))}\""
+        buildConfigField "String", "INSFORGE_S3_SECRET_KEY", "\"${esc(insforgeProps.getProperty('insforge.s3SecretKey', ''))}\""
+        buildConfigField "String", "INSFORGE_S3_ENDPOINT", "\"${esc(insforgeProps.getProperty('insforge.s3Endpoint', ''))}\""
+        buildConfigField "String", "INSFORGE_S3_REGION", "\"${esc(insforgeProps.getProperty('insforge.s3Region', 'us-east-2'))}\""
+        buildConfigField "String", "INSFORGE_BUCKET", "\"${esc(insforgeProps.getProperty('insforge.bucket', ''))}\""
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
@@ -51,7 +71,7 @@ dependencies {
     implementation 'androidx.room:room-runtime:2.6.1'
     annotationProcessor 'androidx.room:room-compiler:2.6.1'
     testImplementation "junit:junit:$junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$androidJunitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
 }
@@ -64,5 +84,5 @@ try {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications wont work")
 }

@@ -1,4 +1,4 @@
-﻿ :root {
+ :root {
   --canvas: #f3f1ec;
   --card: #ffffff;
   --card-border: #e6e3dc;
@@ -95,6 +95,7 @@ body { margin: 0; background: var(--canvas); min-height: 100vh; overflow-x: hidd
 
 .btn-icon { width: 32px; height: 32px; border: 0; background: transparent; border-radius: 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
 .btn-icon:hover { background: var(--danger-bg); }
+.btn-icon svg { width: 16px; height: 16px; }
 .btn-outline { border: 1px solid var(--card-border); background: transparent; color: var(--ink); padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
 .btn-outline:hover { background: var(--accent-soft); border-color: var(--accent); }
 
@@ -1060,7 +1061,7 @@ textarea.textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
 .req::after { content: '*'; font-weight: 600; }
 .field-row .form-label { margin: 0; font-weight: 500; cursor: pointer; }
 
-/* Modern form cards â€” more spacious, sleeker, laptop-friendly */
+/* Modern form cards — more spacious, sleeker, laptop-friendly */
 .form-card {
   background: var(--card);
   border: 1px solid var(--outline);
@@ -1095,8 +1096,9 @@ textarea.textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
   border: 1px solid var(--card-border); padding: 10px 16px;
 }
 .btn-ghost:hover { background: var(  --accent-soft); border-color: var(  --accent-light); }
-.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; display: inline-flex; align-items: center; gap: 6px; }
 .btn-danger:hover { background: var(--danger); filter: brightness(1.1); }
+.btn-danger svg { flex-shrink: 0; }
 .btn-outline { background: transparent; color: var(--ink); border: 1px solid var(--card-border); }
 .btn-outline:hover { background: var(--canvas); border-color: var(--outline); }
 
@@ -1151,7 +1153,7 @@ textarea.textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
   padding: 40px 32px;
   box-shadow: var(--shadow-lg);
 }
-/* Auth â€” hero layout (masuk design) */
+/* Auth — hero layout (masuk design) */
 .auth-page--hero {
   background: #fff;
 }
@@ -1375,6 +1377,40 @@ textarea.textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
 }
 .auth-input:focus-within { border-color: var(  --accent);   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12); }
 .pw-toggle { background: none; border: 0; padding: 4px; cursor: pointer; color: inherit; }
+
+/* Password field with eye toggle */
+.pw-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pw-field .input {
+  width: 100%;
+  padding-right: 44px;
+}
+.pw-field .pw-toggle {
+  position: absolute;
+  right: 6px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+}
+.pw-field .pw-toggle:hover {
+  color: var(--ink);
+  background: var(--canvas);
+}
+.pw-field .pw-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .auth-note {
   display: flex; gap: 10px; align-items: flex-start;
   background: var(  --accent-soft);
@@ -1527,7 +1563,7 @@ pre.debug {
 }
 
 /* Mobile-first: top bar for siswa/orang_tua */
-.shell-mobile { display: flex; flex-direction: column; max-width: 100%; margin: 0; overflow-x: hidden; }
+.shell-mobile { display: flex; flex-direction: column; max-width: 100%; margin: 0; }
 .shell-bar {
   display: flex;
   align-items: center;
@@ -1541,6 +1577,7 @@ pre.debug {
   position: sticky;
   top: 0;
   z-index: 20;
+  flex-shrink: 0;
 }
 .shell-mobile .shell-nav { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
 .shell-mobile .shell-nav button {
@@ -1576,6 +1613,7 @@ pre.debug {
   top: 0;
   z-index: 20;
   min-height: var(--header-h);
+  flex-shrink: 0;
 }
 .shell-header-right {
   display: flex;
@@ -1887,7 +1925,7 @@ pre.debug {
 }
 
 /* Mobile-first: top bar for siswa/orang_tua */
-.shell-mobile { display: flex; flex-direction: column; max-width: 100%; margin: 0; overflow-x: hidden; }
+.shell-mobile { display: flex; flex-direction: column; max-width: 100%; margin: 0; }
 .shell-bar-left { display: flex; align-items: center; gap: 8px; }
 .shell-bar-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .shell-bar-right-end { display: flex; align-items: center; gap: 8px; }
@@ -2369,6 +2407,17 @@ pre.debug {
 .table td { color: var(--ink); }
 .table th .col-sort { all: unset; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .table th .col-sort:hover { color: var(--accent); }
+.sort-wrap { display: inline-flex; align-items: center; gap: 3px; }
+.sort-wrap svg { flex-shrink: 0; }
+.sort-level {
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 4px;
+  padding: 1px 3px;
+}
 .table td.muted { color: var(--muted); }
 .table td.strong { font-weight: 600; }
 
@@ -2569,7 +2618,7 @@ pre.debug {
 
 .swatches { display: none; }
 
-/* Kelas grid â€” 12 kolom desktop, dikelompokkan per jenjang */
+/* Kelas grid — 12 kolom desktop, dikelompokkan per jenjang */
 .kelas-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -3105,7 +3154,7 @@ html.dark .seg { color: var(--muted-light); } html.dark input[type="text"],html.
 }
 
 /* === Landing Page (Q-learn style, yellow accent) === */
-/* Intro overlay â€” Beat Strobe (128 BPM, 1.9 s) */
+/* Intro overlay — Beat Strobe (128 BPM, 1.9 s) */
 .lp-intro {
   position: fixed;
   inset: 0;
@@ -3403,7 +3452,7 @@ html.dark .seg { color: var(--muted-light); } html.dark input[type="text"],html.
   margin-top: 20px;
 }
 
-/* Screen 2 â€” MULAI (mobile intro) */
+/* Screen 2 — MULAI (mobile intro) */
 .lp-mulai {
   width: 100%;
   max-width: 420px;
@@ -3503,7 +3552,7 @@ html.dark .seg { color: var(--muted-light); } html.dark input[type="text"],html.
   outline-offset: 2px;
 }
 
-/* Screen 3 â€” Akun belum terhubung */
+/* Screen 3 — Akun belum terhubung */
 .lp-unlinked {
   width: 100%;
   max-width: 420px;

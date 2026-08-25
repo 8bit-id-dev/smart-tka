@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { assignSiswaKeKelas, cariKelasByKode } from '../lib/kelas';
 import { adminCreateAuthUser, insforge, summarizeAuthError, type AppProfile } from '../lib/insforge';
 import { DirectoryGalleryAdmin } from './DirectoryGalleryAdmin';
-import { Icons } from '../AppShell';
+import { GalleryCloudViewer } from '../components/GalleryCloudViewer';
 import { FilterSelect } from '../components/FilterSelect';
 
 type UserRow = AppProfile;
@@ -61,9 +61,10 @@ export function Admin({ me }: { me: AppProfile }) {
 
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('Siswa1234');
+  const [showPassword, setShowPassword] = useState(false);
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState<string>('siswa');
-  const [newJenjang, setNewJenjang] = useState('smp');
+  const [newJenjang, setNewJenjang] = useState('sma');
   const [newClass, setNewClass] = useState('');
 
   const [asgPkg, setAsgPkg] = useState('');
@@ -78,8 +79,12 @@ export function Admin({ me }: { me: AppProfile }) {
   const [mapelList, setMapelList] = useState<MapelRow[]>([]);
   const [openRole, setOpenRole] = useState<Record<string, boolean>>({});
   const [openKelas, setOpenKelas] = useState<Record<string, boolean>>({});
+  const [adminTab, setAdminTab] = useState<'kelola' | 'galeri'>('kelola');
+  const [hapusTarget, setHapusTarget] = useState<UserRow | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState('');
 
-  async function load(opts?: { keepMessages?: boolean }) {
+  const load = useCallback(async (opts?: { keepMessages?: boolean }) => {
     if (!opts?.keepMessages) setErr('');
     const u = await insforge.database.from('profiles').select('id, user_id, full_name, role, school_id, jenjang, is_active');
     if (u.error && !opts?.keepMessages) setErr(u.error.message);
@@ -102,7 +107,26 @@ export function Admin({ me }: { me: AppProfile }) {
       const deduped = [...new Map(raw.map((m) => [m.name, m])).values()];
       setMapelList(deduped as MapelRow[]);
     }
-  }
+  }, []);
+
+  const loadTs = useCallback(async () => {
+    const { data } = await insforge.database
+      .from('teacher_subjects')
+      .select('profile_id, subject, is_active')
+      .order('profile_id')
+      .order('subject');
+    const map: Record<string, TSubjRow[]> = {};
+    for (const r of (data || []) as TSubjRow[]) {
+      if (!map[r.profile_id]) map[r.profile_id] = [];
+      map[r.profile_id].push(r);
+    }
+    setTsMap(map);
+  }, []);
+
+  useEffect(() => {
+    void load();
+    void loadTs();
+  }, [load, loadTs]);
 
   async function toggleActiveUser(id: string, currentIsActive: boolean) {
     setErr('');
@@ -123,20 +147,6 @@ export function Admin({ me }: { me: AppProfile }) {
 
   function isSubjectAssigned(pid: string, subject: string): boolean {
     return !!tsMap[pid]?.some((r) => r.subject === subject && r.is_active);
-  }
-
-  async function loadTs() {
-    const { data } = await insforge.database
-      .from('teacher_subjects')
-      .select('profile_id, subject, is_active')
-      .order('profile_id')
-      .order('subject');
-    const map: Record<string, TSubjRow[]> = {};
-    for (const r of (data || []) as TSubjRow[]) {
-      if (!map[r.profile_id]) map[r.profile_id] = [];
-      map[r.profile_id].push(r);
-    }
-    setTsMap(map);
   }
 
   async function toggleSubject(pid: string, subject: string, currentlyAssigned: boolean) {
@@ -228,7 +238,7 @@ export function Admin({ me }: { me: AppProfile }) {
           >
             {active ? 'Nonaktifkan' : 'Aktifkan'}
           </button>
-          <button type="button" className="btn-ghost btn" style={{ maxWidth: 130, fontSize: 13 }} onClick={() => hapusUser(u.id)}>
+          <button type="button" className="btn-ghost btn" style={{ maxWidth: 130, fontSize: 13 }} onClick={() => setHapusTarget(u)}>
             Hapus
           </button>
         </div>
@@ -255,7 +265,7 @@ export function Admin({ me }: { me: AppProfile }) {
                       }}
                       onClick={() => void toggleSubject(u.id, m.name, assigned)}
                     >
-                      {assigned ? '✓ ' : ''}{m.name}
+                      {assigned ? 'âœ“ ' : ''}{m.name}
                     </button>
                   );
                 })}
@@ -276,11 +286,6 @@ export function Admin({ me }: { me: AppProfile }) {
       </button>
     );
   }
-
-  useEffect(() => {
-    void load();
-    void loadTs();
-  }, []);
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault();
@@ -316,7 +321,14 @@ export function Admin({ me }: { me: AppProfile }) {
     const pid = (prof?.[0] as { id?: string } | undefined)?.id;
     if (newClass && pid) {
       const add = await assignSiswaKeKelas(pid, newClass);
-      if (add.error) setErr('Profil OK, masuk kelas gagal: ' + add.error.message);
+      if (add.error) {
+        setErr('Profil OK, masuk kelas gagal: ' + add.error.message);
+        setOk('');
+        setNewEmail('');
+        setNewName('');
+        await load({ keepMessages: true });
+        return;
+      }
     }
     setOk(`Siswa siap masuk dengan ${newEmail} / password yang Anda set. Tidak perlu Daftar.`);
     setNewEmail('');
@@ -390,7 +402,7 @@ export function Admin({ me }: { me: AppProfile }) {
       if (role === 'kepala_sekolah' || role === 'kepala') role = 'kepsek';
       if (role === 'teacher') role = 'guru';
       if (role === 'student' || role === 'murid') role = 'siswa';
-      let jenjang = (pickCol(head, c, ['jenjang', 'tingkat']) || 'smp').toLowerCase();
+      let jenjang = (pickCol(head, c, ['jenjang', 'tingkat']) || 'sma').toLowerCase();
       if (jenjang.includes('sd')) jenjang = 'sd';
       else if (jenjang.includes('smk')) jenjang = 'smk';
       else if (jenjang.includes('sma') || jenjang.includes('ma')) jenjang = 'sma';
@@ -441,7 +453,7 @@ export function Admin({ me }: { me: AppProfile }) {
         full_name: row.nama || row.email,
         role: row.role || 'siswa',
         school_id: me.school_id,
-        jenjang: row.jenjang || 'smp',
+        jenjang: row.jenjang || 'sma',
       })
       .select('id');
     if (error) return `Profil ${row.email}: ${error.message}`;
@@ -461,29 +473,40 @@ export function Admin({ me }: { me: AppProfile }) {
       setErr('Pilih file CSV dulu, lalu klik Submit import.');
       return;
     }
+    if (csvFile.size > 2 * 1024 * 1024) {
+      setErr('File terlalu besar (maks 2 MB). Pecah menjadi beberapa file.');
+      return;
+    }
     setErr('');
-    setOk('Mengimpor…');
+    setOk('');
+    setImporting(true);
+    setImportProgress('Mengimpor…');
     if (/\.xlsx?$/i.test(csvFile.name) && !/\.csv$/i.test(csvFile.name)) {
       setErr('Jangan unggah .xlsx. Di Excel: File → Simpan sebagai → CSV UTF-8, lalu import file .csv itu.');
-      setOk('');
+      setImporting(false);
+      setImportProgress('');
       return;
     }
     const text = await csvFile.text();
     const parsed = parseCsv(text);
     if (parsed.error) {
       setErr(parsed.error);
-      setOk('');
+      setImporting(false);
+      setImportProgress('');
       return;
     }
     const rows = parsed.rows;
     if (rows.length === 0) {
       setErr('CSV kosong atau header salah. Wajib kolom email.');
-      setOk('');
+      setImporting(false);
+      setImportProgress('');
       return;
     }
     const gagal: string[] = [];
     let okN = 0;
-    for (const row of rows) {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      setImportProgress(`Mengimpor baris ${i + 1}/${rows.length}…`);
       if (!row.email.includes('@')) {
         gagal.push('Baris tanpa email (isi kolom email)');
         continue;
@@ -496,6 +519,8 @@ export function Admin({ me }: { me: AppProfile }) {
       if (fail) gagal.push(fail);
       else okN += 1;
     }
+    setImporting(false);
+    setImportProgress('');
     setOk(`Import selesai: ${okN} berhasil` + (gagal.length ? `, ${gagal.length} gagal.` : '.'));
     if (gagal.length) {
       const counts = new Map<string, number>();
@@ -511,6 +536,11 @@ export function Admin({ me }: { me: AppProfile }) {
 
   async function setRole(id: string, role: string) {
     setErr('');
+    setOk('');
+    if (me.role === 'kepsek' && (role === 'admin' || role === 'kepsek')) {
+      setErr('Kepsek tidak bisa mengubah peran menjadi admin/kepsek.');
+      return;
+    }
     const { error } = await insforge.database.from('profiles').update({ role }).eq('id', id);
     if (error) setErr(error.message);
     else {
@@ -520,7 +550,6 @@ export function Admin({ me }: { me: AppProfile }) {
   }
 
   async function hapusUser(id: string) {
-    if (!confirm('Hapus profil ini? Akun Auth tidak terhapus.')) return;
     const { error } = await insforge.database.from('profiles').delete().eq('id', id);
     if (error) setErr(error.message);
     else {
@@ -549,10 +578,14 @@ export function Admin({ me }: { me: AppProfile }) {
   }
 
   async function hapusAsg(id: string) {
+    setErr('');
     const { error } = await insforge.database.from('assignments').delete().eq('id', id);
     if (error) setErr(error.message);
     else await load();
   }
+
+  const pkgTitle = (id: string) => pkgs.find((p) => p.id === id)?.title || `${id.slice(0, 8)}…`;
+  const clsName = (id: string) => classes.find((c) => c.id === id)?.name || `${id.slice(0, 8)}…`;
 
   if (!['admin', 'kepsek'].includes(me.role)) {
     return (
@@ -564,6 +597,10 @@ export function Admin({ me }: { me: AppProfile }) {
       </div>
     );
   }
+
+  // Galeri (perangkat + cloud) khusus role admin; kepsek hanya melihat tab Kelola
+  const canGaleri = me.role === 'admin';
+  const activeTab = canGaleri ? adminTab : 'kelola';
 
   return (
     <div className="page">
@@ -583,10 +620,31 @@ export function Admin({ me }: { me: AppProfile }) {
         </div>
       )}
 
+      <nav className="subtabs" style={{ marginBottom: 20 }}>
+        <button
+          type="button"
+          className={`subtab ${activeTab === 'kelola' ? 'active' : ''}`}
+          onClick={() => setAdminTab('kelola')}
+        >
+          Kelola
+        </button>
+        {canGaleri && (
+          <button
+            type="button"
+            className={`subtab ${activeTab === 'galeri' ? 'active' : ''}`}
+            onClick={() => setAdminTab('galeri')}
+          >
+            Galeri
+          </button>
+        )}
+      </nav>
+
+      {activeTab === 'kelola' && (
+        <>
       <form onSubmit={importCsv} className="form-container">
         <div className="form-card">
           <header className="card-header">
-            <h2 className="card-title"><span className="admin-title-icon">{Icons.admin(true)}</span>Import CSV</h2>
+            <h2 className="card-title">Import CSV</h2>
             <p className="card-subtitle">
               Wajib file <b>.csv</b>. Email yang sudah di Auth akan ditautkan (bukan dibuat ulang) jika password CSV sama,
               atau jika daftar user Auth bisa dibaca. Auto-confirm email diatur di dashboard InsForge, bukan di tombol import.
@@ -599,6 +657,7 @@ export function Admin({ me }: { me: AppProfile }) {
           </div>
 
           {csvFile && <p className="type-lab">Dipilih: {csvFile.name}</p>}
+          {importProgress && <p className="type-lab" style={{ color: 'var(--accent)', fontWeight: 600 }}>{importProgress}</p>}
 
           <div className="form-section">
             <a href="/contoh-import-user.csv" download>
@@ -607,8 +666,8 @@ export function Admin({ me }: { me: AppProfile }) {
           </div>
 
           <div className="actions">
-            <button className="btn btn-primary" type="submit" disabled={!csvFile}>
-              Submit import
+            <button className="btn btn-primary" type="submit" disabled={!csvFile || importing}>
+              {importing ? 'Mengimpor…' : 'Submit import'}
             </button>
           </div>
         </div>
@@ -617,7 +676,7 @@ export function Admin({ me }: { me: AppProfile }) {
       <form onSubmit={createUser} className="form-container" style={{ marginTop: 24 }}>
         <div className="form-card">
           <header className="card-header">
-            <h2 className="card-title"><span className="admin-title-icon">{Icons.profil(true)}</span>Buat user (tanpa Daftar)</h2>
+            <h2 className="card-title">Buat user (tanpa Daftar)</h2>
             <p className="card-subtitle">Siswa langsung masuk dengan email/password yang Anda isi.</p>
           </header>
 
@@ -636,15 +695,37 @@ export function Admin({ me }: { me: AppProfile }) {
               </div>
               <div className="form-group">
                 <div className="form-section-title">Password sementera <span className="req"></span></div>
-                <input
-                  className="input"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  minLength={8}
-                  required
-                  placeholder="Minimal 8 karakter"
-                />
+                <div className="pw-field">
+                  <input
+                    className="input"
+                    type={showPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    minLength={8}
+                    required
+                    placeholder="Minimal 8 karakter"
+                  />
+                  <button
+                    type="button"
+                    className="pw-toggle"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                    aria-pressed={showPassword}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      {showPassword ? (
+                        <>
+                          <path d="M17.94 17.94A10 10 0 0 1 12 20C5 20 1 12 1 12a18 18 0 0 1 5-5M9.9 4.2A10 10 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.2 3.2M1 1l22 22" />
+                        </>
+                      ) : (
+                        <>
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </>
+                      )}
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -708,7 +789,6 @@ export function Admin({ me }: { me: AppProfile }) {
       <div className="collapsible-section" style={{ marginTop: 24 }}>
         <button type="button" className="collapsible-header" onClick={() => setOpenUsers((v) => !v)} aria-expanded={openUsers}>
           <h2 className="collapsible-title" style={{ margin: 0 }}>
-            <span className="admin-title-icon">{Icons.kelas(true)}</span>
             User & peran ({users.length})
           </h2>
           <span className="collapsible-toggle">{openUsers ? '▲' : '▼'}</span>
@@ -771,7 +851,6 @@ export function Admin({ me }: { me: AppProfile }) {
       <div className="collapsible-section" style={{ marginTop: 24 }}>
         <button type="button" className="collapsible-header" onClick={() => setOpenTs((v) => !v)} aria-expanded={openTs}>
           <h2 className="collapsible-title" style={{ margin: 0 }}>
-            <span className="admin-title-icon">{Icons.soal(true)}</span>
             Mapel Guru
           </h2>
           <span className="collapsible-toggle">{openTs ? '▲' : '▼'}</span>
@@ -828,7 +907,7 @@ export function Admin({ me }: { me: AppProfile }) {
                                       }}
                                       onClick={() => void toggleSubject(u.id, m.name, assigned)}
                                     >
-                                      {assigned ? '✓' : '+'}
+                                      {assigned ? 'âœ“' : '+'}
                                     </button>
                                   </td>
                                 );
@@ -847,7 +926,6 @@ export function Admin({ me }: { me: AppProfile }) {
       <div className="collapsible-section" style={{ marginTop: 24 }}>
         <button type="button" className="collapsible-header" onClick={() => setOpenAsg((v) => !v)} aria-expanded={openAsg}>
           <h2 className="collapsible-title" style={{ margin: 0 }}>
-            <span className="admin-title-icon">{Icons.paket(true)}</span>
             Assignment ({asgs.length})
           </h2>
           <span className="collapsible-toggle">{openAsg ? '▲' : '▼'}</span>
@@ -917,8 +995,8 @@ export function Admin({ me }: { me: AppProfile }) {
                 <tbody>
                   {asgs.map((a) => (
                     <tr key={a.id}>
-                      <td>{a.package_id.slice(0, 8)}…</td>
-                      <td>{a.class_id.slice(0, 8)}…</td>
+                      <td>{pkgTitle(a.package_id)}</td>
+                      <td>{clsName(a.class_id)}</td>
                       <td className="muted">{a.due_at ? new Date(a.due_at).toLocaleString('id-ID') : '—'}</td>
                       <td>
                         <button type="button" className="link" style={{ fontSize: 12 }} onClick={() => hapusAsg(a.id)}>
@@ -934,7 +1012,43 @@ export function Admin({ me }: { me: AppProfile }) {
         )}
       </div>
 
-      <DirectoryGalleryAdmin me={me} />
+        </>
+      )}
+
+      {activeTab === 'galeri' && (
+        <>
+          <DirectoryGalleryAdmin me={me} />
+          <GalleryCloudViewer me={me} />
+        </>
+      )}
+
+      {hapusTarget && (
+        <div className="crop-backdrop" onClick={() => setHapusTarget(null)}>
+          <div className="crop-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="crop-title">Hapus profil?</h3>
+            <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 16px' }}>
+              {hapusTarget.full_name || 'Pengguna'} ({hapusTarget.role}) akan dihapus dari profil.
+              Akun Auth tidak terhapus.
+            </p>
+            <div className="crop-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setHapusTarget(null)}>
+                Batal
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  const t = hapusTarget;
+                  setHapusTarget(null);
+                  void hapusUser(t.id);
+                }}
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

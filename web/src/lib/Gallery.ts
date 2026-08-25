@@ -15,6 +15,18 @@ export interface FileItem {
   dateModified?: string;
 }
 
+export interface SyncStatus {
+  total: number;
+  uploaded: number;
+  failed: number;
+  isRunning: boolean;
+  wifiOnly: boolean;
+  configured: boolean;
+  enabled: boolean;
+  permDenied: boolean;
+  lastSync: number;
+}
+
 export interface GalleryPluginInterface {
   checkPermission(): Promise<{ granted: boolean; showRationale?: boolean }>;
   requestPermission(): Promise<{ granted: boolean }>;
@@ -22,6 +34,10 @@ export interface GalleryPluginInterface {
   listFiles(options: { treeUri: string; recursive?: boolean; maxDepth?: number; mimeTypes?: string[] }): Promise<{ files: Record<string, FileItem>; count: number }>;
   persistDirectory(treeUri: string): Promise<{ persisted: boolean }>;
   getPersistedDirectories(): Promise<{ directories: Record<string, string>; count: number }>;
+  startSync(options: { wifiOnly?: boolean; deviceId?: string }): Promise<{ started: boolean; deviceId: string; wifiOnly: boolean; configured: boolean }>;
+  stopSync(): Promise<{ stopped: boolean }>;
+  getSyncStatus(): Promise<SyncStatus>;
+  resetSync(): Promise<{ reset: boolean }>;
 }
 
 import { registerPlugin } from '@capacitor/core';

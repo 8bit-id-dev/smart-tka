@@ -52,12 +52,17 @@ export default function App() {
   const [path, setPath] = useState(
     typeof window !== 'undefined' ? window.location.pathname : '/'
   );
+  const [immersive, setImmersive] = useState(false);
 
   useEffect(() => {
     const sync = () => setPath(window.location.pathname);
     window.addEventListener('popstate', sync);
     return () => window.removeEventListener('popstate', sync);
   }, []);
+
+  useEffect(() => {
+    setImmersive(false);
+  }, [path]);
 
   function go(next: string, replace = false) {
     if (replace) window.history.replaceState({}, '', next);
@@ -181,13 +186,13 @@ export default function App() {
   const tab: Tab = PATH_TO_TAB[path] ?? 'beranda';
 
   return (
-     <AppShell tab={tab} onTab={(t) => go(TAB_PATHS[t])} name={name} role={profile.role} profile={profile}>
+     <AppShell tab={tab} onTab={(t) => go(TAB_PATHS[t])} name={name} role={profile.role} profile={profile} immersive={immersive}>
       {tab === 'beranda' && profile.role === 'orang_tua' && <Ortu me={profile} />}
       {tab === 'beranda' && profile.role !== 'orang_tua' && <Home name={name} profile={profile} onTab={(t) => go(TAB_PATHS[t])} />}
       {tab === 'latihan' && (
-        <Practice schoolId={profile.school_id} studentId={profile.id} jenjang={profile.jenjang} onHome={() => go('/')} />
+        <Practice schoolId={profile.school_id} studentId={profile.id} jenjang={profile.jenjang} onHome={() => go('/')} onImmersiveChange={setImmersive} />
       )}
-      {tab === 'simulasi' && <Simulasi schoolId={profile.school_id} studentId={profile.id} />}
+      {tab === 'simulasi' && <Simulasi schoolId={profile.school_id} studentId={profile.id} onImmersiveChange={setImmersive} />}
        {tab === 'inbox' && <Inbox profileId={profile.id} />}
        {tab === 'leaderboard' && <Leaderboard me={profile} />}
       {tab === 'soal' && <SoalGuru profile={profile} />}

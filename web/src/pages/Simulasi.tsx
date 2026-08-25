@@ -51,7 +51,7 @@ type ExamSchedule = {
 
 type Identity = { name: string; kelas: string; nisn: string; token: string };
 
-export function Simulasi({ schoolId, studentId }: { schoolId: string | null; studentId?: string }) {
+export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId: string | null; studentId?: string; onImmersiveChange?: (v: boolean) => void }) {
   const [pkgs, setPkgs] = useState<Pkg[]>([]);
   const [pkg, setPkg] = useState<Pkg | null>(null);
   const [items, setItems] = useState<DbItem[]>([]);
@@ -74,6 +74,11 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   const [identity, setIdentity] = useState<Identity>({ name: '', kelas: '', nisn: '', token: '' });
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [endsAt, setEndsAt] = useState<number | null>(null);
+  const [starting, setStarting] = useState(false);
+
+  useEffect(() => {
+    onImmersiveChange?.(phase === 'run');
+  }, [phase, onImmersiveChange]);
 
   const loadList = useCallback(
     async () => {
@@ -242,8 +247,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
   }, [ans, i, phase, pkg, endsAt]);
 
 
-  async function mulai(p: Pkg, exam?: ExamSchedule) {
-    setErr('');
+  async function doMulai(p: Pkg, exam?: ExamSchedule) {
     setAns({});
     setSkor(null);
     let ids: string[] = [];
@@ -257,26 +261,35 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
         p_token: token,
       });
       if (error) {
-        setErr(friendlyAttemptError(error.message));
-        return;
-      }
-      const res = (data || {}) as {
-        ok: boolean;
-        error?: string;
-        items?: DbItem[];
-        attempt_id?: string;
-        ends_at?: string;
-      };
-      if (!res.ok) {
-        setErr(friendlyAttemptError(res.error));
-        return;
-      }
-      ids = ((res.items || []) as DbItem[]).map((x) => x.id);
-      attemptIdNew = res.attempt_id || null;
-      endsAtMs = res.ends_at ? Date.parse(res.ends_at) : null;
-      if (ids.length === 0) {
-        setErr('Paket belum berisi soal.');
-        return;
+        // One-active-attempt deadlock: a previous session is still in_progress.
+        // Resume it instead of blocking the student permanently.
+        const resumed = await resumeExisting(p);
+        if (!resumed) {
+          setErr(selectedExam ? 'Sesi ujian tidak dapat dilanjutkan.' : friendlyAttemptError(error.message));
+          return;
+        }
+        ids = resumed.ids;
+        attemptIdNew = resumed.attemptId;
+        endsAtMs = null;
+      } else {
+        const res = (data || {}) as {
+          ok: boolean;
+          error?: string;
+          items?: DbItem[];
+          attempt_id?: string;
+          ends_at?: string;
+        };
+        if (!res.ok) {
+          setErr(friendlyAttemptError(res.error));
+          return;
+        }
+        ids = ((res.items || []) as DbItem[]).map((x) => x.id);
+        attemptIdNew = res.attempt_id || null;
+        endsAtMs = res.ends_at ? Date.parse(res.ends_at) : null;
+        if (ids.length === 0) {
+          setErr('Paket belum berisi soal.');
+          return;
+        }
       }
     } else {
       const { data: links, error } = await insforge.database.from('package_items').select('item_id, position').eq('package_id', p.id);
@@ -358,6 +371,51 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
     }
     if (studentId) {
       void syncAttempt(p, exam ?? null, shuffled);
+    }
+  }
+
+  /* Resume an existing in_progress session (used when smart_attempt_start rejects
+   * because of the one-active-attempt constraint). The AI item selection is
+   * deterministic per student (seeded by studentId + packageId), so reconstructing
+   * from the full package item list reproduces the exact same question set; answers
+   * are restored afterwards by syncAttempt from attempt_answers. */
+  async function resumeExisting(p: Pkg): Promise<{ attemptId: string; ids: string[] } | null> {
+    if (!studentId) return null;
+    const { data: ex, error } = await insforge.database
+      .from('attempts')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('package_id', p.id)
+      .eq('status', 'in_progress')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !ex?.id) return null;
+
+    if (selectedExam) {
+      const { data: allowed } = await insforge.database.rpc('exam_resume_allowed', { p_attempt_id: ex.id });
+      if (!allowed) return null;
+    }
+
+    const { data: links } = await insforge.database
+      .from('package_items')
+      .select('item_id, position')
+      .eq('package_id', p.id);
+    const rows = (links || []) as { item_id: string; position: number }[];
+    if (rows.length === 0) return null;
+    return { attemptId: ex.id as string, ids: rows.sort((a, b) => a.position - b.position).map((x) => x.item_id) };
+  }
+
+  async function mulai(p: Pkg, exam?: ExamSchedule) {
+    setErr('');
+    setStarting(true);
+    try {
+      await doMulai(p, exam);
+    } catch (e) {
+      console.error('mulai gagal:', e);
+      setErr(e instanceof Error ? e.message : 'Terjadi kesalahan saat memulai. Coba lagi.');
+    } finally {
+      setStarting(false);
     }
   }
 
@@ -584,7 +642,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
             <button
               type="button"
               className="continue-btn"
-              disabled={Boolean(!identity.name || !identity.kelas || !identity.nisn || (isUjian && selectedExam?.token && !identity.token))}
+              disabled={starting || Boolean(!identity.name || !identity.kelas || !identity.nisn || (isUjian && selectedExam?.token && !identity.token))}
               onClick={async () => {
                 setErr('');
                 if (!identity.name || !identity.kelas || !identity.nisn) { setErr('Nama, Kelas, dan NISN wajib diisi.'); return; }
@@ -593,7 +651,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
                 await mulai(pkg, selectedExam || undefined);
               }}
             >
-              Mulai {isUjian ? 'Ujian' : 'Latihan'}
+              {starting ? 'Memuat…' : `Mulai ${isUjian ? 'Ujian' : 'Latihan'}`}
             </button>
           </div>
         </div>
@@ -644,7 +702,7 @@ export function Simulasi({ schoolId, studentId }: { schoolId: string | null; stu
                       )}
                     </div>
                   </div>
-                  <button className="continue-btn" type="button" onClick={() => mulai(p)}>Mulai Simulasi</button>
+                  <button className="continue-btn" type="button" disabled={starting} onClick={() => mulai(p)}>{starting ? 'Memuat…' : 'Mulai Simulasi'}</button>
                 </div>
               ))}
             </div>

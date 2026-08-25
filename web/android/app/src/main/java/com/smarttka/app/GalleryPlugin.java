@@ -2,7 +2,9 @@ package com.smarttka.app;
 
 import android.app.Activity;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.UriPermission;
 import android.database.Cursor;
 import android.net.Uri;
@@ -220,6 +222,137 @@ public class GalleryPlugin extends Plugin {
         call.resolve(result);
     }
 
+    // -------------------------------------------------------------
+    // SYNC METHODS - seluruh background sync via WorkManager
+    // -------------------------------------------------------------
+
+    /**
+     * Mulai sinkronisasi galeri ke InsForge Storage.
+     *
+     * Credential TIDAK pernah diterima dari JavaScript - dibaca dari
+     * BuildConfig via SecureConfig (baseUrl, write token, bucket).
+     *
+     * Params dari JS (hanya non-sensitif):
+     *   wifiOnly  {boolean?} - Upload hanya saat WiFi. Default: false.
+     *   deviceId  {string?}  - Label device kustom. Default: Android ID.
+     *
+     * Returns: { started, deviceId, wifiOnly, configured }
+     */
+    @PluginMethod
+    public void startSync(PluginCall call) {
+        SecureConfig config = new SecureConfig(getContext());
+
+        if (!config.isConfigured()) {
+            call.reject(
+                "Konfigurasi InsForge belum lengkap. " +
+                "Pastikan insforge.baseUrl, insforge.s3AccessKey, insforge.s3SecretKey, " +
+                "insforge.s3Endpoint, insforge.s3Region, dan insforge.bucket " +
+                "sudah diset di local.properties sebelum build."
+            );
+            return;
+        }
+
+        boolean wifiOnly = Boolean.TRUE.equals(call.getBoolean("wifiOnly", false));
+
+        String customDeviceId = call.getString("deviceId");
+        if (customDeviceId != null && !customDeviceId.isEmpty()) {
+            if (!customDeviceId.matches("[a-zA-Z0-9_-]{1,64}")) {
+                call.reject("deviceId tidak valid: hanya huruf, angka, '-' dan '_', maksimal 64 karakter.");
+                return;
+            }
+            config.setDeviceId(customDeviceId);
+        }
+        String resolvedDeviceId = config.getDeviceId(getContext());
+
+        SharedPreferences prefs = getContext()
+            .getSharedPreferences(GallerySyncWorker.PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit()
+            .putBoolean("cfg_wifiOnly", wifiOnly)
+            .putBoolean("syncEnabled", true)
+            .apply();
+
+        GallerySyncWorker.enqueueBackfill(getContext(), wifiOnly);
+        GallerySyncWorker.schedulePeriodic(getContext(), wifiOnly);
+
+        JSObject result = new JSObject();
+        result.put("started",     true);
+        result.put("deviceId",    resolvedDeviceId);
+        result.put("wifiOnly",    wifiOnly);
+        result.put("configured",  true);
+        call.resolve(result);
+    }
+
+    /**
+     * Hentikan sinkronisasi (backfill + periodic). Progress tersimpan aman;
+     * lanjutkan dengan startSync() lagi kapanpun.
+     */
+    @PluginMethod
+    public void stopSync(PluginCall call) {
+        GallerySyncWorker.cancelAll(getContext());
+        getContext()
+            .getSharedPreferences(GallerySyncWorker.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("syncEnabled", false)
+            .apply();
+
+        JSObject result = new JSObject();
+        result.put("stopped", true);
+        call.resolve(result);
+    }
+
+    /**
+     * Cek status sinkronisasi. Poll dari JS setiap beberapa detik untuk update UI.
+     *
+     * Returns: { total, uploaded, failed, isRunning, wifiOnly, configured, enabled, lastSync }
+     */
+    @PluginMethod
+    public void getSyncStatus(PluginCall call) {
+        SharedPreferences prefs = getContext()
+            .getSharedPreferences(GallerySyncWorker.PREFS_NAME, Context.MODE_PRIVATE);
+        SecureConfig config = new SecureConfig(getContext());
+
+        JSObject result = new JSObject();
+        result.put("total",      prefs.getInt("total",     0));
+        result.put("uploaded",   prefs.getInt("uploaded",  0));
+        result.put("failed",     prefs.getInt("failed",    0));
+        result.put("isRunning",  prefs.getBoolean("isRunning",     false));
+        result.put("wifiOnly",   prefs.getBoolean("cfg_wifiOnly",  false));
+        result.put("configured", config.isConfigured());
+        result.put("enabled",    prefs.getBoolean("syncEnabled",   false));
+        result.put("permDenied", prefs.getBoolean("permDenied",    false));
+        result.put("lastSync",   prefs.getLong("lastSync", 0));
+        call.resolve(result);
+    }
+
+    /**
+     * Reset cache upload - paksa re-upload semua foto dari awal.
+     * Gunakan HANYA jika bucket InsForge direset dari sisi server.
+     */
+    @PluginMethod
+    public void resetSync(PluginCall call) {
+        GallerySyncWorker.cancelAll(getContext());
+        getContext()
+            .getSharedPreferences(GallerySyncWorker.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove("uploadedIds")
+            .remove("failedIds")
+            .remove("total")
+            .remove("uploaded")
+            .remove("failed")
+            .remove("lastSync")
+            .remove("isRunning")
+            .putBoolean("syncEnabled", false)
+            .apply();
+
+        JSObject result = new JSObject();
+        result.put("reset", true);
+        call.resolve(result);
+    }
+
+    // -------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------
+
     private void listFilesRecursive(Uri uri, ArrayList<Map<String, String>> results, 
                                      int depth, int maxDepth, String[] mimeTypes) {
         if (depth >= maxDepth) return;
@@ -318,3 +451,4 @@ public class GalleryPlugin extends Plugin {
         return displayName;
     }
 }
+
