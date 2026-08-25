@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
 import { romanize } from '../lib/roman';
+import { FilterSelect } from '../components/FilterSelect';
 
 type GpRow = {
   profile_id: string;
@@ -256,54 +257,47 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         <div className="leaderboard-filters">
               <div className="filter-group">
                 <span className="filter-label">Periode:</span>
-                <select
-                  className="filter-select"
+                <FilterSelect
                   value={filterRange}
-                  onChange={(e) => setFilterRange(e.target.value as FilterRange)}
-                >
-                  <option value="all">Semua Waktu</option>
-                  <option value="month">Bulan Ini</option>
-                  <option value="week">Minggu Ini</option>
-                </select>
+                  onChange={(v) => setFilterRange(v as FilterRange)}
+                  placeholder="Semua Waktu"
+                  options={[
+                    { value: 'all', label: 'Semua Waktu' },
+                    { value: 'month', label: 'Bulan Ini' },
+                    { value: 'week', label: 'Minggu Ini' },
+                  ]}
+                />
               </div>
               <div className="filter-group">
                 <span className="filter-label">Kelas:</span>
-                <select
-                  className="filter-select"
+                <FilterSelect
                   value={filterKelas}
-                  onChange={(e) => setFilterKelas(e.target.value)}
-                >
-                  <option value="">Semua Kelas</option>
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                  onChange={setFilterKelas}
+                  placeholder="Semua Kelas"
+                  options={classes.map((c) => ({ value: c.id, label: c.name }))}
+                />
               </div>
               <div className="filter-group">
                 <span className="filter-label">Mapel:</span>
-                <select
-                  className="filter-select"
+                <FilterSelect
                   value={filterMapel}
-                  onChange={(e) => setFilterMapel(e.target.value)}
-                >
-                  <option value="">Semua Mapel</option>
-                  {mapelList.map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
+                  onChange={setFilterMapel}
+                  placeholder="Semua Mapel"
+                  options={mapelList.map((m) => ({ value: m, label: m }))}
+                />
               </div>
               <div className="filter-group">
                 <span className="filter-label">Jenis:</span>
-                <select
-                  className="filter-select"
+                <FilterSelect
                   value={filterKind}
-                  onChange={(e) => setFilterKind(e.target.value)}
-                >
-                  <option value="">Semua Jenis</option>
-                  <option value="latihan">Latihan</option>
-                  <option value="simulasi">Simulasi</option>
-                  <option value="ujian_kelas">Ujian</option>
-                </select>
+                  onChange={setFilterKind}
+                  placeholder="Semua Jenis"
+                  options={[
+                    { value: 'latihan', label: 'Latihan' },
+                    { value: 'simulasi', label: 'Simulasi' },
+                    { value: 'ujian_kelas', label: 'Ujian' },
+                  ]}
+                />
               </div>
             </div>
           </section>

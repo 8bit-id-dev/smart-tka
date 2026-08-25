@@ -3,6 +3,7 @@ import { assignSiswaKeKelas, cariKelasByKode } from '../lib/kelas';
 import { adminCreateAuthUser, insforge, summarizeAuthError, type AppProfile } from '../lib/insforge';
 import { DirectoryGalleryAdmin } from './DirectoryGalleryAdmin';
 import { Icons } from '../AppShell';
+import { FilterSelect } from '../components/FilterSelect';
 
 type UserRow = AppProfile;
 type ClassRow = { id: string; name: string; jenjang: string; invite_code?: string };
@@ -198,13 +199,13 @@ export function Admin({ me }: { me: AppProfile }) {
         <div>
           <dt>Peran</dt>
           <dd>
-            <select className="select" value={u.role} onChange={(e) => setRole(u.id, e.target.value)}>
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+            <FilterSelect
+              value={u.role}
+              onChange={(v) => setRole(u.id, v)}
+              placeholder="Pilih peran"
+              minWidth={110}
+              options={ROLES.map((r) => ({ value: r, label: r }))}
+            />
           </dd>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -662,39 +663,38 @@ export function Admin({ me }: { me: AppProfile }) {
             <div className="form-row">
               <div className="form-group">
                 <div className="form-section-title">Peran</div>
-                <select className="select" value={newRole} onChange={(e) => setNewRole(e.target.value)}>
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                <FilterSelect
+                  value={newRole}
+                  onChange={setNewRole}
+                  placeholder="Pilih peran"
+                  minWidth={120}
+                  options={ROLES.map((r) => ({ value: r, label: r }))}
+                />
               </div>
               <div className="form-group">
                 <div className="form-section-title">Jenjang</div>
-                <select className="select" value={newJenjang} onChange={(e) => setNewJenjang(e.target.value)}>
-                  {JENJANG_OPTS.map((j) => (
-                    <option key={j} value={j}>
-                      {j.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
+                <FilterSelect
+                  value={newJenjang}
+                  onChange={setNewJenjang}
+                  placeholder="Pilih jenjang"
+                  minWidth={120}
+                  options={JENJANG_OPTS.map((j) => ({ value: j, label: j.toUpperCase() }))}
+                />
               </div>
             </div>
           </div>
 
           <div className="form-section">
-            <div className="form-section-title">Masukkan ke kelas (opsional)</div>
-            <select className="select" value={newClass} onChange={(e) => setNewClass(e.target.value)}>
-              <option value="">— belum —</option>
-              {[...classes]
-                .sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' }))
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </select>
+<div className="form-section-title">Masukkan ke kelas (opsional)</div>
+          <FilterSelect
+            value={newClass}
+            onChange={setNewClass}
+            placeholder="— belum —"
+            minWidth={200}
+            options={[...classes]
+              .sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' }))
+              .map((c) => ({ value: c.id, label: c.name }))}
+          />
           </div>
 
           <div className="actions">
@@ -861,27 +861,25 @@ export function Admin({ me }: { me: AppProfile }) {
                 <div className="form-row">
                   <div className="form-group">
                     <div className="form-section-title">Paket</div>
-                    <select className="select" value={asgPkg} onChange={(e) => setAsgPkg(e.target.value)}>
-                      <option value="">— pilih —</option>
-                      {pkgs.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.title} ({p.mapel})
-                        </option>
-                      ))}
-                    </select>
+                    <FilterSelect
+                      value={asgPkg}
+                      onChange={setAsgPkg}
+                      placeholder="— pilih —"
+                      minWidth={200}
+                      options={pkgs.map((p) => ({ value: p.id, label: p.title, sub: p.mapel }))}
+                    />
                   </div>
                   <div className="form-group">
                     <div className="form-section-title">Kelas</div>
-                    <select className="select" value={asgClass} onChange={(e) => setAsgClass(e.target.value)}>
-                      <option value="">— pilih —</option>
-                      {[...classes]
+                    <FilterSelect
+                      value={asgClass}
+                      onChange={setAsgClass}
+                      placeholder="— pilih —"
+                      minWidth={200}
+                      options={[...classes]
                         .sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' }))
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                    </select>
+                        .map((c) => ({ value: c.id, label: c.name }))}
+                    />
                   </div>
                 </div>
               </div>

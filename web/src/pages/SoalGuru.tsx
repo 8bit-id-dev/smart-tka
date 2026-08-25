@@ -5,6 +5,7 @@ import { MathText } from '../components/MathText';
 import { insforge, type AppProfile } from '../lib/insforge';
 import type { MapelRow, MateriRow } from '../lib/kurikulum';
 import { parseMatchPairs } from '../lib/soal';
+import { FilterSelect } from '../components/FilterSelect';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E'] as const;
 type Tipe = 'pg' | 'pg_kompleks' | 'pernyataan_bs' | 'mencocokkan' | 'uraian';
@@ -418,24 +419,32 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
             <div className="form-row" style={{ marginBottom: 16 }}>
               <div className="form-group">
                 <label className="form-label">Jenjang</label>
-                <select value={jenjang} onChange={(e) => setJenjang(e.target.value)} className="select">
-                  <option value="sd">SD</option>
-                  <option value="smp">SMP</option>
-                  <option value="sma">SMA</option>
-                  <option value="smk">SMK</option>
-                </select>
+                <FilterSelect
+                  value={jenjang}
+                  onChange={setJenjang}
+                  placeholder="Pilih jenjang"
+                  minWidth={90}
+                  options={[
+                    { value: 'sd', label: 'SD' },
+                    { value: 'smp', label: 'SMP' },
+                    { value: 'sma', label: 'SMA' },
+                    { value: 'smk', label: 'SMK' },
+                  ]}
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Tingkat Kesulitan</label>
-                <select
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(Number(e.target.value))}
-                  className="select"
-                >
-                  <option value={1}>Mudah (Dasar)</option>
-                  <option value={2}>Sedang (Menengah)</option>
-                  <option value={3}>Sulit / HOTS</option>
-                </select>
+                <FilterSelect
+                  value={String(difficulty)}
+                  onChange={(v) => setDifficulty(Number(v))}
+                  placeholder="Pilih kesulitan"
+                  minWidth={180}
+                  options={[
+                    { value: '1', label: 'Mudah (Dasar)' },
+                    { value: '2', label: 'Sedang (Menengah)' },
+                    { value: '3', label: 'Sulit / HOTS' },
+                  ]}
+                />
               </div>
             </div>
 
@@ -473,13 +482,19 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
 
             <div className="form-group">
               <label className="form-label">Tipe Soal</label>
-              <select value={tipe} onChange={(e) => setTipe(e.target.value as Tipe)} className="select">
-                <option value="pg">Pilihan ganda (5 opsi, satu kunci)</option>
-                <option value="pg_kompleks">Pilihan ganda kompleks (banyak kunci)</option>
-                <option value="pernyataan_bs">Pernyataan benar / salah</option>
-                <option value="mencocokkan">Mencocokkan / Penjodohan</option>
-                <option value="uraian">Uraian / Isian Singkat</option>
-              </select>
+              <FilterSelect
+                value={tipe}
+                onChange={(v) => setTipe(v as Tipe)}
+                placeholder="Pilih tipe"
+                minWidth={260}
+                options={[
+                  { value: 'pg', label: 'Pilihan ganda (5 opsi, satu kunci)' },
+                  { value: 'pg_kompleks', label: 'Pilihan ganda kompleks (banyak kunci)' },
+                  { value: 'pernyataan_bs', label: 'Pernyataan benar / salah' },
+                  { value: 'mencocokkan', label: 'Mencocokkan / Penjodohan' },
+                  { value: 'uraian', label: 'Uraian / Isian Singkat' },
+                ]}
+              />
             </div>
 
             <MathField label="Pertanyaan / stimulus" value={stem} onChange={setStem} rows={3} required />

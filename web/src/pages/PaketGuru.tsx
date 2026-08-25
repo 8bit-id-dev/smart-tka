@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
+import { FilterSelect } from '../components/FilterSelect';
 
 type ItemRow = { id: string; stem: string; mapel: string; materi?: string | null; item_type: string; difficulty?: number | null };
 type Pkg = {
@@ -437,49 +438,41 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
           </div>
 
           <div className="form-section">
-            <div className="form-row">
-              <div className="form-group">
-                <div className="form-section-title">Jenis <span className="req"></span></div>
-                <select className="select" value={kind} onChange={(e) => setKind(e.target.value as (typeof KINDS)[number]['id'])}>
-                  {KINDS.filter((k) => k.id !== 'lab_25').map((k) => (
-                    <option key={k.id} value={k.id}>
-                      {k.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <div className="form-section-title">Jenjang <span className="req"></span></div>
-                <select className="select" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
-                  {JENJANG_OPTS.map((j) => (
-                    <option key={j} value={j}>
-                      {j.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="form-group">
+              <div className="form-section-title">Jenis <span className="req"></span></div>
+              <FilterSelect
+                value={kind}
+                onChange={(v) => setKind(v as (typeof KINDS)[number]['id'])}
+                placeholder="Pilih jenis"
+                minWidth={160}
+                options={KINDS.filter((k) => k.id !== 'lab_25').map((k) => ({ value: k.id, label: k.label }))}
+              />
+            </div>
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <div className="form-section-title">Jenjang <span className="req"></span></div>
+              <FilterSelect
+                value={jenjang}
+                onChange={setJenjang}
+                placeholder="Pilih jenjang"
+                minWidth={90}
+                options={JENJANG_OPTS.map((j) => ({ value: j, label: j.toUpperCase() }))}
+              />
             </div>
           </div>
 
           <div className="form-section">
             <div className="form-section-title">Mapel <span className="req"></span></div>
-            <select
-              className="select"
+            <FilterSelect
               value={mapel}
-              disabled={isGuru && !isAdmin}
-              required
-              onChange={(e) => {
-                const m = e.target.value;
+              onChange={(m) => {
                 setMapel(m);
                 setMateri('');
                 setSelectedMateris(new Set());
               }}
-            >
-              <option value="" disabled>Pilih mapel</option>
-              {((isGuru && !isAdmin) ? mySubjects : mapelOptions).map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+              placeholder="Pilih mapel"
+              minWidth={200}
+              options={((isGuru && !isAdmin) ? mySubjects : mapelOptions).map((m) => ({ value: m, label: m }))}
+            />
             {mapel && (
               <p className="input-hint">
                 {mapel}{selectedMateris.size ? ` · ${Array.from(selectedMateris).join(', ')}` : ''}
@@ -591,25 +584,21 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                     {ALL_ITEM_TYPES.some((t) => !activeTypes.includes(t)) && (
                       <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 12, color: 'var(--muted)' }}>Tambah jenis soal:</span>
-                        <select
-                          className="select"
-                          style={{ maxWidth: 180 }}
+                        <FilterSelect
                           value=""
-                          onChange={(e) => {
-                            const v = e.target.value;
+                          onChange={(v) => {
                             if (v) {
                               setJumlahPerTipe((prev) => ({ ...prev, [v]: 0 }));
                               setActiveTypes((a) => [...a, v]);
                             }
                           }}
-                        >
-                          <option value="" disabled>+</option>
-                          {ALL_ITEM_TYPES.filter((t) => !activeTypes.includes(t)).map((t) => (
-                            <option key={t} value={t}>
-                              {t === 'pernyataan_bs' ? 'Pernyataan B/S' : (ITEM_TYPE_LABELS[t] ?? t)}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="+"
+                          minWidth={140}
+                          options={ALL_ITEM_TYPES.filter((t) => !activeTypes.includes(t)).map((t) => ({
+                            value: t,
+                            label: t === 'pernyataan_bs' ? 'Pernyataan B/S' : (ITEM_TYPE_LABELS[t] ?? t),
+                          }))}
+                        />
                       </div>
                     )}
                      <p className="input-hint" style={{ marginTop: 6 }}>

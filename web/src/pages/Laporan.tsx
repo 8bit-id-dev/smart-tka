@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+﻿import { useEffect, useMemo, useState, useCallback } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
-import type { Tab } from '../AppShell';
+import { Icons, type Tab } from '../AppShell';
+import { FilterSelect } from '../components/FilterSelect';
 
 type Attempt = {
   id: string;
@@ -21,14 +22,14 @@ type Cls = { id: string; name: string };
 type CS = { class_id: string; profile_id: string };
 
 function fmt(iso: string | null) {
-  if (!iso) return '—';
+  if (!iso) return 'â€”';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function fmtDate(iso: string | null) {
-  if (!iso) return '—';
+  if (!iso) return 'â€”';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString('id-ID', {
@@ -37,10 +38,10 @@ function fmtDate(iso: string | null) {
 }
 
 function calcDuration(startIso: string, endIso: string | null): string {
-  if (!endIso) return '—';
+  if (!endIso) return 'â€”';
   const start = new Date(startIso).getTime();
   const end = new Date(endIso).getTime();
-  if (isNaN(start) || isNaN(end) || end < start) return '—';
+  if (isNaN(start) || isNaN(end) || end < start) return 'â€”';
   const sec = Math.floor((end - start) / 1000);
   const m = Math.floor(sec / 60);
   const s = sec % 60;
@@ -128,7 +129,7 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
     filteredRows.forEach((r, idx) => {
       const p = r.package_id ? pkgMap.get(r.package_id) : null;
       const title = p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan Bebas');
-      const mapel = p?.mapel || '—';
+      const mapel = p?.mapel || 'â€”';
       const kind = p?.kind || 'latihan';
       const durasi = calcDuration(r.started_at, r.submitted_at);
       const isSubmitted = r.status === 'submitted';
@@ -139,7 +140,7 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
         title,
         mapel,
         durasi,
-        isSubmitted ? String(r.score ?? 0) : '—',
+        isSubmitted ? String(r.score ?? 0) : 'â€”',
         isSubmitted ? 'Selesai' : 'Belum Selesai',
       ].map(escapeCsv);
       lines.push(row.join(','));
@@ -173,13 +174,13 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
         <div className="stat-card-content">
           <div className="stat-main">
             <p className="stat-label">Rata-rata Nilai</p>
-            <p className="stat-value-large">{avgScore == null ? '—' : avgScore}<small>/100</small></p>
+            <p className="stat-value-large">{avgScore == null ? 'â€”' : avgScore}<small>/100</small></p>
             <p className="stat-sub">{totalSesi === 0 ? 'Belum ada sesi terkumpul' : `Berdasarkan ${totalSesi} sesi selesai`}</p>
           </div>
           <div className="stat-side">
             <div className="stat-item">
               <p className="stat-label">Tertinggi</p>
-              <p className="stat-value">{maxScore == null ? '—' : maxScore}</p>
+              <p className="stat-value">{maxScore == null ? 'â€”' : maxScore}</p>
             </div>
             <div className="stat-item">
               <p className="stat-label">Total Sesi</p>
@@ -206,7 +207,7 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
 
       {domainStats.length > 0 && domainStats[0]?.avg < 70 && (
         <section className="rec-card" style={{ marginBottom: 20 }}>
-          <div className="rec-icon">💡</div>
+          <div className="rec-icon">ðŸ’¡</div>
           <div className="rec-info">
             <h3>Perkuat {domainStats[0].name}</h3>
             <p>Rata-rata Anda di {domainStats[0].name} adalah {domainStats[0].avg}%. Lanjutkan latihan untuk meningkatkan pemahaman.</p>
@@ -225,18 +226,18 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
               <button type="button" role="tab" className={`lap-tab-btn ${filterKind === 'ujian' ? 'active' : ''}`} onClick={() => setFilterKind('ujian')}>Ujian</button>
             </div>
             {filteredRows.length > 0 && (
-              <button type="button" className="btn btn-outline" onClick={downloadCSV}>
-                📥 Download
+<button type="button" className="btn btn-outline" onClick={downloadCSV}>
+                {Icons.download()} Download
               </button>
             )}
           </div>
         </div>
 
         {loading ? (
-          <div className="loading-state"><p>Memuat riwayat…</p></div>
+          <div className="loading-state"><p>Memuat riwayatâ€¦</p></div>
         ) : filteredRows.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">📋</div>
+            <div className="empty-state-icon">ðŸ“‹</div>
             <h3 className="empty-state-title">Belum ada riwayat</h3>
             <p className="empty-state-text">Silakan kerjakan soal di menu Latihan atau Simulasi.</p>
           </div>
@@ -257,7 +258,7 @@ function LaporanSiswa({ me, onTab }: { me: AppProfile; onTab?: (t: 'beranda' | '
                 {filteredRows.map((r, idx) => {
                   const p = r.package_id ? pkgMap.get(r.package_id) : null;
                   const title = p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan Bebas');
-                  const mapel = p?.mapel || '—';
+                  const mapel = p?.mapel || 'â€”';
                   const durasi = calcDuration(r.started_at, r.submitted_at);
                   const isSubmitted = r.status === 'submitted';
                   return (
@@ -461,15 +462,15 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
     sorted.forEach((r, idx) => {
       const p = r.package_id ? pkgMap.get(r.package_id) : null;
       const title = p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan bebas');
-      const mapel = p?.mapel || '—';
+      const mapel = p?.mapel || 'â€”';
       const isSubmitted = r.status === 'submitted';
       const row = [
         idx + 1,
         namaMap.get(r.student_id) || r.student_id.slice(0, 8),
-        kelasSiswa.get(r.student_id) || '—',
+        kelasSiswa.get(r.student_id) || 'â€”',
         title,
         mapel,
-        isSubmitted ? String(r.score ?? '—') : '—',
+        isSubmitted ? String(r.score ?? 'â€”') : 'â€”',
         r.tab_leave_count ?? 0,
         fmt(r.submitted_at || r.started_at),
         isSubmitted ? 'Selesai' : 'Belum Selesai',
@@ -513,7 +514,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
       case 'siswa': return namaMap.get(r.student_id) || r.student_id.slice(0, 8);
       case 'kelas': return kelasSiswa.get(r.student_id) || '';
       case 'paket': return p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan bebas');
-      case 'mapel': return p?.mapel || '—';
+      case 'mapel': return p?.mapel || 'â€”';
       case 'skor': return Number(r.score || 0);
       case 'tab': return Number(r.tab_leave_count || 0);
       case 'waktu': return new Date(r.submitted_at || r.started_at).getTime() || 0;
@@ -535,8 +536,8 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   }, [filtered, sortKey, sortDir, rowValue]);
 
   function arrow(k: typeof sortKey) {
-    if (sortKey !== k) return '⇅';
-    return sortDir === 'asc' ? '↑' : '↓';
+    if (sortKey !== k) return 'â‡…';
+    return sortDir === 'asc' ? 'â†‘' : 'â†“';
   }
 
   return (
@@ -569,30 +570,32 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
           <div className="filter-row">
             <div className="filter-group">
               <label className="filter-label">Paket</label>
-              <select className="filter-select" value={fPkg} onChange={(e) => setFPkg(e.target.value)}>
-                <option value="">Semua paket</option>
-                {pkgs.map((p) => (
-                  <option key={p.id} value={p.id}>{p.title} ({p.mapel})</option>
-                ))}
-              </select>
+              <FilterSelect
+                value={fPkg}
+                onChange={setFPkg}
+                placeholder="Semua paket"
+                options={pkgs.map((p) => ({ value: p.id, label: p.title, sub: p.mapel }))}
+              />
             </div>
             <div className="filter-group">
               <label className="filter-label">Mapel</label>
-              <select className="filter-select" value={fMapel} onChange={(e) => setFMapel(e.target.value)}>
-                <option value="">Semua mapel</option>
-                {mapelList.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
+              <FilterSelect
+                value={fMapel}
+                onChange={setFMapel}
+                placeholder="Semua mapel"
+                options={mapelList.map((m) => ({ value: m, label: m }))}
+              />
             </div>
             <div className="filter-group">
               <label className="filter-label">Kelas</label>
-              <select className="filter-select" value={fKelas} onChange={(e) => setFKelas(e.target.value)}>
-                <option value="">Semua kelas</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <FilterSelect
+                value={fKelas}
+                onChange={setFKelas}
+                placeholder="Semua kelas"
+                options={[...classes]
+                  .sort((a, b) => a.name.localeCompare(b.name, 'id', { numeric: true, sensitivity: 'base' }))
+                  .map((c) => ({ value: c.id, label: c.name }))}
+              />
             </div>
             <div className="filter-group">
               <label className="filter-label">Dari</label>
@@ -614,12 +617,12 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
           <div className="filter-actions">
             {isAdmin && selected.size > 0 && (
               <button type="button" className="btn btn-danger" onClick={hapusTerpilih}>
-                🗑️ Hapus {selected.size} terpilih
+                ðŸ—‘ï¸ Hapus {selected.size} terpilih
               </button>
             )}
-            {filtered.length > 0 && (
+{filtered.length > 0 && (
               <button type="button" className="btn btn-outline" onClick={downloadCSV}>
-                📥 Download
+                {Icons.download()} Download
               </button>
             )}
           </div>
@@ -627,7 +630,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
 
         {filtered.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">📊</div>
+            <div className="empty-state-icon">ðŸ“Š</div>
             <h3 className="empty-state-title">Belum ada data</h3>
             <p className="empty-state-text">Siswa harus mengumpulkan paket di menu Simulasi.</p>
           </div>
@@ -654,16 +657,16 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
                     <tr key={r.id}>
                       {isAdmin && <td><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} /></td>}
                       <td>{namaMap.get(r.student_id) || r.student_id.slice(0, 8)}</td>
-                      <td>{kelasSiswa.get(r.student_id) || '—'}</td>
+                      <td>{kelasSiswa.get(r.student_id) || 'â€”'}</td>
                       <td>{p?.title || (r.package_id ? r.package_id.slice(0, 8) : 'Latihan bebas')}</td>
-                      <td>{p?.mapel || '—'}</td>
-                      <td><strong>{r.score ?? '—'}</strong></td>
+                      <td>{p?.mapel || 'â€”'}</td>
+                      <td><strong>{r.score ?? 'â€”'}</strong></td>
                       <td>{r.tab_leave_count ?? 0}</td>
                       <td className="text-muted">{fmt(r.submitted_at || r.started_at)}</td>
                       {isAdmin && (
                         <td>
                           <button type="button" className="btn-icon btn-danger" onClick={() => hapusAttempt(r.id)} title="Hapus riwayat">
-                            🗑️
+                            ðŸ—‘ï¸
                           </button>
                         </td>
                       )}

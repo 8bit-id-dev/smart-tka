@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { assignSiswaKeKelas } from '../lib/kelas';
 import { insforge, type AppProfile } from '../lib/insforge';
+import { FilterSelect } from '../components/FilterSelect';
 
 type Cls = { id: string; name: string; jenjang: string; invite_code: string };
 type Siswa = { id: string; full_name: string | null; user_id: string; jenjang: string | null };
@@ -284,13 +285,13 @@ export function Kelas({ profile }: { profile: AppProfile }) {
             </div>
             <div className="form-group" style={{ minWidth: 100 }}>
               <label className="form-label">Jenjang</label>
-              <select className="select" value={jenjang} onChange={(e) => setJenjang(e.target.value)}>
-                {JENJANG_OPTS.map((j) => (
-                  <option key={j} value={j}>
-                    {j.toUpperCase()}
-                  </option>
-                ))}
-              </select>
+              <FilterSelect
+                value={jenjang}
+                onChange={setJenjang}
+                placeholder="Pilih jenjang"
+                minWidth={90}
+                options={JENJANG_OPTS.map((j) => ({ value: j, label: j.toUpperCase() }))}
+              />
             </div>
             <button className="btn btn-primary" type="submit" disabled={busy}>
               {busy ? 'Membuat…' : 'Buat Kelas'}
@@ -303,19 +304,16 @@ export function Kelas({ profile }: { profile: AppProfile }) {
         <div className="kelas-sidebar">
           <div className="card" style={{ padding: 16, marginBottom: 16 }}>
             <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Pilih Kelas</label>
-            <select
-              className="input"
+            <FilterSelect
               value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
-              style={{ width: '100%' }}
-            >
-              <option value="">-- Pilih Kelas --</option>
-              {sortedClasses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.jenjang.toUpperCase()})
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedClassId}
+              placeholder="-- Pilih Kelas --"
+              minWidth={180}
+              options={sortedClasses.map((c) => ({
+                value: c.id,
+                label: `${c.name} (${c.jenjang.toUpperCase()})`,
+              }))}
+            />
           </div>
 
           {selectedClass && (
@@ -410,21 +408,15 @@ export function Kelas({ profile }: { profile: AppProfile }) {
                           </div>
                         </div>
                         <div className="student-actions">
-                          <select
-                            className="select"
-                            style={{ maxWidth: 140, fontSize: 12 }}
+                          <FilterSelect
                             value={pindahKe[s.id] || ''}
-                            onChange={(e) => setPindahKe((m) => ({ ...m, [s.id]: e.target.value }))}
-                          >
-                            <option value="">Pindah ke…</option>
-                            {rows
+                            onChange={(v) => setPindahKe((m) => ({ ...m, [s.id]: v }))}
+                            placeholder="Pindah ke…"
+                            minWidth={140}
+                            options={sortedClasses
                               .filter((k) => k.id !== selectedClass.id)
-                              .map((k) => (
-                                <option key={k.id} value={k.id}>
-                                  {k.name}
-                                </option>
-                              ))}
-                          </select>
+                              .map((k) => ({ value: k.id, label: k.name }))}
+                          />
                           <button type="button" className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => void pindah(selectedClass.id, s.id)}>
                             Pindah
                           </button>
@@ -441,20 +433,15 @@ export function Kelas({ profile }: { profile: AppProfile }) {
                   <div className="hint-panel" style={{ marginTop: 16 }}>
                     <span className="hint-kicker">Kenaikan kelas (semua siswa di sini)</span>
                     <div className="hint-row">
-                      <select
-                        className="select"
+                      <FilterSelect
                         value={naikKe[selectedClass.id] || ''}
-                        onChange={(e) => setNaikKe((m) => ({ ...m, [selectedClass.id]: e.target.value }))}
-                      >
-                        <option value="">— kelas tujuan —</option>
-                        {rows
+                        onChange={(v) => setNaikKe((m) => ({ ...m, [selectedClass.id]: v }))}
+                        placeholder="— kelas tujuan —"
+                        minWidth={180}
+                        options={sortedClasses
                           .filter((k) => k.id !== selectedClass.id)
-                          .map((k) => (
-                            <option key={k.id} value={k.id}>
-                              {k.name} ({k.jenjang})
-                            </option>
-                          ))}
-                      </select>
+                          .map((k) => ({ value: k.id, label: `${k.name} (${k.jenjang})` }))}
+                      />
                       <button type="button" className="btn" onClick={() => void naikkanSemua(selectedClass.id)} disabled={busy}>
                         {busy ? 'Memindah…' : 'Naikkan semua'}
                       </button>

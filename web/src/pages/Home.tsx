@@ -4,6 +4,7 @@ import type { Tab } from '../AppShell';
 import { Icons } from '../AppShell';
 import { GamifQuickView } from '../components/GamifQuickView';
 import { PhotoCropModal } from '../components/PhotoCropModal';
+import { FilterSelect } from '../components/FilterSelect';
 import defaultPhoto from '../assets/profile.jpg';
 
 type AttemptRow = { id: string; score: number | null; status: string; submitted_at: string | null; package_id: string | null };
@@ -201,16 +202,13 @@ function AbilityAnalysis({
       <div className="card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
           <h3 className="card-title" style={{ margin: 0 }}>Analisis Kemampuan</h3>
-          <select
-            className="analysis-select"
+          <FilterSelect
             value={tab}
-            onChange={(e) => setTab(e.target.value as AnalysisTab)}
-            aria-label="Filter analisis"
-          >
-            {TABS.map((t) => (
-              <option key={t.id} value={t.id}>{t.label}</option>
-            ))}
-          </select>
+            onChange={(v) => setTab(v as AnalysisTab)}
+            placeholder="Pilih filter"
+            minWidth={160}
+            options={TABS.map((t) => ({ value: t.id, label: t.label }))}
+          />
         </div>
 
         {!hasData ? (
@@ -510,7 +508,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       .slice(0, 7)
       .reverse();
     const data = last7.map((a) => Number(a.score) || 0);
-    const labels = last7.map((a) => new Date(a.submitted_at!).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
+    const labels = last7.map((a) => new Date(a.submitted_at!).toLocaleDateString('id-ID', { weekday: 'short' }));
     return { data, labels };
   }, [attempts]);
 

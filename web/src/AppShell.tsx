@@ -14,6 +14,15 @@ import messages from './assets/icon/messages.png';
 import messagesActive from './assets/icon/messages (1).png';
 import ranking from './assets/icon/ranking-star (2).png';
 import rankingActive from './assets/icon/ranking-star (3).png';
+import soal from './assets/icon/soal.png';
+import soalActive from './assets/icon/soal (1).png';
+import paket from './assets/icon/paket.png';
+import paketActive from './assets/icon/paket(1).png';
+import admin from './assets/icon/admin.png';
+import adminActive from './assets/icon/admin (1).png';
+import laporan from './assets/icon/laporan.png';
+import laporanActive from './assets/icon/laporan (1).png';
+import download from './assets/icon/download.png';
 
 export type Tab =
   | 'beranda'
@@ -62,20 +71,10 @@ const Icons = {
     <img className="icon-img" src={filled ? messagesActive : messages} alt="" width={20} height={20} />
   ),
   soal: (filled: boolean) => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-      <path d="M12 6v4" />
-      <path d="M12 14h.01" />
-    </svg>
+    <img className="icon-img" src={filled ? soalActive : soal} alt="" width={20} height={20} />
   ),
   paket: (filled: boolean) => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16.5 9.4l-9-5.19" />
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-      <line x1="12" y1="22.08" x2="12" y2="12" />
-    </svg>
+    <img className="icon-img" src={filled ? paketActive : paket} alt="" width={20} height={20} />
   ),
   kelas: (filled: boolean) => (
     <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -91,17 +90,10 @@ const Icons = {
     </svg>
   ),
   laporan: (filled: boolean) => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
-    </svg>
+    <img className="icon-img" src={filled ? laporanActive : laporan} alt="" width={20} height={20} />
   ),
   admin: (filled: boolean) => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
+    <img className="icon-img" src={filled ? adminActive : admin} alt="" width={20} height={20} />
   ),
   profil: (filled: boolean) => (
     <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -172,6 +164,9 @@ const Icons = {
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   ),
+  download: () => (
+    <img className="icon-img" src={download} alt="" width={20} height={20} />
+  ),
 };
 
 export { Icons };
@@ -187,8 +182,29 @@ type NotifRow = {
   created_at?: string;
 };
 
-function timeAgo(iso: string | undefined): string {
-  if (!iso) return '';
+function ClockWidget() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  const weekday = now.toLocaleDateString('id-ID', { weekday: 'long' });
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yy = String(now.getFullYear()).slice(-2);
+  const date = `${weekday}, ${dd}/${mm}/${yy}`;
+  const time = [now.getHours(), now.getMinutes(), now.getSeconds()]
+    .map((n) => String(n).padStart(2, '0'))
+    .join(':');
+  return (
+    <div className="header-clock">
+      <span className="header-clock-date">{date}</span>
+      <span className="header-clock-time">{time}</span>
+    </div>
+  );
+}
+
+function timeAgo(iso: string | undefined): string {  if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
   const mins = Math.floor((Date.now() - d.getTime()) / 60000);
@@ -380,38 +396,38 @@ export function AppShell({
      <div className={`shell ${showSidebar ? 'shell-desktop' : 'shell-mobile'}`}>
         {showSidebar ? (
          <>
-            <aside className="shell-sidebar">
-              <div className="shell-sidebar-header">
-                <button type="button" className="brand brand-btn" title="Beranda" onClick={() => onTab('beranda')}>
-                  <img className="brand-icon" src={AppIcon} alt="SMART-TKA" />
-                  <span>SMART-TKA</span>
-                </button>
-              </div>
-             <nav className="shell-nav">
-               {items.map((i) => {
-                 const isActive = tab === i.id;
-                 return (
-                   <button
-                     key={i.id}
-                     className={isActive ? 'on' : ''}
-                     type="button"
-                     onClick={() => onTab(i.id)}
-                     title={i.label}
-                   >
-                     <span className="nav-icon">{getIcon(i.id, isActive)}</span>
-                     <span className="nav-label">{i.label}</span>
-                   </button>
-                 );
-              })}
-            </nav>
-             <button type="button" className="sidebar-avatar" title="Profil" onClick={() => onTab('profil')}>
-               <img src={profile.photo_url || defaultPhoto} alt={name} className="sidebar-avatar-img" />
-             </button>
-           </aside>
-           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-             <header className="shell-header">
-               <div className="shell-header-right">
-                 {headerExtra}
+<aside className="shell-sidebar">
+              <nav className="shell-nav">
+                {items.map((i) => {
+                  const isActive = tab === i.id;
+                  return (
+                    <button
+                      key={i.id}
+                      className={isActive ? 'on' : ''}
+                      type="button"
+                      onClick={() => onTab(i.id)}
+                      title={i.label}
+                    >
+                      <span className="nav-icon">{getIcon(i.id, isActive)}</span>
+                    </button>
+                  );
+               })}
+             </nav>
+              <button type="button" className="sidebar-avatar" title="Profil" onClick={() => onTab('profil')}>
+                <img src={profile.photo_url || defaultPhoto} alt={name} className="sidebar-avatar-img" />
+              </button>
+            </aside>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <header className="shell-header">
+                <div className="shell-header-left">
+                  <button type="button" className="brand brand-btn" title="Beranda" onClick={() => onTab('beranda')}>
+                    <img className="brand-icon" src={AppIcon} alt="SMART-TKA" />
+                    <span>SMART-TKA</span>
+                  </button>
+                </div>
+                <div className="shell-header-right">
+                  <ClockWidget />
+                  {headerExtra}
                  <div className="header-action-group">
                    <button
                      type="button"
