@@ -233,6 +233,14 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
       });
     };
 
+    // Beforeunload warning - prevent accidental navigation away during exam
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      const msg = 'Ujian sedang berlangsung. Yakin ingin keluar? Progres Anda bisa hilang.';
+      e.preventDefault();
+      e.returnValue = msg;
+      return msg;
+    };
+
     const persistTabLeaveCount = async (count: number) => {
       if (!attemptId || !studentId) return;
       try {
@@ -270,11 +278,13 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
     document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('blur', onBlur);
     document.addEventListener('fullscreenchange', onFullscreenChange);
+    window.addEventListener('beforeunload', onBeforeUnload);
 
     return () => {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('blur', onBlur);
       document.removeEventListener('fullscreenchange', onFullscreenChange);
+      window.removeEventListener('beforeunload', onBeforeUnload);
       
       // Exit fullscreen on cleanup
       if (document.fullscreenElement) {
