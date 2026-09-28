@@ -51,8 +51,8 @@ type ExamSchedule = {
 
 type Identity = { name: string; kelas: string; nisn: string; token: string };
 
-const CHEAT_THRESHOLD = 3;
-const CHEAT_WARNING_THRESHOLDS = [1, 2];
+const CHEAT_THRESHOLD = 5;
+const CHEAT_WARNING_THRESHOLDS = [1, 2, 3, 4];
 
 export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId: string | null; studentId?: string; onImmersiveChange?: (v: boolean) => void }) {
   const [pkgs, setPkgs] = useState<Pkg[]>([]);
