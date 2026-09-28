@@ -638,19 +638,19 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
     const pintas: { id: Tab; t: string; d: string; detail: string; icon: React.ReactNode }[] = [];
     if (isKepsek) {
       pintas.push(
-        { id: 'laporan', t: 'Laporan', d: 'Rekap & ekspor', detail: 'Pantau skor dan unduh CSV/PDF', icon: Icons.laporan(true) },
-        { id: 'kelas', t: 'Kelas', d: 'Lihat struktur', detail: 'Tinjau kelas dan keanggotaan siswa', icon: Icons.kelas(true) },
-        { id: 'pengumuman', t: 'Pengumuman', d: 'Informasi sekolah', detail: 'Kelola pengumuman untuk siswa', icon: Icons.pengumuman(true) },
+        { id: 'laporan', t: 'Laporan', d: 'Rekap & ekspor', detail: 'Pantau skor dan unduh CSV/PDF', icon: Icons.laporan() },
+        { id: 'kelas', t: 'Kelas', d: 'Lihat struktur', detail: 'Tinjau kelas dan keanggotaan siswa', icon: Icons.kelas() },
+        { id: 'pengumuman', t: 'Pengumuman', d: 'Informasi sekolah', detail: 'Kelola pengumuman untuk siswa', icon: Icons.pengumuman() },
       );
     } else {
       pintas.push(
-        { id: 'soal', t: 'Soal', d: 'Tulis atau draf AI', detail: 'Buat, edit, dan kelola soal TKA', icon: Icons.soal(true) },
-        { id: 'paket', t: 'Paket', d: 'Rakit latihan / ujian', detail: 'Rakit dan atur paket latihan UTK', icon: Icons.paket(true) },
-        { id: 'kelas', t: 'Kelas', d: 'Siswa, pindah, kenaikan', detail: 'Kelola anggota dan kenaikan kelas', icon: Icons.kelas(true) },
-        { id: 'laporan', t: 'Laporan', d: 'Skor & cetak PDF', detail: 'Lihat rekap skor dan ekspor PDF', icon: Icons.laporan(true) },
+        { id: 'soal', t: 'Soal', d: 'Tulis atau draf AI', detail: 'Buat, edit, dan kelola soal TKA', icon: Icons.soal() },
+        { id: 'paket', t: 'Paket', d: 'Rakit latihan / ujian', detail: 'Rakit dan atur paket latihan UTK', icon: Icons.paket() },
+        { id: 'kelas', t: 'Kelas', d: 'Siswa, pindah, kenaikan', detail: 'Kelola anggota dan kenaikan kelas', icon: Icons.kelas() },
+        { id: 'laporan', t: 'Laporan', d: 'Skor & cetak PDF', detail: 'Lihat rekap skor dan ekspor PDF', icon: Icons.laporan() },
       );
     }
-    if (isAdmin || isKepsek) pintas.push({ id: 'admin', t: 'Admin', d: 'Impor user & assignment', detail: 'Kelola pengguna dan assignment sekolah', icon: Icons.admin(true) });
+    if (isAdmin || isKepsek) pintas.push({ id: 'admin', t: 'Admin', d: 'Impor user & assignment', detail: 'Kelola pengguna dan assignment sekolah', icon: Icons.admin() });
     return (
       <div className="dashboard-page">
         <header className="page-header">
@@ -699,7 +699,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
               <img src={photoUrl} alt={name} className="avatar-img" />
             ) : (
               <div className="avatar-placeholder">
-                {Icons.profil(false)}
+                {Icons.profil()}
               </div>
             )}
             {photoLoading && <div className="avatar-overlay">Menyimpan…</div>}
@@ -796,10 +796,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         <div className="quick-actions-grid">
           <div className="quick-action-card quick-action-latihan" onClick={() => onTab('latihan')}>
             <div className="quick-action-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 6v6l4 2" />
-              </svg>
+              {Icons.latihan()}
             </div>
             <div className="quick-action-info">
               <h3>Latihan</h3>
@@ -809,12 +806,7 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
           </div>
           <div className="quick-action-card quick-action-simulasi" onClick={() => onTab('simulasi')}>
             <div className="quick-action-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                <polyline points="14 2 14 8 20 8" />
-                <path d="M12 18v-6" />
-                <path d="M9 15h6" />
-              </svg>
+              {Icons.simulasi()}
             </div>
             <div className="quick-action-info">
               <h3>Simulasi</h3>

@@ -51,6 +51,9 @@ type ExamSchedule = {
 
 type Identity = { name: string; kelas: string; nisn: string; token: string };
 
+const CHEAT_THRESHOLD = 3;
+const CHEAT_WARNING_THRESHOLDS = [1, 2];
+
 export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId: string | null; studentId?: string; onImmersiveChange?: (v: boolean) => void }) {
   const [pkgs, setPkgs] = useState<Pkg[]>([]);
   const [pkg, setPkg] = useState<Pkg | null>(null);
@@ -64,17 +67,20 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
   const [skor, setSkor] = useState<number | null>(null);
   const [listExpanded, setListExpanded] = useState(false);
   const [bookmarked, setBookmarked] = useState<Set<string>>(new Set());
-  const [cheatCount, setCheatCount] = useState(0);
-  const [showCheatWarning, setShowCheatWarning] = useState(false);
-  const [cheatMessage, setCheatMessage] = useState('');
   const [subTab, setSubTab] = useState<'latihan' | 'ujian'>('latihan');
-  const fsEnteringRef = useRef(false);
+  const runStartedAtRef = useRef<number>(0);
+  const timerArmedRef = useRef(false);
   const [schedules, setSchedules] = useState<ExamSchedule[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamSchedule | null>(null);
   const [identity, setIdentity] = useState<Identity>({ name: '', kelas: '', nisn: '', token: '' });
   const [attemptId, setAttemptId] = useState<string | null>(null);
-  const [endsAt, setEndsAt] = useState<number | null>(null);
   const [starting, setStarting] = useState(false);
+
+  // Anti-cheat / fullscreen state
+  const [tabLeaveCount, setTabLeaveCount] = useState(0);
+  const [showCheatWarning, setShowCheatWarning] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const cheatWarnedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     onImmersiveChange?.(phase === 'run');
@@ -120,10 +126,19 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (phase !== 'run' || !pkg) return;
+    // Arm timer only after sisa is properly initialized (> 10 seconds)
+    if (!timerArmedRef.current) {
+      timerArmedRef.current = true;
+      return;
+    }
     const t = setInterval(() => {
       setSisa((s) => {
         if (s <= 1) {
           clearInterval(t);
+          // Guard: prevent auto-submit within first 5 seconds of arming
+          if (Date.now() - runStartedAtRef.current < 5000) {
+            return Math.max(1, s);
+          }
           void kumpulkan();
           return 0;
         }
@@ -134,131 +149,156 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
   }, [phase, pkg]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
-  /* Anti-cheat: fullscreen + tab-exit detection */
-  /* eslint-disable react-hooks/exhaustive-deps */
+/* Reset timer arm when leaving run phase */
   useEffect(() => {
-    if (phase !== 'run') return;
+    if (phase !== 'run') {
+      timerArmedRef.current = false;
+    }
+  }, [phase]);
 
-    async function enterFullscreen() {
-      try {
-        const doc = window.document;
-        const docEl = doc.documentElement;
-        fsEnteringRef.current = true;
-        const onFsChange = () => {
-          fsEnteringRef.current = false;
-          doc.removeEventListener('fullscreenchange', onFsChange);
-        };
-        doc.addEventListener('fullscreenchange', onFsChange, { once: false });
-        const fs = docEl.requestFullscreen || (docEl as any).webkitRequestFullscreen || (doc as any).msRequestFullscreen;
-        if (fs) await fs.call(docEl);
-      } catch {
-        /* fullscreen may be blocked by browser policy */
-        fsEnteringRef.current = false;
+  /* Fullscreen & Anti-cheat for run phase */
+  useEffect(() => {
+    if (phase !== 'run') {
+      // Exit fullscreen when leaving run phase
+      if (isFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
       }
-    }
-    void enterFullscreen();
-
-    function handleExit() {
-      const exitFs = () => {
-        try { (window.document as any).exitFullscreen?.(); } catch { /* noop */ }
-        try { (window.document as any).webkitCancelFullScreen?.(); } catch { /* noop */ }
-      };
-      exitFs();
-
-      document.body.style.userSelect = 'normal';
-      document.onselectstart = null;
-      document.oncontextmenu = null;
-      document.onkeydown = null;
+      setIsFullscreen(false);
+      setTabLeaveCount(0);
+      cheatWarnedRef.current.clear();
+      setShowCheatWarning(false);
+      return;
     }
 
-    function handleVisibilityChange() {
-      if (document.hidden) {
-        setCheatCount((c) => {
-          const next = c + 1;
-          if (next >= 3) {
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-            void kumpulkan();
-          } else {
-            setCheatMessage('Anda keluar dari tab simulasi. SISA 2x lagi akan otomatis mengirimkan jawaban.');
-            setShowCheatWarning(true);
-          }
-          return next;
-        });
-      }
-    }
+    // Detect mobile (Android WebView doesn't support fullscreen API reliably)
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isAndroidWebView = isMobile && /wv|Android.*Version/i.test(navigator.userAgent);
 
-    function handleBlur() {
-      if (fsEnteringRef.current) {
-        fsEnteringRef.current = false;
+    // Request fullscreen on desktop / non-WebView mobile
+    const enterFullscreen = async () => {
+      if (isAndroidWebView) {
+        // Android WebView: skip fullscreen, just warn on visibility change
         return;
       }
-      setCheatCount((c) => {
-        const next = c + 1;
-        if (next >= 3) {
-          void kumpulkan();
-        } else {
-          setCheatMessage('Jendela simulasi kehilangan fokus. Sisa 2x lagi akan otomatis mengirimkan jawaban.');
+      try {
+        await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+        setIsFullscreen(true);
+      } catch (e) {
+        console.warn('[Simulasi] Fullscreen request failed:', e);
+        // Don't block exam if fullscreen fails
+        setIsFullscreen(false);
+      }
+    };
+
+    // Handle visibility change (tab switch, minimize, etc.)
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        handleTabLeave();
+      }
+    };
+
+    // Handle blur (window focus lost)
+    const onBlur = () => {
+      if (!isAndroidWebView) {
+        handleTabLeave();
+      }
+    };
+
+    // Handle fullscreen change (user exited fullscreen manually)
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        handleTabLeave();
+      } else if (document.fullscreenElement) {
+        setIsFullscreen(true);
+      }
+    };
+
+    const handleTabLeave = () => {
+      setTabLeaveCount((prev) => {
+        const next = prev + 1;
+        persistTabLeaveCount(next);
+        
+        // Show warning at thresholds 1, 2
+        if (CHEAT_WARNING_THRESHOLDS.includes(next) && !cheatWarnedRef.current.has(next)) {
+          cheatWarnedRef.current.add(next);
           setShowCheatWarning(true);
         }
+        
+        // Auto-submit at threshold 3
+        if (next >= CHEAT_THRESHOLD) {
+          autoSubmitForCheating();
+        }
+        
         return next;
       });
-    }
+    };
 
-    function handleContextMenu(e: MouseEvent) {
-      e.preventDefault();
-      return false;
-    }
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.ctrlKey && (e.key === 't' || e.key === 'r' || e.key === 'n' || e.key === 'w' || e.key === 'l')) {
-        e.preventDefault();
-        e.stopPropagation();
-        setCheatMessage('Shortcut dilarang saat simulasi berlangsung.');
-        setShowCheatWarning(true);
-        return false;
+    const persistTabLeaveCount = async (count: number) => {
+      if (!attemptId || !studentId) return;
+      try {
+        await insforge.database
+          .from('attempts')
+          .update({ tab_leave_count: count })
+          .eq('id', attemptId);
+      } catch (e) {
+        console.warn('[Simulasi] Failed to persist tab_leave_count:', e);
       }
-    }
+    };
 
-    document.body.style.userSelect = 'none';
-    document.onselectstart = () => false;
-    document.oncontextmenu = handleContextMenu;
-    document.onkeydown = handleKeyDown;
-    function handleBeforeUnload(e: BeforeUnloadEvent) {
-      e.preventDefault();
-      e.returnValue = '';
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    const autoSubmitForCheating = async () => {
+      if (!attemptId || !studentId) return;
+      try {
+        await insforge.database
+          .from('attempts')
+          .update({ 
+            status: 'submitted', 
+            submitted_at: new Date().toISOString(),
+            tab_leave_count: tabLeaveCount + 1 
+          })
+          .eq('id', attemptId);
+      } catch (e) {
+        console.warn('[Simulasi] Auto-submit failed:', e);
+      }
+      setShowCheatWarning(false);
+      setPhase('hasil');
+    };
+
+    // Enter fullscreen immediately
+    enterFullscreen();
+
+    // Attach listeners
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
 
     return () => {
-      handleExit();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      
+      // Exit fullscreen on cleanup
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
     };
-  }, [phase]);
-  /* eslint-enable react-hooks/exhaustive-deps */
-
-  useEffect(() => {
-    if (phase === 'run' && pkg) {
-      sessionStorage.setItem(`sim-${pkg.id}-draft`, JSON.stringify({ ans, i, endsAt }));
-    }
-  }, [ans, i, phase, pkg, endsAt]);
-
+  }, [phase, attemptId, studentId, isFullscreen, tabLeaveCount]);
 
   async function doMulai(p: Pkg, exam?: ExamSchedule) {
     setAns({});
     setSkor(null);
     let ids: string[] = [];
+    let payloadItems: DbItem[] | null = null;
     let attemptIdNew: string | null = null;
     let endsAtMs: number | null = null;
+
+    if (p.id) sessionStorage.removeItem(`sim-${p.id}-draft`);
 
     if (p.use_ai_selection) {
       const token = identity.token || `${studentId || 'anon'}_${p.id}`;
       const { data, error } = await insforge.database.rpc('smart_attempt_start', {
         p_package_id: p.id,
         p_token: token,
+        p_student_id: studentId,
       });
       if (error) {
         // One-active-attempt deadlock: a previous session is still in_progress.
@@ -283,7 +323,8 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
           setErr(friendlyAttemptError(res.error));
           return;
         }
-        ids = ((res.items || []) as DbItem[]).map((x) => x.id);
+        payloadItems = (res.items || []) as DbItem[];
+        ids = payloadItems.map((x) => x.id);
         attemptIdNew = res.attempt_id || null;
         endsAtMs = res.ends_at ? Date.parse(res.ends_at) : null;
         if (ids.length === 0) {
@@ -303,16 +344,40 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
         return;
       }
     }
-    const { data: its, error: e2 } = await insforge.database
-      .from('items')
-      .select('id, item_type, mapel, materi, stem, stimulus, choices, correct_key, rationale, jenjang, difficulty')
-      .in('id', ids);
-    if (e2) {
-      setErr(e2.message);
+
+    // Load full item fields. For AI packages the RPC already returns items, so the
+    // re-fetch below is only a best-effort enrichment: school-scoped items can be
+    // blocked by RLS, and in that case we fall back to the RPC payload so the
+    // student can still start the session instead of being stuck on the list page.
+    let ordered: DbItem[];
+    if (payloadItems && payloadItems.length > 0) {
+      try {
+        const { data: its } = await insforge.database
+          .from('items')
+          .select('id, item_type, mapel, materi, stem, stimulus, choices, correct_key, rationale, jenjang, difficulty')
+          .in('id', ids);
+        const map = new Map(((its || []) as DbItem[]).map((x) => [x.id, x]));
+        ordered = ids.map((id) => map.get(id)).filter(Boolean) as DbItem[];
+        if (ordered.length < payloadItems.length) ordered = payloadItems;
+      } catch {
+        ordered = payloadItems;
+      }
+    } else {
+      const { data: its, error: e2 } = await insforge.database
+        .from('items')
+        .select('id, item_type, mapel, materi, stem, stimulus, choices, correct_key, rationale, jenjang, difficulty')
+        .in('id', ids);
+      if (e2) {
+        setErr(e2.message);
+        return;
+      }
+      const map = new Map(((its || []) as DbItem[]).map((x) => [x.id, x]));
+      ordered = ids.map((id) => map.get(id)).filter(Boolean) as DbItem[];
+    }
+    if (ordered.length === 0) {
+      setErr('Paket belum berisi soal.');
       return;
     }
-    const map = new Map(((its || []) as DbItem[]).map((x) => [x.id, x]));
-    let ordered = ids.map((id) => map.get(id)).filter(Boolean) as DbItem[];
     // Deterministic shuffle/selection so resume reproduces the exact same layout (+ answers map by item_id).
     const seed = `${studentId ?? 'anon'}_${p.id}`;
     if (p.use_ai_selection && p.jumlah_soal_soal && p.jumlah_soal_soal > 0 && p.jumlah_soal_soal < ordered.length) {
@@ -340,7 +405,6 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
     setPkg(p);
     setI(0);
     setAttemptId(attemptIdNew || attemptId);
-    setEndsAt(endsAtMs);
     setSisa(
       endsAtMs
         ? Math.round(Math.max(0, endsAtMs - Date.now()) / 1000)
@@ -356,6 +420,7 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
     });
     setBookmarked(saved);
     setListExpanded(false);
+    runStartedAtRef.current = Date.now();
     setPhase('run');
     const draft = sessionStorage.getItem(`sim-${p.id}-draft`);
     if (draft) {
@@ -363,8 +428,7 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
         const d = JSON.parse(draft) as { ans?: Record<string, Ans>; i?: number; endsAt?: number };
         if (d.ans) setAns(d.ans);
         if (typeof d.i === 'number' && d.i > 0 && d.i < shuffled.length) setI(d.i);
-        if (typeof d.endsAt === 'number') {
-          setEndsAt(d.endsAt);
+        if (typeof d.endsAt === 'number' && d.endsAt > Date.now()) {
           setSisa(Math.round(Math.max(0, d.endsAt - Date.now()) / 1000));
         }
       } catch { /* noop */ }
@@ -526,16 +590,16 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
 
   async function kumpulkan() {
     if (phase === 'hasil') return;
-    try { (document as any).exitFullscreen?.(); } catch { /* noop */ }
+    // Guard: prevent accidental early submit (min 5 seconds after start, or attemptId exists)
+    if (Date.now() - runStartedAtRef.current < 5000 && !attemptId) return;
+    // Guard: prevent submit if items not loaded
+    if (!pkg || items.length === 0) return;
+
     document.body.style.userSelect = 'normal';
     document.onselectstart = null;
     document.oncontextmenu = null;
     document.onkeydown = null;
 
-    if (!pkg || items.length === 0) {
-      setPhase('hasil');
-      return;
-    }
     const benar = items.filter((it) => ans[it.id]?.correct).length;
     const nilai = Math.round((benar / items.length) * 10000) / 100;
     setSkor(nilai);
@@ -581,15 +645,10 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
 
     const xpEarned = Math.round(nilai * 2) + 20;
     if (xpEarned > 0) {
-      const showXp = (window as any).__showXpReward;
-      if (showXp) {
-        showXp(xpEarned, 'Simulasi');
-      } else {
-        try {
-          await insforge.database.rpc('award_xp', { p_profile: studentId, p_xp: xpEarned });
-        } catch {
-          /* XP award best-effort */
-        }
+      try {
+        await insforge.database.rpc('award_xp', { p_profile: studentId, p_xp: xpEarned });
+      } catch {
+        /* XP award best-effort */
       }
     }
   }
@@ -834,6 +893,16 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div className="timer-lab" style={{ fontSize: 10 }}>Waktu</div>
           <div className="timer">{mm}:{ss}</div>
+          {tabLeaveCount > 0 && (
+            <div className="cheat-indicator" style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '4px 8px', borderRadius: 999,
+              background: 'var(--warn-bg)', color: 'var(--warn)',
+              fontSize: 11, fontWeight: 600, fontFamily: 'monospace'
+            }}>
+              ⚠ {tabLeaveCount}/{CHEAT_THRESHOLD}
+            </div>
+          )}
           <button
             type="button"
             className="header-icon-btn"
@@ -841,7 +910,7 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
             onClick={() => toggleBookmarkItem(i)}
             style={{ padding: 4 }}
           >
-            {Icons.bookmark(bookmarked.has(item?.id))}
+            {Icons.bookmark()}
           </button>
         </div>
       </div>
@@ -854,6 +923,31 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
       {err && (
         <div className="banner banner-warn" style={{ marginBottom: 16 }}>
           <p className="banner-text">{err}</p>
+        </div>
+      )}
+
+      {/* Cheat warning modal */}
+      {showCheatWarning && (
+        <div className="modal-overlay" style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div className="card" style={{ maxWidth: 400, width: '90%', textAlign: 'center', padding: 24 }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+            <h3 style={{ margin: '0 0 12px', fontSize: 20 }}>Peringatan Anti-Cheat</h3>
+            <p style={{ margin: '0 0 20px', color: 'var(--muted)', lineHeight: 1.5 }}>
+              Anda telah keluar dari layar ujian <strong>{tabLeaveCount}x</strong>.<br/>
+              Keluar lagi <strong>{CHEAT_THRESHOLD - tabLeaveCount}x</strong> akan mengakhiri ujian secara otomatis.
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setShowCheatWarning(false)}
+              style={{ width: '100%' }}
+            >
+              Kembali ke Ujian
+            </button>
+          </div>
         </div>
       )}
 
@@ -914,8 +1008,8 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
           />
         )}
         <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'space-between', alignItems: 'center' }}>
-          <button className="btn btn-ghost" type="button" disabled={i === 0} onClick={() => setI((x) => x - 1)}>
-            ← Sebelumnya
+          <button type="button" className="q-nav-btn" disabled={i === 0} onClick={() => setI((x) => x - 1)} aria-label="Soal sebelumnya" title="Soal sebelumnya">
+            ‹
           </button>
           <button
             type="button"
@@ -928,40 +1022,22 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
                 return next;
               });
             }}
-            title={doubted.has(item?.id) ? 'Hapus ragu-ragu' : 'Tandai ragu-ragu'}
+            title={doubted.has(item?.id) ? 'Hapus ragu' : 'Tandai ragu'}
           >
-            {doubted.has(item?.id) ? '✕ Ragu' : 'Ragu-ragu'}
+            {doubted.has(item?.id) ? '✕ Ragu' : 'Ragu'}
           </button>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {i < items.length - 1 ? (
-              <button className="btn btn-primary" type="button" onClick={() => setI((x) => x + 1)}>
-                Selanjutnya →
-              </button>
-            ) : (
-              <button className="btn btn-primary" type="button" onClick={() => void kumpulkan()}>
-                Kumpulkan
-              </button>
+          {i < items.length - 1 ? (
+            <button type="button" className="q-nav-btn" onClick={() => setI((x) => x + 1)} aria-label="Soal berikutnya" title="Soal berikutnya">
+              ›
+            </button>
+          ) : (
+            <button className="btn btn-primary" type="button" onClick={() => void kumpulkan()}>
+              Kumpulkan
+</button>
             )}
           </div>
-        </div>
-      </section>
-    </div>
-    {showCheatWarning && (
-      <div className="cheat-modal-backdrop" onClick={() => setShowCheatWarning(false)}>
-        <div className="cheat-modal" onClick={(e) => e.stopPropagation()}>
-          <h3 className="cheat-modal-title">⚠ Peringatan Penting</h3>
-          <p className="cheat-modal-text">{cheatMessage}</p>
-          <p className="cheat-modal-sub">
-            {cheatCount >= 3
-              ? 'Simulasi otomatis dikumpulkan. Jangan keluar dari tab selama ujian.'
-              : `Pelanggaran: ${cheatCount} dari 3. Keluar lagi akan mengirimkan otomatis.`}
-          </p>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowCheatWarning(false)}>
-            Kembali ke simulasi
-          </button>
-        </div>
+        </section>
       </div>
-    )}
-      </>
+    </>
   );
 }

@@ -375,7 +375,7 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
 
     const p = await insforge.database.from('packages').select('id, title, mapel, kind');
     if (!p.error) setPkgs((p.data || []) as Pkg[]);
-    const pr = await insforge.database.from('profiles').select('id, full_name').eq('role', 'siswa');
+    const pr = await insforge.database.from('profiles').select('id, full_name');
     if (!pr.error) setProfs((pr.data || []) as Prof[]);
     const c = await insforge.database.from('classes').select('id, name');
     if (!c.error) setClasses((c.data || []) as Cls[]);
@@ -390,11 +390,11 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   }, []);
 
   const pkgMap = useMemo(() => new Map(pkgs.map((p) => [p.id, p])), [pkgs]);
-  const namaMap = useMemo(() => new Map(profs.map((p) => [p.id, p.full_name || p.id.slice(0, 8)])), [profs]);
+  const namaMap = useMemo(() => new Map(profs.map((p) => [p.id, p.full_name])), [profs]);
   const kelasSiswa = useMemo(() => {
     const m = new Map<string, string>();
     const cn = new Map(classes.map((c) => [c.id, c.name]));
-    for (const r of cs) m.set(r.profile_id, cn.get(r.class_id) || '');
+    for (const r of cs) m.set(r.profile_id, cn.get(r.class_id) || 'Belum di kelas');
     return m;
   }, [cs, classes]);
 
@@ -466,8 +466,8 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
       const isSubmitted = r.status === 'submitted';
       const row = [
         idx + 1,
-        namaMap.get(r.student_id) || r.student_id.slice(0, 8),
-        kelasSiswa.get(r.student_id) || '—',
+        namaMap.get(r.student_id) ?? r.student_id,
+        kelasSiswa.get(r.student_id) || 'Belum di kelas',
         title,
         mapel,
         isSubmitted ? String(r.score ?? '—') : '—',
@@ -511,8 +511,8 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
   const rowValue = useCallback((r: Attempt, k: SortKey): string | number => {
     const p = r.package_id ? pkgMap.get(r.package_id) : null;
     switch (k) {
-      case 'siswa': return namaMap.get(r.student_id) || r.student_id.slice(0, 8);
-      case 'kelas': return kelasSiswa.get(r.student_id) || '';
+      case 'siswa': return namaMap.get(r.student_id) ?? r.student_id;
+      case 'kelas': return kelasSiswa.get(r.student_id) || 'Belum di kelas';
       case 'paket': return p?.title || (r.package_id ? `Paket (${r.package_id.slice(0, 8)})` : 'Latihan bebas');
       case 'mapel': return p?.mapel || '—';
       case 'skor': return Number(r.score || 0);
@@ -660,8 +660,8 @@ function LaporanGuru({ me, onTab: _onTab }: { me: AppProfile; onTab?: (t: Tab) =
                   return (
                     <tr key={r.id}>
                       {isAdmin && <td><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} /></td>}
-                      <td>{namaMap.get(r.student_id) || r.student_id.slice(0, 8)}</td>
-                      <td>{kelasSiswa.get(r.student_id) || '—'}</td>
+                      <td>{namaMap.get(r.student_id) ?? r.student_id}</td>
+                      <td>{kelasSiswa.get(r.student_id) || 'Belum di kelas'}</td>
                       <td>{p?.title || (r.package_id ? r.package_id.slice(0, 8) : 'Latihan bebas')}</td>
                       <td>{p?.mapel || '—'}</td>
                       <td><strong>{r.score ?? '—'}</strong></td>

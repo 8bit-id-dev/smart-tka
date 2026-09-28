@@ -4,10 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.smarttka.app',
   appName: 'Smart TKA',
   webDir: 'dist',
-  server: {
-    url: 'https://smart-tka-two.vercel.app',
-    cleartext: false
-  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 1000,

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
 import { Icons } from '../AppShell';
 import { PhotoCropModal } from '../components/PhotoCropModal';
-import { GallerySyncCard } from '../components/GallerySyncCard';
 import defaultPhoto from '../assets/profile.jpg';
 
 const JENJANG_LABEL: Record<string, string> = {
@@ -167,7 +166,7 @@ export function Profil({
                 border: photoUrl ? '2px solid var(--accent-soft)' : '1px solid var(--card-border)',
                 cursor: 'pointer', userSelect: 'none',
               }} onClick={() => setPhotoMenuOpen(true)}>
-              {photoUrl ? <img src={photoUrl} alt="Foto profil" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', borderRadius: '30%' }} /> : Icons.profil(false)}
+              {photoUrl ? <img src={photoUrl} alt="Foto profil" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', borderRadius: '30%' }} /> : Icons.profil()}
             </div>
             {photoErr && <p className="legal" style={{ color: '#f85149', marginTop: 4 }}>{photoErr}</p>}
             {photoMenuOpen && (
@@ -250,8 +249,6 @@ export function Profil({
               {msg && <p className="legal" style={{ marginTop: 8 }}>{msg}</p>}
             </div>
           )}
-
-          {profile.role === 'siswa' && <GallerySyncCard />}
 
           <div className="card">
             <h3 className="card-title" style={{ marginBottom: 12 }}>Keluar</h3>

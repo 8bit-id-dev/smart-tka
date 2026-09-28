@@ -1,1 +1,3 @@
-email,password,nama,role,jenjang,kode_kelas
+nisn,nama,role,jenjang,kode_kelas
+1234567890,Andi Saputra,siswa,sma,XII-IPA-1
+0987654321,Siti Nurhaliza,siswa,sma,XII-IPA-1

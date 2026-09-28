@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { assignSiswaKeKelas, cariKelasByKode } from '../lib/kelas';
 import { adminCreateAuthUser, insforge, summarizeAuthError, type AppProfile } from '../lib/insforge';
-import { DirectoryGalleryAdmin } from './DirectoryGalleryAdmin';
-import { GalleryCloudViewer } from '../components/GalleryCloudViewer';
 import { FilterSelect } from '../components/FilterSelect';
 
 type UserRow = AppProfile;
@@ -14,6 +12,7 @@ type CS = { class_id: string; profile_id: string };
 type MapelRow = { id: string; name: string };
 type CsvRow = {
   email: string;
+  nisn: string;
   password: string;
   nama: string;
   role: string;
@@ -79,7 +78,6 @@ export function Admin({ me }: { me: AppProfile }) {
   const [mapelList, setMapelList] = useState<MapelRow[]>([]);
   const [openRole, setOpenRole] = useState<Record<string, boolean>>({});
   const [openKelas, setOpenKelas] = useState<Record<string, boolean>>({});
-  const [adminTab, setAdminTab] = useState<'kelola' | 'galeri'>('kelola');
   const [hapusTarget, setHapusTarget] = useState<UserRow | null>(null);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState('');
@@ -306,13 +304,16 @@ export function Admin({ me }: { me: AppProfile }) {
     }
     const { data: prof, error } = await insforge.database
       .from('profiles')
-      .insert({
-        user_id: created.id,
-        full_name: newName.trim() || newEmail.trim(),
-        role: newRole,
-        school_id: me.school_id,
-        jenjang: newJenjang,
-      })
+      .upsert(
+        {
+          user_id: created.id,
+          full_name: newName.trim() || newEmail.trim(),
+          role: newRole,
+          school_id: me.school_id,
+          jenjang: newJenjang,
+        },
+        { onConflict: 'user_id' }
+      )
       .select('id');
     if (error) {
       setErr('Akun login terbuat, profil gagal: ' + error.message + ' · Auth id: ' + created.id);
@@ -389,14 +390,20 @@ export function Admin({ me }: { me: AppProfile }) {
     const sep = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ';' : ',';
     const head = splitCsvLine(lines[0], sep).map(normHead);
     const emailAliases = ['email', 'e-mail', 'mail', 'alamat_email', 'surel'];
+    const nisnAliases = ['nisn', 'nis', 'username', 'no_induk', 'nomor_induk', 'id_siswa'];
     const hasEmailHead = head.some((h) => emailAliases.includes(h));
+    const hasNisnHead = head.some((h) => nisnAliases.includes(h));
     const rows = lines.slice(1).map((line) => {
       const c = splitCsvLine(line, sep);
-      let email = pickCol(head, c, emailAliases);
+      const nisn = (pickCol(head, c, nisnAliases) || '').trim();
+      let email = (pickCol(head, c, emailAliases) || '').trim();
       if (!email) {
         const found = c.find((x) => x.includes('@'));
-        if (found) email = found;
+        if (found) email = found.trim();
       }
+      if (!email && nisn) email = `${nisn}@smaga.id`;
+      const rawPassword = (pickCol(head, c, ['password', 'sandi', 'kata_sandi']) || '').trim();
+      const password = rawPassword || nisn || 'Siswa1234';
       let role = (pickCol(head, c, ['role', 'peran', 'jabatan']) || 'siswa').toLowerCase();
       if (role === 'orangtua' || role === 'ortu' || role === 'wali') role = 'orang_tua';
       if (role === 'kepala_sekolah' || role === 'kepala') role = 'kepsek';
@@ -409,17 +416,18 @@ export function Admin({ me }: { me: AppProfile }) {
       else if (jenjang.includes('smp') || jenjang.includes('mts')) jenjang = 'smp';
       return {
         email: email.trim(),
-        password: pickCol(head, c, ['password', 'sandi', 'kata_sandi']) || 'Siswa1234',
-        nama: pickCol(head, c, ['nama', 'name', 'nama_lengkap', 'full_name']) || '',
+        nisn,
+        password: password.trim(),
+        nama: (pickCol(head, c, ['nama', 'name', 'nama_lengkap', 'full_name']) || '').trim(),
         role: (['siswa', 'orang_tua', 'guru', 'admin', 'kepsek'] as string[]).includes(role) ? role : 'siswa',
         jenjang,
-        kode_kelas: pickCol(head, c, ['kode_kelas', 'kelas', 'kode', 'invite_code', 'kodekelas']),
+        kode_kelas: (pickCol(head, c, ['kode_kelas', 'kelas', 'kode', 'invite_code', 'kodekelas']) || '').trim(),
       };
     });
-    if (!hasEmailHead && !rows.some((r) => r.email.includes('@'))) {
+    if (!hasEmailHead && !hasNisnHead && !rows.some((r) => r.email.includes('@'))) {
       return {
         error:
-          'Kolom email tidak ketemu. Header baris 1 harus: email,password,nama,role,jenjang,kode_kelas. Header Anda: ' +
+          'Kolom nisn (atau email) tidak ketemu. Header baris 1 harus: nisn,nama,role,jenjang,kode_kelas. Header Anda: ' +
           head.join(' | '),
         rows: [],
       };
@@ -434,27 +442,18 @@ export function Admin({ me }: { me: AppProfile }) {
       name: row.nama || row.email,
     });
     if ('error' in created) return `Auth ${row.email}: ${summarizeAuthError(created.error)}`;
-    const existing = await insforge.database.from('profiles').select('id').eq('user_id', created.id);
-    const already = (existing.data || []) as { id: string }[];
-    if (already[0]?.id) {
-      const pid = already[0].id;
-      if (row.kode_kelas) {
-        const cls = cariKelasByKode(classes, row.kode_kelas);
-        if (!cls) return `Kelas ${row.email}: kode_kelas "${row.kode_kelas}" tidak ketemu`;
-        const add = await assignSiswaKeKelas(pid, cls.id);
-        if (add.error) return `Kelas ${row.email}: ${add.error.message}`;
-      }
-      return null;
-    }
     const { data: prof, error } = await insforge.database
       .from('profiles')
-      .insert({
-        user_id: created.id,
-        full_name: row.nama || row.email,
-        role: row.role || 'siswa',
-        school_id: me.school_id,
-        jenjang: row.jenjang || 'sma',
-      })
+      .upsert(
+        {
+          user_id: created.id,
+          full_name: row.nama || row.email,
+          role: row.role || 'siswa',
+          school_id: me.school_id,
+          jenjang: row.jenjang || 'sma',
+        },
+        { onConflict: 'user_id' }
+      )
       .select('id');
     if (error) return `Profil ${row.email}: ${error.message}`;
     const pid = (prof?.[0] as { id?: string } | undefined)?.id;
@@ -497,7 +496,7 @@ export function Admin({ me }: { me: AppProfile }) {
     }
     const rows = parsed.rows;
     if (rows.length === 0) {
-      setErr('CSV kosong atau header salah. Wajib kolom email.');
+      setErr('CSV kosong atau header salah. Wajib kolom nisn (atau email).');
       setImporting(false);
       setImportProgress('');
       return;
@@ -506,13 +505,18 @@ export function Admin({ me }: { me: AppProfile }) {
     let okN = 0;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
+      const idLabel = row.email || row.nisn || `baris ${i + 1}`;
       setImportProgress(`Mengimpor baris ${i + 1}/${rows.length}…`);
       if (!row.email.includes('@')) {
-        gagal.push('Baris tanpa email (isi kolom email)');
+        gagal.push(`${idLabel}: tanpa NISN/email`);
+        continue;
+      }
+      if (!row.nama.trim()) {
+        gagal.push(`${idLabel}: nama lengkap wajib diisi`);
         continue;
       }
       if (row.password.length < 8) {
-        gagal.push(`${row.email}: password min 8 karakter`);
+        gagal.push(`${idLabel}: password min 8 karakter`);
         continue;
       }
       const fail = await buatSatu(row);
@@ -598,9 +602,7 @@ export function Admin({ me }: { me: AppProfile }) {
     );
   }
 
-  // Galeri (perangkat + cloud) khusus role admin; kepsek hanya melihat tab Kelola
-  const canGaleri = me.role === 'admin';
-  const activeTab = canGaleri ? adminTab : 'kelola';
+  const activeTab = 'kelola';
 
   return (
     <div className="page">
@@ -623,20 +625,10 @@ export function Admin({ me }: { me: AppProfile }) {
       <nav className="subtabs" style={{ marginBottom: 20 }}>
         <button
           type="button"
-          className={`subtab ${activeTab === 'kelola' ? 'active' : ''}`}
-          onClick={() => setAdminTab('kelola')}
+          className="subtab active"
         >
           Kelola
         </button>
-        {canGaleri && (
-          <button
-            type="button"
-            className={`subtab ${activeTab === 'galeri' ? 'active' : ''}`}
-            onClick={() => setAdminTab('galeri')}
-          >
-            Galeri
-          </button>
-        )}
       </nav>
 
       {activeTab === 'kelola' && (
@@ -645,18 +637,32 @@ export function Admin({ me }: { me: AppProfile }) {
         <div className="form-card">
           <header className="card-header">
             <h2 className="card-title">Import CSV</h2>
+            <p className="card-subtitle">Email otomatis <code>NISN@smaga.id</code>, password sementara = NISN.</p>
           </header>
 
           <div className="form-section">
             <div className="form-section-title">File CSV <span className="req"></span></div>
-            <input type="file" id="csv-file" className="input" accept=".csv,text/csv,.txt" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} />
+            <label className={`csv-drop${csvFile ? ' has-file' : ''}`}>
+              <input
+                type="file"
+                accept=".csv,text/csv,.txt"
+                onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                hidden
+              />
+              <span className="csv-drop-icon" aria-hidden="true">⤓</span>
+              <span className="csv-drop-name">{csvFile ? csvFile.name : 'Pilih file CSV'}</span>
+              <span className="csv-drop-hint">{csvFile ? 'Klik untuk ganti file' : 'Seret ke sini atau klik untuk pilih'}</span>
+            </label>
+            {csvFile && (
+              <button type="button" className="csv-clear" onClick={() => setCsvFile(null)}>
+                Hapus pilihan
+              </button>
+            )}
+            {importProgress && <p className="type-lab" style={{ color: 'var(--accent)', fontWeight: 600 }}>{importProgress}</p>}
           </div>
 
-          {csvFile && <p className="type-lab">Dipilih: {csvFile.name}</p>}
-          {importProgress && <p className="type-lab" style={{ color: 'var(--accent)', fontWeight: 600 }}>{importProgress}</p>}
-
           <div className="form-section">
-            <a href="/contoh-import-user.csv" download>
+            <a href="/contoh-import-user.csv" download className="link">
               Unduh contoh CSV
             </a>
           </div>
@@ -1008,13 +1014,6 @@ export function Admin({ me }: { me: AppProfile }) {
         )}
       </div>
 
-        </>
-      )}
-
-      {activeTab === 'galeri' && (
-        <>
-          <DirectoryGalleryAdmin me={me} />
-          <GalleryCloudViewer me={me} />
         </>
       )}
 

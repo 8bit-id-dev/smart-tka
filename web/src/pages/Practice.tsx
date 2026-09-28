@@ -46,6 +46,7 @@ export function Practice({
         .select('id, item_type, mapel, stem, stimulus, choices, correct_key, rationale, jenjang')
         .eq('status', 'published');
       if (error) {
+        console.error('muat soal latihan gagal:', error);
         setErr(error.message);
         return;
       }
@@ -97,11 +98,10 @@ export function Practice({
     } else {
       const xpEarned = benar * 5 + jawab * 2;
       if (xpEarned > 0) {
-        const showXp = (window as any).__showXpReward;
-        if (showXp) {
-          showXp(xpEarned, 'Latihan');
-        } else {
+        try {
           await insforge.database.rpc('award_xp', { p_profile: studentId, p_xp: xpEarned });
+        } catch {
+          /* XP award best-effort */
         }
       }
     }
@@ -218,7 +218,7 @@ export function Practice({
             onClick={() => toggleBookmarkItem(i)}
             style={{ padding: 4 }}
           >
-            {Icons.bookmark(bookmarked.has(i))}
+            {Icons.bookmark()}
           </button>
         </div>
       </div>
@@ -276,8 +276,8 @@ export function Practice({
           }}
         />
         <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'space-between', alignItems: 'center' }}>
-          <button className="btn btn-ghost" type="button" disabled={i === 0} onClick={() => setI((x) => x - 1)}>
-            ← Sebelumnya
+          <button type="button" className="q-nav-btn" disabled={i === 0} onClick={() => setI((x) => x - 1)} aria-label="Soal sebelumnya" title="Soal sebelumnya">
+            ‹
           </button>
           <button
             type="button"
@@ -290,21 +290,19 @@ export function Practice({
                 return next;
               });
             }}
-            title={doubted.has(i) ? 'Hapus ragu-ragu' : 'Tandai ragu-ragu'}
+            title={doubted.has(i) ? 'Hapus ragu' : 'Tandai ragu'}
           >
-            {doubted.has(i) ? '✕ Ragu' : 'Ragu-ragu'}
+            {doubted.has(i) ? '✕ Ragu' : 'Ragu'}
           </button>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {i >= items.length - 1 ? (
-              <button className="btn btn-primary" type="button" onClick={() => void selesai()}>
-                Selesai &amp; Simpan
-              </button>
-            ) : (
-              <button className="btn btn-primary" type="button" onClick={() => setI((x) => x + 1)}>
-                Berikutnya →
-              </button>
-            )}
-          </div>
+          {i >= items.length - 1 ? (
+            <button className="btn btn-primary" type="button" onClick={() => void selesai()}>
+              Selesai &amp; Simpan
+            </button>
+          ) : (
+            <button type="button" className="q-nav-btn" onClick={() => setI((x) => x + 1)} aria-label="Soal berikutnya" title="Soal berikutnya">
+              ›
+            </button>
+          )}
         </div>
       </section>
     </div>

@@ -4,25 +4,48 @@ import { romanize } from './lib/roman';
 import { XpReward } from './components/XpReward';
 import AppIcon from './assets/smart.png';
 import defaultPhoto from './assets/profile.jpg';
-import home from './assets/icon/home.png';
-import homeActive from './assets/icon/home (1).png';
-import clock from './assets/icon/clock.png';
-import clockActive from './assets/icon/clock (1).png';
-import test from './assets/icon/test.png';
-import testActive from './assets/icon/test (1).png';
-import messages from './assets/icon/messages.png';
-import messagesActive from './assets/icon/messages (1).png';
-import ranking from './assets/icon/ranking-star (2).png';
-import rankingActive from './assets/icon/ranking-star (3).png';
-import soal from './assets/icon/soal.png';
-import soalActive from './assets/icon/soal (1).png';
-import paket from './assets/icon/paket.png';
-import paketActive from './assets/icon/paket(1).png';
-import admin from './assets/icon/admin.png';
-import adminActive from './assets/icon/admin (1).png';
-import laporan from './assets/icon/laporan.png';
-import laporanActive from './assets/icon/laporan (1).png';
-import download from './assets/icon/download.png';
+import {
+  Home,
+  BookOpen,
+  Activity,
+  Mail,
+  Trophy,
+  FileText,
+  Package,
+  Users,
+  Megaphone,
+  BarChart,
+  Settings,
+  User,
+  Bookmark,
+  Sparkles,
+  Target,
+  Award,
+  Star,
+  Crown,
+  Menu,
+  X,
+  Bell,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  Filter,
+  Plus,
+  Edit,
+  Trash2,
+  Download,
+  Upload,
+  Eye,
+  Clock,
+  Calendar,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Info,
+  Loader2,
+  Sun,
+  Moon,
+} from 'lucide-react';
 
 export type Tab =
   | 'beranda'
@@ -57,160 +80,58 @@ function useOrientation() {
   return isLandscape;
 }
 
-function IconImg({
-  src,
-  activeSrc,
-  filled,
-  alt = '',
-}: {
-  src: string;
-  activeSrc: string;
-  filled: boolean;
-  alt?: string;
-}) {
-  const [failed, setFailed] = useState(false);
-  if (failed) {
-    return (
-      <svg className="icon-img" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <circle cx="12" cy="12" r="10" />
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-        <path d="M12 17h.01" />
-      </svg>
-    );
-  }
-  return (
-    <img
-      className="icon-img"
-      src={filled ? activeSrc : src}
-      alt={alt}
-      width={20}
-      height={20}
-      loading="eager"
-      decoding="async"
-      onError={() => setFailed(true)}
-    />
-  );
-}
+const iconSize = 20;
+const strokeWidth = 2;
 
 const Icons = {
-  beranda: (filled: boolean) => (
-    <IconImg src={home} activeSrc={homeActive} filled={filled} />
-  ),
-  latihan: (filled: boolean) => (
-    <IconImg src={clock} activeSrc={clockActive} filled={filled} />
-  ),
-  simulasi: (filled: boolean) => (
-    <IconImg src={test} activeSrc={testActive} filled={filled} />
-  ),
-  inbox: (filled: boolean) => (
-    <IconImg src={messages} activeSrc={messagesActive} filled={filled} />
-  ),
-  soal: (filled: boolean) => (
-    <IconImg src={soal} activeSrc={soalActive} filled={filled} />
-  ),
-  paket: (filled: boolean) => (
-    <IconImg src={paket} activeSrc={paketActive} filled={filled} />
-  ),
-  kelas: (filled: boolean) => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  ),
-  pengumuman: (filled: boolean) => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0" />
-    </svg>
-  ),
-  laporan: (filled: boolean) => (
-    <IconImg src={laporan} activeSrc={laporanActive} filled={filled} />
-  ),
-  admin: (filled: boolean) => (
-    <IconImg src={admin} activeSrc={adminActive} filled={filled} />
-  ),
-  profil: (filled: boolean) => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  ),
-   anak: (filled: boolean) => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  ),
-  leaderboard: (filled: boolean) => (
-    <IconImg src={ranking} activeSrc={rankingActive} filled={filled} />
-  ),
-  search: () => (
-    <svg pathLength={1} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  ),
-  edit: (filled = false) => (
-    <svg pathLength={1} width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 3.5a2.52 2.52 0 0 1 3.5 3.5L12 17l-4 1 1-4 10.5-10.5z" />
-    </svg>
-  ),
-  x: (filled = false) => (
-    <svg pathLength={1} width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  ),
-  bell: () => (
-    <svg pathLength={1} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-    </svg>
-  ),
-  menu: () => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <line x1="3" y1="12" x2="21" y2="12" />
-      <line x1="3" y1="18" x2="21" y2="18" />
-    </svg>
-  ),
-   bookmark: (filled = false) => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-    </svg>
-  ),
-  sun: () => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="5" />
-      <line x1="12" y1="1" x2="12" y2="3" />
-      <line x1="12" y1="21" x2="12" y2="23" />
-      <line x1="1" y1="12" x2="3" y2="12" />
-      <line x1="21" y1="12" x2="23" y2="12" />
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-      <line x1="1" y1="19" x2="3" y2="19" />
-      <line x1="21" y1="5" x2="23" y2="5" />
-    </svg>
-  ),
-  moon: () => (
-    <svg pathLength={1} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-    </svg>
-  ),
-  download: () => (
-    <IconImg src={download} activeSrc={download} filled={false} />
-  ),
-  trash: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6h18" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      <line x1="10" y1="11" x2="10" y2="17" />
-      <line x1="14" y1="11" x2="14" y2="17" />
-    </svg>
-  ),
+  beranda: () => <Home className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  latihan: () => <BookOpen className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  simulasi: () => <Activity className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  inbox: () => <Mail className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  leaderboard: () => <Trophy className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  soal: () => <FileText className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  paket: () => <Package className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  kelas: () => <Users className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  pengumuman: () => <Megaphone className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  laporan: () => <BarChart className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  admin: () => <Settings className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  profil: () => <User className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  bookmark: () => <Bookmark className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  anak: () => <User className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  latihanSoal: () => <Target className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  paketGuru: () => <Package className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  simulasiUjian: () => <Award className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  ranking: () => <Crown className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  star: () => <Star className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  sparkles: () => <Sparkles className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  medal: () => <Award className="icon-svg" width={iconSize} height={iconSize} fill="none" strokeWidth={strokeWidth} />,
+  download: () => <Download className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  trash: () => <Trash2 className="icon-svg" width={16} height={16} strokeWidth={strokeWidth} />,
+  sun: () => <Sun className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  moon: () => <Moon className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  chevronDown: () => <ChevronDown className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  chevronUp: () => <ChevronUp className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  search: () => <Search className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  filter: () => <Filter className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  plus: () => <Plus className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  edit: () => <Edit className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  trash2: () => <Trash2 className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  download2: () => <Download className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  upload: () => <Upload className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  eye: () => <Eye className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  clock: () => <Clock className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  calendar: () => <Calendar className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  alertCircle: () => <AlertCircle className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  checkCircle: () => <CheckCircle className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  xCircle: () => <XCircle className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  info: () => <Info className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  loader2: () => <Loader2 className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  bell: () => <Bell className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  menu: () => <Menu className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  x: () => <X className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  chevronDownIcon: () => <ChevronDown className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  chevronUpIcon: () => <ChevronUp className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
+  sparklesIcon: () => <Sparkles className="icon-svg" width={iconSize} height={iconSize} strokeWidth={strokeWidth} />,
 };
 
 export { Icons };
@@ -432,18 +353,14 @@ export function AppShell({
   const showSidebar = isDesktopRole || (isMobileStudent && isLandscape);
   const showBottomNav = isMobileStudent && !isLandscape;
 
-  const getIcon = (id: Tab, isActive: boolean) => {
+  const getIcon = (id: Tab) => {
     const iconKey = id === 'beranda' && role === 'orang_tua' ? 'anak' : id;
     const IconComponent = Icons[iconKey as keyof typeof Icons];
-    return IconComponent ? IconComponent(isActive) : null;
+    return IconComponent ? IconComponent() : null;
   };
 
-  if (immersive) {
-    return <>{children}</>;
-  }
-
-   return (
-     <div className={`shell ${showSidebar ? 'shell-desktop' : 'shell-mobile'}`}>
+  return (
+     <div className={`shell ${showSidebar ? 'shell-desktop' : 'shell-mobile'} ${immersive ? 'shell-immersive' : ''}`}>
         {showSidebar ? (
          <>
 <aside className="shell-sidebar">
@@ -458,7 +375,7 @@ export function AppShell({
                       onClick={() => onTab(i.id)}
                       title={i.label}
                     >
-                      <span className="nav-icon">{getIcon(i.id, isActive)}</span>
+                      <span className="nav-icon">{getIcon(i.id)}</span>
                     </button>
                   );
                })}
@@ -605,7 +522,7 @@ export function AppShell({
                 const isActive = tab === i.id;
                 return (
                   <button key={i.id} className={isActive ? 'on' : ''} type="button" onClick={() => onTab(i.id)}>
-                    <span className="nav-icon-mobile">{getIcon(i.id, isActive)}</span>
+                    <span className="nav-icon-mobile">{getIcon(i.id)}</span>
                     <span>{i.label}</span>
                   </button>
                 );

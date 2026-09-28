@@ -90,14 +90,17 @@ export default function App() {
   async function tautSendiri(role: 'admin' | 'siswa' | 'guru' | 'orang_tua') {
     if (!authId) return;
     setLinkMsg('Menyimpan profil…');
-    const { error } = await insforge.database.from('profiles').insert({
-      user_id: authId,
-      full_name: email || 'Pengguna',
-      role,
-      school_id: '11111111-1111-1111-1111-111111111111',
-      jenjang: 'smp',
-      is_active: true,
-    });
+    const { error } = await insforge.database.from('profiles').upsert(
+      {
+        user_id: authId,
+        full_name: email || 'Pengguna',
+        role,
+        school_id: '11111111-1111-1111-1111-111111111111',
+        jenjang: 'smp',
+        is_active: true,
+      },
+      { onConflict: 'user_id' }
+    );
     if (error) setLinkMsg(error.message);
     else {
       setLinkMsg('Tersimpan. Memuat ulang…');
