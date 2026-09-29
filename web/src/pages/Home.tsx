@@ -764,6 +764,25 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
         </div>
       </div>
 
+      {/* Quick link to TO1 Matematika simulation */}
+      <div style={{ marginBottom: 20 }}>
+        <button
+          type="button"
+          className="quick-action-card quick-action-simulasi"
+          onClick={() => onTab('simulasi')}
+          style={{ width: '100%', textAlign: 'left', padding: '16px', display: 'flex', alignItems: 'center', gap: 12 }}
+        >
+          <div className="quick-action-icon" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+            {Icons.simulasi()}
+          </div>
+          <div className="quick-action-info">
+            <h3 style={{ margin: 0, fontSize: 16 }}>TO1 Matematika</h3>
+            <p style={{ margin: 4, color: 'var(--muted)', fontSize: 13 }}>Simulasi Try Out 1 Matematika — klik untuk mulai</p>
+          </div>
+          <span className="quick-action-arrow" style={{ marginLeft: 'auto' }}>→</span>
+        </button>
+      </div>
+
       <AbilityAnalysis
         stats={stats}
         subjectStats={subjectStats}
