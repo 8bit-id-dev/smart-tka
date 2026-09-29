@@ -54,7 +54,7 @@ type Identity = { name: string; kelas: string; nisn: string; token: string };
 const CHEAT_THRESHOLD = 5;
 const CHEAT_WARNING_THRESHOLDS = [1, 2, 3, 4];
 
-export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId: string | null; studentId?: string; onImmersiveChange?: (v: boolean) => void }) {
+export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPackageId }: { schoolId: string | null; studentId?: string; onImmersiveChange?: (v: boolean) => void; preSelectPackageId?: string }) {
   const [pkgs, setPkgs] = useState<Pkg[]>([]);
   const [pkg, setPkg] = useState<Pkg | null>(null);
   const [items, setItems] = useState<DbItem[]>([]);
@@ -122,6 +122,15 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange }: { schoolId:
       clearInterval(t);
     };
   }, [loadList]);
+
+  // Auto-select package if preSelectPackageId is provided
+  useEffect(() => {
+    if (!preSelectPackageId || phase !== 'list' || pkgs.length === 0) return;
+    const pkgToStart = pkgs.find((p) => p.id === preSelectPackageId);
+    if (pkgToStart) {
+      void mulai(pkgToStart);
+    }
+  }, [preSelectPackageId, phase, pkgs]);
 
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {

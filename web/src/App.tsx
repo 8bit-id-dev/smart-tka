@@ -53,9 +53,15 @@ export default function App() {
     typeof window !== 'undefined' ? window.location.pathname : '/'
   );
   const [immersive, setImmersive] = useState(false);
+  const [preSelectPackageId, setPreSelectPackageId] = useState<string | null>(null);
 
   useEffect(() => {
-    const sync = () => setPath(window.location.pathname);
+    const sync = () => {
+      setPath(window.location.pathname);
+      // Parse package ID from URL for simulasi tab (e.g., /simulasi?pkg=xxx)
+      const params = new URLSearchParams(window.location.search);
+      setPreSelectPackageId(params.get('pkg'));
+    };
     window.addEventListener('popstate', sync);
     return () => window.removeEventListener('popstate', sync);
   }, []);
@@ -195,7 +201,7 @@ export default function App() {
       {tab === 'latihan' && (
         <Practice schoolId={profile.school_id} studentId={profile.id} jenjang={profile.jenjang} onHome={() => go('/')} onImmersiveChange={setImmersive} />
       )}
-      {tab === 'simulasi' && <Simulasi schoolId={profile.school_id} studentId={profile.id} onImmersiveChange={setImmersive} />}
+      {tab === 'simulasi' && <Simulasi schoolId={profile.school_id} studentId={profile.id} onImmersiveChange={setImmersive} preSelectPackageId={preSelectPackageId || undefined} />}
        {tab === 'inbox' && <Inbox profileId={profile.id} />}
        {tab === 'leaderboard' && <Leaderboard me={profile} />}
       {tab === 'soal' && <SoalGuru profile={profile} />}

@@ -559,6 +559,12 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
     return { lastSimScore: Number(sorted[0].score), bestSimScore: Math.max(...sorted.map((a) => Number(a.score))) };
   }, [attempts]);
 
+  // Find TO1 Matematika package
+  const to1MatematikaPkg = useMemo(
+    () => pkgs.find((p) => p.title.toLowerCase().includes('to1') && p.title.toLowerCase().includes('matematika')),
+    [pkgs]
+  );
+
   const [photoUrl, setPhotoUrl] = useState(profile.photo_url || defaultPhoto);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoErr, setPhotoErr] = useState('');
@@ -765,23 +771,25 @@ export function Home({ name, profile, onTab }: { name: string; profile: AppProfi
       </div>
 
       {/* Quick link to TO1 Matematika simulation */}
-      <div style={{ marginBottom: 20 }}>
-        <button
-          type="button"
-          className="quick-action-card quick-action-simulasi"
-          onClick={() => onTab('simulasi')}
-          style={{ width: '100%', textAlign: 'left', padding: '16px', display: 'flex', alignItems: 'center', gap: 12 }}
-        >
-          <div className="quick-action-icon" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
-            {Icons.simulasi()}
-          </div>
-          <div className="quick-action-info">
-            <h3 style={{ margin: 0, fontSize: 16 }}>TO1 Matematika</h3>
-            <p style={{ margin: 4, color: 'var(--muted)', fontSize: 13 }}>Simulasi Try Out 1 Matematika — klik untuk mulai</p>
-          </div>
-          <span className="quick-action-arrow" style={{ marginLeft: 'auto' }}>→</span>
-        </button>
-      </div>
+      {to1MatematikaPkg && (
+        <div style={{ marginBottom: 20 }}>
+          <button
+            type="button"
+            className="quick-action-card quick-action-simulasi"
+            onClick={() => window.location.href = `/simulasi?pkg=${to1MatematikaPkg.id}`}
+            style={{ width: '100%', textAlign: 'left', padding: '16px', display: 'flex', alignItems: 'center', gap: 12 }}
+          >
+            <div className="quick-action-icon" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+              {Icons.simulasi()}
+            </div>
+            <div className="quick-action-info">
+              <h3 style={{ margin: 0, fontSize: 16 }}>TO1 Matematika</h3>
+              <p style={{ margin: 4, color: 'var(--muted)', fontSize: 13 }}>Simulasi Try Out 1 Matematika — klik untuk mulai</p>
+            </div>
+            <span className="quick-action-arrow" style={{ marginLeft: 'auto' }}>→</span>
+          </button>
+        </div>
+      )}
 
       <AbilityAnalysis
         stats={stats}
