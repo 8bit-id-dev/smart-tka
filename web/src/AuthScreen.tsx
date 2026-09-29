@@ -59,7 +59,7 @@ export function AuthScreen({ configured, busy, message, onSignIn }: Props) {
         <p className="auth-brand">SMART-TKA</p>
         <img className="auth-hero" src={hero} alt="" width={280} height={190} />
         <h1>Masuk</h1>
-        <p className="auth-lead">Pakai email dan kata sandi dari admin sekolah.</p>
+        <p className="auth-lead">Isi email dengan no NISN@smaga.id dan Password no NISN</p>
 
         <form className="auth-form" onSubmit={submit}>
           <label className="auth-pill">
@@ -69,7 +69,7 @@ export function AuthScreen({ configured, busy, message, onSignIn }: Props) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
+              placeholder="contoh: 0071234567@smaga.id"
               required
               autoComplete="username"
             />
@@ -81,7 +81,7 @@ export function AuthScreen({ configured, busy, message, onSignIn }: Props) {
               type={showPw ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Kata sandi"
+              placeholder="0071234567"
               required
               minLength={8}
               autoComplete="current-password"
