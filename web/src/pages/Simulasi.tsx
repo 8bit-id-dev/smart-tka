@@ -65,7 +65,6 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
   const [ans, setAns] = useState<Record<string, Ans>>({});
   const [doubted, setDoubted] = useState<Set<string>>(new Set());
   const [skor, setSkor] = useState<number | null>(null);
-  const [listExpanded, setListExpanded] = useState(false);
   const [bookmarked, setBookmarked] = useState<Set<string>>(new Set());
   const [subTab, setSubTab] = useState<'latihan' | 'ujian'>('latihan');
   const runStartedAtRef = useRef<number>(0);
@@ -472,7 +471,6 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
       if (isBookmarked(studentId, it.id)) saved.add(it.id);
     });
     setBookmarked(saved);
-    setListExpanded(false);
     runStartedAtRef.current = Date.now();
     setPhase('run');
     const draft = sessionStorage.getItem(`sim-${p.id}-draft`);
@@ -922,6 +920,8 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
   }
 
   const item = items[i];
+  const answeredCount = items.reduce((n, it) => n + (ans[it.id]?.answer ? 1 : 0), 0);
+  const doubtedCount = items.reduce((n, it) => n + (doubted.has(it.id) ? 1 : 0), 0);
 
   function toggleBookmarkItem(idx: number) {
     const it = items[idx];
@@ -1004,42 +1004,8 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
         </div>
       )}
 
-      {/* Question list - above card, expandable, 5 columns */}
-      <div className="question-list-container">
-        <button
-          type="button"
-          className="question-list-toggle"
-          onClick={() => setListExpanded((v) => !v)}
-          title={listExpanded ? 'Lipat daftar soal' : 'Buka daftar soal'}
-        >
-          <span className={`question-list-toggle-icon ${listExpanded ? '' : 'collapsed'}`}>▼</span>
-          Daftar Soal
-        </button>
-        {listExpanded && (
-          <div className="question-grid">
-            {items.map((it, q) => {
-              const isAns = Boolean(ans[it.id]?.answer);
-              const isDoubted = doubted.has(it.id);
-              const cls = isDoubted ? 'q-doubted' : isAns ? 'q-answered' : 'q-unanswered';
-              const isCurrent = q === i;
-              const isBm = bookmarked.has(it.id);
-              return (
-                <button
-                  key={q}
-                  type="button"
-                  className={`q-num ${cls} ${isCurrent ? 'current' : ''} ${isBm ? 'bookmarked' : ''}`}
-                  onClick={() => setI(q)}
-                >
-                  {q + 1}
-                  {isBm && <span className="q-bookmark-mark">🔖</span>}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <section className="card" style={{ maxWidth: 800 }}>
+      <div className="exam-layout">
+      <section className="card exam-main">
         {item && (
           <ItemPlayer
             key={item.id}
@@ -1100,6 +1066,44 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
             )}
           </div>
         </section>
+
+      {/* Question list - always expanded, right of the question card on desktop */}
+      <aside className="exam-sidebar" aria-label="Daftar soal">
+        <div className="question-list-container">
+          <div className="question-list-header">
+            <span className="question-list-title">Daftar Soal</span>
+            <span className="question-list-count">{answeredCount}/{items.length}</span>
+          </div>
+          <div className="question-grid">
+            {items.map((it, q) => {
+              const isAns = Boolean(ans[it.id]?.answer);
+              const isDoubted = doubted.has(it.id);
+              const cls = isDoubted ? 'q-doubted' : isAns ? 'q-answered' : 'q-unanswered';
+              const isCurrent = q === i;
+              const isBm = bookmarked.has(it.id);
+              return (
+                <button
+                  key={q}
+                  type="button"
+                  className={`q-num ${cls} ${isCurrent ? 'current' : ''} ${isBm ? 'bookmarked' : ''}`}
+                  onClick={() => setI(q)}
+                  aria-label={`Soal ${q + 1}${isCurrent ? ', soal saat ini' : ''}${isAns ? ', sudah dijawab' : ', belum dijawab'}${isDoubted ? ', ditandai ragu' : ''}`}
+                  aria-current={isCurrent ? 'true' : undefined}
+                >
+                  {q + 1}
+                  {isBm && <span className="q-bookmark-mark">🔖</span>}
+                </button>
+              );
+            })}
+          </div>
+          <div className="question-list-legend">
+            <span className="q-answered" aria-hidden="true" /> Dijawab {answeredCount}
+            <span className="q-doubted" aria-hidden="true" /> Ragu {doubtedCount}
+            <span className="q-unanswered" aria-hidden="true" /> Belum {items.length - answeredCount - doubtedCount}
+          </div>
+        </div>
+      </aside>
+      </div>
       </div>
     </>
   );

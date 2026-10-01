@@ -2370,43 +2370,88 @@ pre.debug {
   }
 }
 
-/* Question list - above card, expandable, 5 columns */
-.question-list-container {
-  margin-bottom: 12px;
-}
-.question-list-toggle {
+/* Question list - always expanded, right of the question card on desktop */
+.exam-layout {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 12px;
+}
+.exam-main {
+  max-width: 100%;
+  min-width: 0;
+}
+.exam-sidebar {
+  order: -1;
+}
+.question-list-container {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 12px 14px;
+}
+.question-list-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.question-list-title {
   font-size: 12px;
   font-weight: 600;
   color: var(--muted);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 6px 0;
 }
-.question-list-toggle-icon {
-  font-size: 11px;
-  color: var(--ink-light);
-  transition: transform 0.2s;
-}
-.question-list-toggle-icon.collapsed {
-  transform: rotate(-90deg);
+.question-list-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 .question-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
-  margin-top: 8px;
 }
-@media (max-width: 430px) {
+.question-list-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.question-list-legend > span {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid var(--card-border);
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+@media (min-width: 900px) {
+  .exam-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .exam-sidebar {
+    order: 0;
+    flex: 0 0 216px;
+    position: sticky;
+    top: 16px;
+  }
+  .exam-main {
+    flex: 1 1 auto;
+  }
   .question-grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 .q-num {
-  width: 40px;
+  width: 100%;
+  min-width: 0;
   height: 40px;
   border-radius: 8px;
   border: 1px solid var(--card-border);
@@ -2431,6 +2476,7 @@ pre.debug {
   font-size: 10px;
   line-height: 1;
 }
+.question-list-legend .q-unanswered { background: var(--canvas); }
 .q-answered { background: #16a34a; color: #fff; border-color: #16a34a; }
 .q-doubted { background: #ea580c; color: #fff; border-color: #ea580c; }
 
