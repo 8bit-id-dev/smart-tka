@@ -69,7 +69,7 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
   const [bookmarked, setBookmarked] = useState<Set<string>>(new Set());
   const [subTab, setSubTab] = useState<'latihan' | 'ujian'>('latihan');
   const runStartedAtRef = useRef<number>(0);
-  const timerArmedRef = useRef(false);
+  const pendingAnsRef = useRef<Record<string, Ans>>({});
   const [schedules, setSchedules] = useState<ExamSchedule[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamSchedule | null>(null);
   const [identity, setIdentity] = useState<Identity>({ name: '', kelas: '', nisn: '', token: '' });
@@ -130,40 +130,73 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
     if (pkgToStart) {
       void mulai(pkgToStart);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preSelectPackageId, phase, pkgs]);
 
+  /* Countdown timer for the run phase.
+   * The interval is always created; the "armed" guard only protects the
+   * auto-submit call so a freshly started exam is never submitted instantly. */
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
-    if (phase !== 'run' || !pkg) return;
-    // Arm timer only after sisa is properly initialized (> 10 seconds)
-    if (!timerArmedRef.current) {
-      timerArmedRef.current = true;
-      return;
-    }
+    if (phase !== 'run' || !pkg || items.length === 0) return;
+
     const t = setInterval(() => {
       setSisa((s) => {
         if (s <= 1) {
+          // Guard: never auto-submit within the first 5 seconds of the run.
+          if (Date.now() - runStartedAtRef.current < 5000) return 1;
           clearInterval(t);
-          // Guard: prevent auto-submit within first 5 seconds of arming
-          if (Date.now() - runStartedAtRef.current < 5000) {
-            return Math.max(1, s);
-          }
           void kumpulkan();
           return 0;
         }
         return s - 1;
       });
     }, 1000);
+
     return () => clearInterval(t);
-  }, [phase, pkg]);
+  }, [phase, pkg, items.length]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
-/* Reset timer arm when leaving run phase */
+  /* Answers can be given before syncAttempt() resolves the attempt row, so
+   * keep them in a pending queue and flush it as soon as attemptId is known.
+   * Without this, everything answered in the first moments of the exam is lost
+   * on reload even though it looked answered on screen. */
   useEffect(() => {
-    if (phase !== 'run') {
-      timerArmedRef.current = false;
-    }
-  }, [phase]);
+    if (phase !== 'run' || !attemptId || !studentId) return;
+    const queue = pendingAnsRef.current;
+    const ids = Object.keys(queue);
+    if (ids.length === 0) return;
+
+    const rows = ids.map((itemId) => ({
+      attempt_id: attemptId,
+      item_id: itemId,
+      answer: queue[itemId].answer,
+      is_correct: queue[itemId].correct,
+      locked_at: new Date().toISOString(),
+    }));
+
+    void insforge.database
+      .from('attempt_answers')
+      .upsert(rows, { onConflict: 'attempt_id,item_id' })
+      .then(({ error }) => {
+        if (error) return;
+        ids.forEach((itemId) => {
+          if (pendingAnsRef.current[itemId] === queue[itemId]) delete pendingAnsRef.current[itemId];
+        });
+      });
+  }, [phase, attemptId, studentId]);
+
+  /* Local crash-recovery draft so a refresh mid-exam keeps the answers even
+   * before the database round-trip completes. */
+  useEffect(() => {
+    if (phase !== 'run' || !pkg?.id) return;
+    try {
+      sessionStorage.setItem(
+        `sim-${pkg.id}-draft`,
+        JSON.stringify({ ans, i, endsAt: Date.now() + sisa * 1000 }),
+      );
+    } catch { /* storage full / private mode — non-fatal */ }
+  }, [phase, pkg?.id, ans, i, sisa]);
 
   /* Fullscreen & Anti-cheat for run phase */
   useEffect(() => {
@@ -302,9 +335,10 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
     };
   }, [phase, attemptId, studentId, isFullscreen, tabLeaveCount]);
 
-  async function doMulai(p: Pkg, exam?: ExamSchedule) {
+async function doMulai(p: Pkg, exam?: ExamSchedule) {
     setAns({});
     setSkor(null);
+    pendingAnsRef.current = {};
     let ids: string[] = [];
     let payloadItems: DbItem[] | null = null;
     let attemptIdNew: string | null = null;
@@ -1012,18 +1046,28 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
             item={item}
             showBahas={phase === 'hasil'}
             hideKeys={phase !== 'hasil'}
-             onUpdate={(info) => {
-               setAns((m) => ({ ...m, [item.id]: info }));
-               if (attemptId && studentId) {
-                 void insforge.database.from('attempt_answers').upsert({
-                   attempt_id: attemptId,
-                   item_id: item.id,
-                   answer: info.answer ?? '',
-                   is_correct: !!info.correct,
-                   locked_at: new Date().toISOString(),
-                 }, { onConflict: 'attempt_id,item_id' });
-               }
-             }}
+            answer={ans[item.id]?.answer || ''}
+            onUpdate={(info) => {
+              const value: Ans = { answer: info.answer ?? '', correct: !!info.correct };
+              setAns((m) => ({ ...m, [item.id]: value }));
+              // Always queue first, then persist. If attemptId is not resolved
+              // yet the flush effect writes it as soon as it becomes available.
+              pendingAnsRef.current[item.id] = value;
+              if (attemptId && studentId) {
+                void insforge.database
+                  .from('attempt_answers')
+                  .upsert({
+                    attempt_id: attemptId,
+                    item_id: item.id,
+                    answer: value.answer,
+                    is_correct: value.correct,
+                    locked_at: new Date().toISOString(),
+                  }, { onConflict: 'attempt_id,item_id' })
+                  .then(({ error }) => {
+                    if (!error) delete pendingAnsRef.current[item.id];
+                  });
+              }
+            }}
           />
         )}
         <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'space-between', alignItems: 'center' }}>

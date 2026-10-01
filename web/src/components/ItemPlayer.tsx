@@ -61,10 +61,12 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
       })
     : statements.map((_, i) => i);
 
-  // Review mode: re-show the student's previously saved answer so reveal
-  // highlight (benar/salah) reflects what they actually chose.
+  // Restore a previously stored answer. Needed both in review mode (so the
+  // reveal highlight matches what was actually chosen) and while working
+  // (ItemPlayer remounts on every question change, so without this the
+  // selection would disappear when navigating back to an answered question).
   useEffect(() => {
-    if (!review || !answer) return;
+    if (!answer) return;
     try {
       if (item.item_type === 'pg' || item.item_type === 'single') setPg(answer);
       else if (item.item_type === 'pg_kompleks') setKom(JSON.parse(answer));
@@ -75,7 +77,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
       } else if (item.item_type === 'uraian') setEssayAns(answer);
     } catch { /* ignore malformed stored answer */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [review, answer]);
+  }, [answer]);
 
   async function mintaKoreksiAI() {
     if (!essayAns.trim()) return;
