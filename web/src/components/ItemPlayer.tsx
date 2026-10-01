@@ -208,7 +208,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
                 key={L}
                 type="button"
                 disabled={locked && (showBahas || review)}
-                className={`choice ${pg === L ? 'sel x-mark' : ''} ${reveal && L === key ? 'ok' : ''} ${reveal && pg === L && pg !== key ? 'bad' : ''}`}
+                className={`choice ${pg === L ? 'sel' : ''} ${reveal && L === key ? 'ok' : ''} ${reveal && pg === L && pg !== key ? 'bad' : ''}`}
                 onClick={() => {
                   setPg(L);
                   pushUpdate(L, kom, bs, matchAns, essayAns);
@@ -275,7 +275,24 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
                       <MathText text={(s && s.trim()) ? s : ((opts[origIdx] as string) || '')} />
                       {reveal && isWrong && <span className="type-lab" style={{ color: '#dc2626', marginLeft: 6 }}>salah</span>}
                     </td>
-                    <td className="center" style={{ paddingTop: 8 }}>
+                    <td
+                      className={`center bs-cell ${chosen === 'B' ? 'on' : ''}`}
+                      style={{ paddingTop: 8 }}
+                      role="radio"
+                      aria-checked={chosen === 'B'}
+                      tabIndex={0}
+                      onClick={() => {
+                        if (locked && (showBahas || review)) return;
+                        pickBs(origIdx, 'B');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.preventDefault();
+                          if (locked && (showBahas || review)) return;
+                          pickBs(origIdx, 'B');
+                        }
+                      }}
+                    >
                       <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}>
                         <input
                           type="radio"
@@ -285,10 +302,28 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
                           disabled={locked && (showBahas || review)}
                           onChange={() => pickBs(origIdx, 'B')}
                         />
-                        <span>Benar</span>
+                        <span className="bs-cell-label">Benar</span>
+                        <span className="bs-cell-mark" aria-hidden>✓</span>
                       </label>
                     </td>
-                    <td className="center" style={{ paddingTop: 8 }}>
+                    <td
+                      className={`center bs-cell ${chosen === 'S' ? 'on' : ''}`}
+                      style={{ paddingTop: 8 }}
+                      role="radio"
+                      aria-checked={chosen === 'S'}
+                      tabIndex={0}
+                      onClick={() => {
+                        if (locked && (showBahas || review)) return;
+                        pickBs(origIdx, 'S');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.preventDefault();
+                          if (locked && (showBahas || review)) return;
+                          pickBs(origIdx, 'S');
+                        }
+                      }}
+                    >
                       <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}>
                         <input
                           type="radio"
@@ -298,7 +333,8 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
                           disabled={locked && (showBahas || review)}
                           onChange={() => pickBs(origIdx, 'S')}
                         />
-                        <span>Salah</span>
+                        <span className="bs-cell-label">Salah</span>
+                        <span className="bs-cell-mark" aria-hidden>✓</span>
                       </label>
                     </td>
                     {correctRow && reveal && (

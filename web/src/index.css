@@ -2263,28 +2263,35 @@ pre.debug {
   color: var(--ink);
 }
 .choice:hover { border-color: #d5cfc4; }
+/* Kotak centang untuk pilihan ganda kompleks */
 .box {
-  width: 16px; height: 16px; border-radius: 4px;
+  width: 18px; height: 18px; border-radius: 5px;
   border: 1.5px solid var(--outline); flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: transparent;
+  font-size: 12px; font-weight: 800; line-height: 1;
 }
-.box.on { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--accent-ink); }
+.box.on {
+  background: var(--accent-fill); border-color: var(--accent-fill); color: var(--accent-ink);
+}
+.box.on::after { content: '\2713'; }
 .bs-list { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
 .bs-row p { margin: 0 0 8px; }
 .bs-btns { display: flex; gap: 8px; }
 .bs-btns .choice { flex: 1; justify-content: center; }
 .bs-row.answered { background: var(--accent-soft); border-radius: 11px; padding: 12px; }
-/* Tanda X hanya untuk soal pilihan ganda (pg) */
-.choice.x-mark::after {
-  content: '\u2715';
-  margin-left: auto;
-  font-size: 13px;
-  font-weight: 700;
-  color: currentColor;
-}
 .pernyataan-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; }
 .pernyataan-table th, .pernyataan-table td { border: 1px solid var(--outline); padding: 8px 10px; text-align: left; vertical-align: top; }
 .pernyataan-table thead th { background: var(--canvas); font-size: 11; color: var(--muted); font-weight: 600; }
 .pernyataan-table td.center { text-align: center; }
+/* Cell Benar/Salah bisa diklik langsung untuk memilih jawaban */
+.pernyataan-table td.bs-cell { cursor: pointer; user-select: none; }
+.pernyataan-table td.bs-cell:hover { background: var(--canvas); }
+.pernyataan-table td.bs-cell.on { background: var(--accent-fill); }
+.pernyataan-table td.bs-cell.on .bs-cell-mark { opacity: 1; }
+.pernyataan-table td.bs-cell:has(input:disabled) { cursor: default; }
+.bs-cell-mark { opacity: 0; margin-left: 6px; font-weight: 800; color: var(--accent-ink); }
+.pernyataan-table td.bs-cell.on .bs-cell-label { font-weight: 700; }
 .inp-sm { width: 100%; max-width: 280px; }
 .choice.sel { background: var(--accent-fill); color: var(--accent-ink); border-color: var(--accent); border-width: 2px; }
 .choice.sel .box.on { background: var(--accent-soft); }
