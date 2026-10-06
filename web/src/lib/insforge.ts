@@ -223,7 +223,8 @@ export function summarizeAuthError(msg: string): string {
     return 'Auth menolak (401/403). Cek VITE_INSFORGE_ANON_KEY dan izinkan signup.';
   }
   if (m.includes('missing_field') || m.includes('missing field')) {
-    return 'Field wajib hilang (email/password/nama). Pastikan email valid, password ≥8, nama diisi.';
+    // Preserve detail dump if already appended (format: "msg | {...}")
+    return msg.includes('| ') ? msg : 'Field wajib hilang (email/password/nama). Pastikan email valid, password ≥8, nama diisi.';
   }
   return msg;
 }
