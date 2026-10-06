@@ -909,7 +909,7 @@ export function Admin({ me }: { me: AppProfile }) {
                                       }}
                                       onClick={() => void toggleSubject(u.id, m.name, assigned)}
                                     >
-                                      {assigned ? 'âœ“' : '+'}
+                                      {assigned ? '✓' : '+'}
                                     </button>
                                   </td>
                                 );
