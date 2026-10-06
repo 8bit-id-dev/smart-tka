@@ -173,8 +173,11 @@ export async function adminCreateAuthUser(input: {
         email: input.email.trim(),
         password: input.password,
         name: input.name.trim() || input.email.trim(),
-        role: input.role,
-        jenjang: input.jenjang,
+        user_metadata: {
+          role: input.role,
+          jenjang: input.jenjang,
+          full_name: input.name.trim() || input.email.trim(),
+        },
       }),
     });
     const json = (await res.json().catch(() => ({}))) as AuthJson;
