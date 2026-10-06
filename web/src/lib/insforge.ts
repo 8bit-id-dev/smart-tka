@@ -157,6 +157,9 @@ export async function adminCreateAuthUser(input: {
   email: string;
   password: string;
   name: string;
+  role?: string;
+  jenjang?: string;
+  [key: string]: unknown;
 }): Promise<{ id: string; reused?: boolean } | { error: string }> {
   if (!baseUrl || !anonKey) return { error: 'URL/anon key belum diisi.' };
   try {
@@ -170,6 +173,8 @@ export async function adminCreateAuthUser(input: {
         email: input.email.trim(),
         password: input.password,
         name: input.name.trim() || input.email.trim(),
+        role: input.role,
+        jenjang: input.jenjang,
       }),
     });
     const json = (await res.json().catch(() => ({}))) as AuthJson;

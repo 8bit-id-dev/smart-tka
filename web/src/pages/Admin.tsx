@@ -297,6 +297,8 @@ export function Admin({ me }: { me: AppProfile }) {
       email: newEmail,
       password: newPassword,
       name: newName || newEmail,
+      role: newRole,
+      jenjang: newJenjang,
     });
     if ('error' in created) {
       setErr('Gagal buat akun login: ' + summarizeAuthError(created.error));
@@ -440,6 +442,8 @@ export function Admin({ me }: { me: AppProfile }) {
       email: row.email,
       password: row.password || 'Siswa1234',
       name: row.nama || row.email,
+      role: row.role || 'siswa',
+      jenjang: row.jenjang || 'sma',
     });
     if ('error' in created) return `Auth ${row.email}: ${summarizeAuthError(created.error)}`;
     const { data: prof, error } = await insforge.database
