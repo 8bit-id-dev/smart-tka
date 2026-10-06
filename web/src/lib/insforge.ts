@@ -66,7 +66,8 @@ export async function getMyProfile(): Promise<{
 
 type AuthJson = {
   user?: { id: string };
-  data?: { user?: { id: string } };
+  data?: { user?: { id: string }; id?: string };
+  id?: string;
   error?: string | { message?: string };
   message?: string;
 };
@@ -76,7 +77,7 @@ function authErr(json: AuthJson, fallback: string) {
 }
 
 function authId(json: AuthJson) {
-  return json.user?.id || json.data?.user?.id || '';
+  return json.user?.id || json.data?.user?.id || json.id || json.data?.id || '';
 }
 
 function isDupEmail(msg: string) {
@@ -173,25 +174,6 @@ export async function adminCreateAuthUser(input: {
         email: input.email.trim(),
         password: input.password,
         name: input.name.trim() || input.email.trim(),
-        user_metadata: {
-          role: input.role,
-          jenjang: input.jenjang,
-          full_name: input.name.trim() || input.email.trim(),
-        },
-        data: {
-          role: input.role,
-          jenjang: input.jenjang,
-          full_name: input.name.trim() || input.email.trim(),
-        },
-        metadata: {
-          role: input.role,
-          jenjang: input.jenjang,
-          full_name: input.name.trim() || input.email.trim(),
-        },
-        app_metadata: {
-          role: input.role,
-          jenjang: input.jenjang,
-        },
       }),
     });
     const json = (await res.json().catch(() => ({}))) as AuthJson;
@@ -199,6 +181,20 @@ export async function adminCreateAuthUser(input: {
       const id = authId(json);
       if (!id) return { error: 'Auth tidak mengembalikan user id. Cek respons API.' };
       await tandaiEmailVerified(id, input.email);
+      // Ensure profile has role and jenjang (API may not store them in auth.users metadata)
+      if (input.role || input.jenjang) {
+        try {
+          await insforge.database
+            .from('profiles')
+            .update({
+              role: input.role,
+              jenjang: input.jenjang,
+            })
+            .eq('user_id', id);
+        } catch {
+          /* ignore */
+        }
+      }
       return { id };
     }
     const msg = authErr(json, `HTTP ${res.status}`);
