@@ -233,6 +233,7 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
 
     // Handle visibility change (tab switch, minimize, etc.)
     const onVisibilityChange = () => {
+      console.log('[Simulasi] visibilitychange', { hidden: document.hidden, tabLeaveCount });
       if (document.hidden) {
         handleTabLeave();
       }
@@ -240,6 +241,7 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
 
     // Handle blur (window focus lost)
     const onBlur = () => {
+      console.log('[Simulasi] blur', { isAndroidWebView, tabLeaveCount });
       if (!isAndroidWebView) {
         handleTabLeave();
       }
@@ -247,6 +249,7 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
 
     // Handle fullscreen change (user exited fullscreen manually)
     const onFullscreenChange = () => {
+      console.log('[Simulasi] fullscreenchange', { fullscreenElement: !!document.fullscreenElement, isFullscreen, tabLeaveCount });
       if (!document.fullscreenElement && isFullscreen) {
         handleTabLeave();
       } else if (document.fullscreenElement) {
