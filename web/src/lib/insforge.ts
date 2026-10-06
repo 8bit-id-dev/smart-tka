@@ -180,6 +180,8 @@ export async function adminCreateAuthUser(input: {
       return { id };
     }
     const msg = authErr(json, `HTTP ${res.status}`);
+    // Include full response for debugging MISSING_FIELD etc.
+    const detail = JSON.stringify(json).slice(0, 300);
     if (res.status === 409 || isDupEmail(msg)) {
       const found = await lookupAuthUserByPassword({ email: input.email, password: input.password });
       if ('id' in found) {
@@ -196,7 +198,7 @@ export async function adminCreateAuthUser(input: {
           'Email sudah di Auth. Password CSV tidak cocok dan daftar user tidak terbaca. Dashboard: matikan verifikasi email (auto-confirm). Atau SQL 010.',
       };
     }
-    return { error: msg };
+    return { error: `${msg} ${detail ? '| ' + detail : ''}` };
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
@@ -219,6 +221,9 @@ export function summarizeAuthError(msg: string): string {
   }
   if (m.includes('403') || m.includes('401') || m.includes('unauthorized')) {
     return 'Auth menolak (401/403). Cek VITE_INSFORGE_ANON_KEY dan izinkan signup.';
+  }
+  if (m.includes('missing_field') || m.includes('missing field')) {
+    return 'Field wajib hilang (email/password/nama). Pastikan email valid, password ≥8, nama diisi.';
   }
   return msg;
 }
