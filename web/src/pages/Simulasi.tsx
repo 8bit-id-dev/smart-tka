@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ItemPlayer } from '../components/ItemPlayer';
 import { insforge } from '../lib/insforge';
-import { acakListSeeded, acakOpsiSeeded, type DbItem } from '../lib/soal';
+import { acakListSeeded, acakOpsiSeeded, type DbItem, estimateTheta, thetaToScale, irtCategory, type IRTResponse } from '../lib/soal';
 import { toggleBookmark, isBookmarked } from '../lib/bookmarks';
 import { Icons } from '../AppShell';
 
@@ -33,7 +33,7 @@ type Pkg = {
   ai_config?: Record<string, unknown> | null;
 };
 
-type Ans = { answer: string; correct: boolean };
+type Ans = { answer: string; correct: boolean; partialScore?: number };
 
 type ExamSchedule = {
   id: string;
@@ -642,7 +642,7 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
     }
   }
 
-  async function kumpulkan() {
+async function kumpulkan() {
     if (phase === 'hasil') return;
     // Guard: prevent accidental early submit (min 5 seconds after start, or attemptId exists)
     if (Date.now() - runStartedAtRef.current < 5000 && !attemptId) return;
@@ -654,9 +654,38 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
     document.oncontextmenu = null;
     document.onkeydown = null;
 
+    // Classical scoring fallback
     const benar = items.filter((it) => ans[it.id]?.correct).length;
-    const nilai = Math.round((benar / items.length) * 10000) / 100;
-    setSkor(nilai);
+    const classicalScore = Math.round((benar / items.length) * 10000) / 100;
+
+    // IRT 2PL scoring if items have IRT parameters
+    let irtScore = classicalScore;
+    let irtTheta: number | null = null;
+    let irtSE: number | null = null;
+
+    const irtResponses: IRTResponse[] = [];
+    for (const it of items) {
+      if (it.irt_a != null && it.irt_b != null) {
+        const itemAns = ans[it.id];
+        irtResponses.push({
+          itemId: it.id,
+          correct: !!itemAns?.correct,
+          a: it.irt_a,
+          b: it.irt_b,
+          c: it.irt_c ?? 0,
+        });
+      }
+    }
+
+    if (irtResponses.length > 0) {
+      const { theta, se } = estimateTheta(irtResponses);
+      irtTheta = theta;
+      irtSE = se;
+      irtScore = thetaToScale(theta);
+    }
+
+    const finalScore = irtScore;
+    setSkor(finalScore);
     setPhase('hasil');
     if (pkg && pkg.id) sessionStorage.removeItem(`sim-${pkg.id}-draft`);
 
@@ -687,17 +716,25 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
       item_id: it.id,
       answer: ans[it.id]?.answer || '',
       is_correct: !!ans[it.id]?.correct,
+      partial_score: ans[it.id]?.partialScore ?? (ans[it.id]?.correct ? 1 : 0),
       locked_at: new Date().toISOString(),
     }));
     await insforge.database.from('attempt_answers').upsert(rows, { onConflict: 'attempt_id,item_id' });
 
     await insforge.database
       .from('attempts')
-      .update({ status: 'submitted', submitted_at: new Date().toISOString(), score: nilai })
+      .update({
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+        score: finalScore,
+        irt_theta: irtTheta,
+        irt_se: irtSE,
+        irt_score: irtScore,
+      })
       .eq('id', aid);
     setAttemptId(null);
 
-    const xpEarned = Math.round(nilai * 2) + 20;
+    const xpEarned = Math.round(finalScore * 2) + 20;
     if (xpEarned > 0) {
       try {
         await insforge.database.rpc('award_xp', { p_profile: studentId, p_xp: xpEarned });
@@ -877,6 +914,8 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
 
   if (phase === 'hasil' && pkg) {
     const benar = items.filter((it) => ans[it.id]?.correct).length;
+    // Get IRT category if available (from stored attempt or computed)
+    const irtCat = irtCategory(skor ?? 0);
     return (
       <div className="dashboard-page">
         <section className="card" style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center', padding: '32px 24px' }}>
@@ -885,7 +924,8 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
           <div style={{ fontSize: 56, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.03em', lineHeight: 1, margin: '0 0 8px' }}>
             {skor ?? 0}<small style={{ fontSize: 22, fontWeight: 500, color: 'var(--muted)' }}>/100</small>
           </div>
-          <p style={{ color: 'var(--muted)', fontSize: 14, margin: '0 0 24px' }}>{benar}/{items.length} benar</p>
+          <p style={{ color: 'var(--muted)', fontSize: 14, margin: '0 0 8px' }}>{benar}/{items.length} benar</p>
+          <p style={{ color: 'var(--accent)', fontSize: 16, fontWeight: 600, margin: '0 0 24px' }}>Kategori: {irtCat}</p>
           {err && <p style={{ color: 'var(--warn)', fontSize: 13, margin: '0 0 16px' }}>{err}</p>}
           <div className="btn-group" style={{ justifyContent: 'center' }}>
             <button className="btn btn-primary" type="button" onClick={() => setPhase('list')}>Daftar Paket</button>
@@ -1017,7 +1057,7 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
             hideKeys={phase !== 'hasil'}
             answer={ans[item.id]?.answer || ''}
             onUpdate={(info) => {
-              const value: Ans = { answer: info.answer ?? '', correct: !!info.correct };
+              const value: Ans = { answer: info.answer ?? '', correct: !!info.correct, partialScore: info.partialScore };
               setAns((m) => ({ ...m, [item.id]: value }));
               // Always queue first, then persist. If attemptId is not resolved
               // yet the flush effect writes it as soon as it becomes available.
@@ -1030,6 +1070,7 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
                     item_id: item.id,
                     answer: value.answer,
                     is_correct: value.correct,
+                    partial_score: value.partialScore ?? (value.correct ? 1 : 0),
                     locked_at: new Date().toISOString(),
                   }, { onConflict: 'attempt_id,item_id' })
                   .then(({ error }) => {

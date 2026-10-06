@@ -14,6 +14,9 @@ export type DbItem = {
   rationale: string;
   jenjang: string;
   difficulty?: number | null;
+  irt_a?: number | null;  // IRT discrimination
+  irt_b?: number | null;  // IRT difficulty
+  irt_c?: number | null;  // IRT guessing (3PL)
 };
 
 export type MatchPairs = { kiri: string[]; kanan: string[] };
@@ -185,4 +188,104 @@ export function acakOpsiSeeded(item: DbItem, seed: string): DbItem {
     correct_key = JSON.stringify(key.map(remap).sort());
   }
   return { ...item, choices: newOpts, correct_key };
+}
+
+/* ==================== IRT 2PL ==================== */
+
+export interface IRTParams {
+  a: number;  // discrimination
+  b: number;  // difficulty
+  c?: number; // guessing (3PL)
+}
+
+export interface IRTResponse {
+  itemId: string;
+  correct: boolean;
+  a: number;
+  b: number;
+  c?: number;
+}
+
+/** 2PL probability: P(θ) = c + (1-c) / (1 + exp(-a * (θ - b))) */
+export function irtProbability(theta: number, params: IRTParams): number {
+  const { a, b, c = 0 } = params;
+  const p = 1 / (1 + Math.exp(-a * (theta - b)));
+  return c + (1 - c) * p;
+}
+
+/** Log-likelihood for a single response */
+export function irtLogLikelihood(theta: number, response: IRTResponse): number {
+  const p = irtProbability(theta, { a: response.a, b: response.b, c: response.c });
+  return response.correct ? Math.log(p) : Math.log(1 - p);
+}
+
+/** Fisher information for a single item at theta */
+export function irtInformation(theta: number, params: IRTParams): number {
+  const { a, b, c = 0 } = params;
+  const p = 1 / (1 + Math.exp(-a * (theta - b)));
+  const q = 1 - p;
+  // Information: a^2 * p * q / (1-c)^2  (simplified for 2PL)
+  return (a * a * p * q) / ((1 - c) * (1 - c));
+}
+
+/** MLE estimation of theta given responses (Newton-Raphson) */
+export function estimateTheta(responses: IRTResponse[], initialTheta = 0): { theta: number; se: number } {
+  let theta = initialTheta;
+  
+  for (let iter = 0; iter < 20; iter++) {
+    let num = 0;
+    let den = 0;
+    
+    for (const r of responses) {
+      const p = irtProbability(theta, { a: r.a, b: r.b, c: r.c });
+      const q = 1 - p;
+      num += r.a * (r.correct ? q : -p);  // derivative of log-likelihood
+      den += r.a * r.a * p * q;            // Fisher information
+    }
+    
+    if (den === 0) break;
+    const delta = num / den;
+    theta += delta;
+    if (Math.abs(delta) < 1e-4) break;
+  }
+  
+  // Standard error = 1 / sqrt(total information)
+  let totalInfo = 0;
+  for (const r of responses) {
+    totalInfo += irtInformation(theta, { a: r.a, b: r.b, c: r.c });
+  }
+  const se = totalInfo > 0 ? 1 / Math.sqrt(totalInfo) : 999;
+  
+  return { theta, se };
+}
+
+/** Transform theta to 0-100 scale (mean=50, SD=10) */
+export function thetaToScale(theta: number): number {
+  const scaled = 50 + 10 * theta;
+  return Math.max(0, Math.min(100, Math.round(scaled * 100) / 100));
+}
+
+/** IRT category from 0-100 scale */
+export function irtCategory(score: number): 'Istimewa' | 'Baik' | 'Memadai' | 'Kurang' {
+  if (score >= 85) return 'Istimewa';
+  if (score >= 70) return 'Baik';
+  if (score >= 55) return 'Memadai';
+  return 'Kurang';
+}
+
+/** Partial scoring for PGK: correct choices / total correct choices */
+export function partialScorePGK(selected: string[], key: string[]): number {
+  if (key.length === 0) return 0;
+  const correctSelected = selected.filter(s => key.includes(s)).length;
+  return Math.min(1, correctSelected / key.length);
+}
+
+/** Partial scoring for PBS: correct statements / total statements */
+export function partialScorePBS(selected: ('B' | 'S' | null)[], key: ('B' | 'S')[]): number {
+  if (key.length === 0) return 0;
+  let correct = 0;
+  for (let i = 0; i < key.length; i++) {
+    if (selected[i] === key[i]) correct++;
+  }
+  return correct / key.length;
 }

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { MathText } from './MathText';
-import { LETTERS, optionsOf, parseKey, parseMatchPairs, sameSet, type DbItem } from '../lib/soal';
+import { LETTERS, optionsOf, parseKey, parseMatchPairs, sameSet, type DbItem, partialScorePGK, partialScorePBS } from '../lib/soal';
 import { evalUraianAI, type KoreksiUraianResult } from '../lib/aiSoal';
 
 type Props = {
   item: DbItem;
   showBahas: boolean;
   hideKeys: boolean;
-  onLocked?: (correct: boolean) => void;
-  onUpdate?: (info: { answer: string; correct: boolean }) => void;
+  onLocked?: (correct: boolean, partialScore?: number) => void;
+  onUpdate?: (info: { answer: string; correct: boolean; partialScore?: number }) => void;
   review?: boolean;
   answer?: string;
 };
@@ -98,31 +98,42 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
     }
   }
 
-  function correct(): boolean {
-    if (item.item_type === 'pg' || item.item_type === 'single') return pg === key;
-    if (item.item_type === 'pg_kompleks' && Array.isArray(key)) return sameSet(kom, key);
-    if (item.item_type === 'pernyataan_bs' && Array.isArray(key)) return key.every((k, i) => bs[i] === k);
+  function correct(): { ok: boolean; partialScore?: number } {
+    if (item.item_type === 'pg' || item.item_type === 'single') {
+      return { ok: pg === key };
+    }
+    if (item.item_type === 'pg_kompleks' && Array.isArray(key)) {
+      const full = sameSet(kom, key);
+      const partial = partialScorePGK(kom, key);
+      return { ok: full, partialScore: full ? 1 : partial };
+    }
+    if (item.item_type === 'pernyataan_bs' && Array.isArray(key)) {
+      const full = key.every((k, i) => bs[i] === k);
+      const partial = partialScorePBS(bs, key as ('B' | 'S')[]);
+      return { ok: full, partialScore: full ? 1 : partial };
+    }
 
     if (item.item_type === 'mencocokkan') {
       const targetMap = typeof key === 'object' && key !== null && !Array.isArray(key) ? (key as Record<string, string>) : {};
       const targetArr = Array.isArray(key) ? key : null;
-      if (matchPairs.kiri.length === 0) return false;
-      return matchPairs.kiri.every((_, i) => {
+      if (matchPairs.kiri.length === 0) return { ok: false };
+      const full = matchPairs.kiri.every((_, i) => {
         const expected = targetArr ? targetArr[i] : targetMap[String(i)] ?? matchPairs.kanan[i];
         return (matchAns[i] || '').trim().toLowerCase() === (expected || '').trim().toLowerCase();
       });
+      return { ok: full };
     }
 
     if (item.item_type === 'uraian') {
-      if (aiEval) return aiEval.isCorrect;
-      if (!essayAns.trim()) return false;
+      if (aiEval) return { ok: aiEval.isCorrect };
+      if (!essayAns.trim()) return { ok: false };
       if (typeof key === 'string' && key.trim()) {
-        return essayAns.trim().toLowerCase().includes(key.trim().toLowerCase());
+        return { ok: essayAns.trim().toLowerCase().includes(key.trim().toLowerCase()) };
       }
-      return true;
+      return { ok: true };
     }
 
-    return false;
+    return { ok: false };
   }
 
   function pushUpdate(
@@ -134,15 +145,18 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
   ) {
     let ok = false;
     let ans = '';
+    let partialScore: number | undefined;
 
     if (item.item_type === 'pg' || item.item_type === 'single') {
       ok = nextPg === key;
       ans = nextPg || '';
     } else if (item.item_type === 'pg_kompleks' && Array.isArray(key)) {
       ok = sameSet(nextKom, key);
+      partialScore = ok ? 1 : partialScorePGK(nextKom, key);
       ans = JSON.stringify(nextKom);
     } else if (item.item_type === 'pernyataan_bs' && Array.isArray(key)) {
       ok = key.every((k, i) => nextBs[i] === k);
+      partialScore = ok ? 1 : partialScorePBS(nextBs, key as ('B' | 'S')[]);
       ans = JSON.stringify(nextBs);
     } else if (item.item_type === 'mencocokkan') {
       const targetMap = typeof key === 'object' && key !== null && !Array.isArray(key) ? (key as Record<string, string>) : {};
@@ -165,7 +179,8 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
       ans = nextEssay;
     }
 
-    onUpdate?.({ answer: ans, correct: ok });
+    onUpdate?.({ answer: ans, correct: ok, partialScore });
+    onLocked?.(ok, partialScore);
   }
 
   function canLock() {
@@ -179,7 +194,8 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
 
   function lock() {
     setLocked(true);
-    onLocked?.(correct());
+    const result = correct();
+    onLocked?.(result.ok, result.partialScore);
   }
 
   function pickBs(idx: number, v: 'B' | 'S') {
