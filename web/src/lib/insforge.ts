@@ -66,8 +66,10 @@ export async function getMyProfile(): Promise<{
 
 type AuthJson = {
   user?: { id: string };
-  data?: { user?: { id: string }; id?: string };
+  data?: { user?: { id: string }; id?: string; user_id?: string };
   id?: string;
+  session?: { user?: { id: string } };
+  user_id?: string;
   error?: string | { message?: string };
   message?: string;
 };
@@ -77,7 +79,8 @@ function authErr(json: AuthJson, fallback: string) {
 }
 
 function authId(json: AuthJson) {
-  return json.user?.id || json.data?.user?.id || json.id || json.data?.id || '';
+  return json.user?.id || json.data?.user?.id || json.id || json.data?.id || 
+         json.session?.user?.id || json.user_id || json.data?.user_id || '';
 }
 
 function isDupEmail(msg: string) {
