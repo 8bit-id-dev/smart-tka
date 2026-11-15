@@ -190,7 +190,7 @@ export function acakOpsiSeeded(item: DbItem, seed: string): DbItem {
   return { ...item, choices: newOpts, correct_key };
 }
 
-/* ==================== IRT 2PL ==================== */
+/* ==================== IRT 2PL (TKA Standard) ==================== */
 
 export interface IRTParams {
   a: number;  // discrimination
@@ -199,8 +199,8 @@ export interface IRTParams {
 }
 
 export interface IRTResponse {
-  itemId: string;
-  correct: boolean;
+  itemId: string;      // unique ID per dichotomous item (e.g., "item123_A", "item123_stmt1")
+  correct: boolean;    // 0 or 1
   a: number;
   b: number;
   c?: number;
@@ -224,7 +224,6 @@ export function irtInformation(theta: number, params: IRTParams): number {
   const { a, b, c = 0 } = params;
   const p = 1 / (1 + Math.exp(-a * (theta - b)));
   const q = 1 - p;
-  // Information: a^2 * p * q / (1-c)^2  (simplified for 2PL)
   return (a * a * p * q) / ((1 - c) * (1 - c));
 }
 
@@ -239,8 +238,8 @@ export function estimateTheta(responses: IRTResponse[], initialTheta = 0): { the
     for (const r of responses) {
       const p = irtProbability(theta, { a: r.a, b: r.b, c: r.c });
       const q = 1 - p;
-      num += r.a * (r.correct ? q : -p);  // derivative of log-likelihood
-      den += r.a * r.a * p * q;            // Fisher information
+      num += r.a * (r.correct ? q : -p);
+      den += r.a * r.a * p * q;
     }
     
     if (den === 0) break;
@@ -249,7 +248,6 @@ export function estimateTheta(responses: IRTResponse[], initialTheta = 0): { the
     if (Math.abs(delta) < 1e-4) break;
   }
   
-  // Standard error = 1 / sqrt(total information)
   let totalInfo = 0;
   for (const r of responses) {
     totalInfo += irtInformation(theta, { a: r.a, b: r.b, c: r.c });
@@ -265,7 +263,7 @@ export function thetaToScale(theta: number): number {
   return Math.max(0, Math.min(100, Math.round(scaled * 100) / 100));
 }
 
-/** IRT category from 0-100 scale */
+/** IRT category from 0-100 scale (TKA standard) */
 export function irtCategory(score: number): 'Istimewa' | 'Baik' | 'Memadai' | 'Kurang' {
   if (score >= 85) return 'Istimewa';
   if (score >= 70) return 'Baik';
@@ -273,14 +271,21 @@ export function irtCategory(score: number): 'Istimewa' | 'Baik' | 'Memadai' | 'K
   return 'Kurang';
 }
 
-/** Partial scoring for PGK: correct choices / total correct choices */
+/** 
+ * TKA Standard Partial Scoring:
+ * - PGK: 1 point per correct option, NO penalty for wrong options, MIN 0 per item
+ * - PBS: 1 point per correct statement
+ * Returns fraction (0-1) for classical partial credit
+ */
+
+/** PGK: correct options / total correct options (TKA rule: no penalty, min 0) */
 export function partialScorePGK(selected: string[], key: string[]): number {
   if (key.length === 0) return 0;
   const correctSelected = selected.filter(s => key.includes(s)).length;
   return Math.min(1, correctSelected / key.length);
 }
 
-/** Partial scoring for PBS: correct statements / total statements */
+/** PBS: correct statements / total statements (TKA rule: 1 point per statement) */
 export function partialScorePBS(selected: ('B' | 'S' | null)[], key: ('B' | 'S')[]): number {
   if (key.length === 0) return 0;
   let correct = 0;
@@ -288,4 +293,120 @@ export function partialScorePBS(selected: ('B' | 'S' | null)[], key: ('B' | 'S')
     if (selected[i] === key[i]) correct++;
   }
   return correct / key.length;
+}
+
+/**
+ * Expand PGK/PBS items into dichotomous IRT items
+ * Each option/statement becomes a separate item for IRT calibration
+ */
+export interface DichotomousIRTItem {
+  itemId: string;      // e.g., "uuid_A", "uuid_stmt1"
+  parentItemId: string; // original item UUID
+  type: 'pgk_option' | 'pbs_statement';
+  optionIndex: number;  // 0-based index of option/statement
+  label: string;        // "A", "B", "C"... or statement text
+  key: boolean;         // is this option/statement correct?
+  irt_a?: number | null;
+  irt_b?: number | null;
+  irt_c?: number | null;
+}
+
+/** Expand PGK item into dichotomous items (one per option) */
+export function expandPGKToDichotomous(item: DbItem): DichotomousIRTItem[] {
+  const opts = optionsOf(item);
+  const key = parseKey(item);
+  const keyArray = Array.isArray(key) ? key : [];
+  
+  return opts.map((_, idx) => ({
+    itemId: `${item.id}_${LETTERS[idx]}`,
+    parentItemId: item.id,
+    type: 'pgk_option' as const,
+    optionIndex: idx,
+    label: LETTERS[idx],
+    key: keyArray.includes(LETTERS[idx]),
+    irt_a: item.irt_a ?? null,
+    irt_b: item.irt_b ?? null,
+    irt_c: item.irt_c ?? null,
+  }));
+}
+
+/** Expand PBS item into dichotomous items (one per statement) */
+export function expandPBSToDichotomous(item: DbItem): DichotomousIRTItem[] {
+  const stmts = asStringList(item.choices);
+  const key = parseKey(item);
+  const keyArray = Array.isArray(key) ? key : [];
+  
+  return stmts.map((_, idx) => ({
+    itemId: `${item.id}_stmt${idx + 1}`,
+    parentItemId: item.id,
+    type: 'pbs_statement' as const,
+    optionIndex: idx,
+    label: stmts[idx],
+    key: keyArray[idx] === 'B', // 'B' = Benar, 'S' = Salah
+    irt_a: item.irt_a ?? null,
+    irt_b: item.irt_b ?? null,
+    irt_c: item.irt_c ?? null,
+  }));
+}
+
+/** Convert student responses to dichotomous IRT responses */
+export function responsesToDichotomousIRT(
+  items: DbItem[], 
+  answers: Record<string, { answer: string; correct: boolean; partialScore?: number }>
+): IRTResponse[] {
+  const responses: IRTResponse[] = [];
+  
+  for (const item of items) {
+    const ans = answers[item.id];
+    if (!ans) continue;
+    
+    if (item.item_type === 'pg_kompleks') {
+      const selected = ans.answer ? JSON.parse(ans.answer) : [];
+      const key = parseKey(item);
+      const keyArray = Array.isArray(key) ? key : [];
+      
+      // Each option becomes a dichotomous response
+      const opts = optionsOf(item);
+      opts.forEach((_, idx) => {
+        const optionLetter = LETTERS[idx];
+        const isCorrect = keyArray.includes(optionLetter);
+        const studentSelected = selected.includes(optionLetter);
+        
+        responses.push({
+          itemId: `${item.id}_${optionLetter}`,
+          correct: studentSelected === isCorrect, // TKA: correct if match (selected correct OR correctly didn't select incorrect)
+          a: item.irt_a ?? 1,
+          b: item.irt_b ?? 0,
+          c: item.irt_c ?? 0,
+        });
+      });
+    } else if (item.item_type === 'pernyataan_bs') {
+      const selected = ans.answer ? JSON.parse(ans.answer) : [];
+      const key = parseKey(item);
+      const keyArray = Array.isArray(key) ? key : [];
+      
+      keyArray.forEach((correctVal, idx) => {
+        const studentVal = selected[idx];
+        responses.push({
+          itemId: `${item.id}_stmt${idx + 1}`,
+          correct: studentVal === correctVal,
+          a: item.irt_a ?? 1,
+          b: item.irt_b ?? 0,
+          c: item.irt_c ?? 0,
+        });
+      });
+    } else if (item.item_type === 'pg' || item.item_type === 'single') {
+      // Standard PG: already dichotomous
+      responses.push({
+        itemId: item.id,
+        correct: ans.correct,
+        a: item.irt_a ?? 1,
+        b: item.irt_b ?? 0,
+        c: item.irt_c ?? 0,
+      });
+    }
+    // Note: uraian, mencocokkan not expanded (scored separately)
+  }
+  
+  return responses;
 }

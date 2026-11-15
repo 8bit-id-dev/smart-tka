@@ -18,6 +18,8 @@ type FilterRange = 'all' | 'month' | 'week';
 
 type ClassRow = { id: string; name: string };
 
+type RankType = 'xp' | 'skor';
+
 const ROMAN_NUMERALS: Record<string, number> = {
   I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10,
   XI: 11, XII: 12, XIII: 13, XIV: 14, XV: 15,
@@ -98,7 +100,8 @@ export function Leaderboard({ me }: { me: AppProfile }) {
   const [filterRange, setFilterRange] = useState<FilterRange>('all');
   const [filterKelas, setFilterKelas] = useState<string>('');
   const [filterMapel, setFilterMapel] = useState<string>('');
-  const [filterKind, setFilterKind] = useState<string>('');
+  const [filterKind, setFilterKind] = useState<string>('simulasi');
+  const [rankType, setRankType] = useState<RankType>('skor');
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [mapelList, setMapelList] = useState<string[]>([]);
 
@@ -140,32 +143,81 @@ export function Leaderboard({ me }: { me: AppProfile }) {
       }
 
       const studentIds = ((studentsData || []) as any[]).map((r) => r.id);
-      const gpMap = new Map<string, { xp: number; level: number; streak_current: number; streak_best: number; updated_at?: string }>();
-      if (studentIds.length > 0) {
-        const { data: gpData } = await insforge.database
-          .from('gamification_profiles')
-          .select('profile_id, xp, level, streak_current, streak_best, updated_at')
-          .in('profile_id', studentIds);
-        if (gpData) {
-          for (const gp of gpData as any[]) {
-            gpMap.set(gp.profile_id, gp);
+      
+      let mapped: GpRow[];
+
+      if (rankType === 'skor') {
+        // Score-based ranking: fetch attempts and calculate average score
+        const { data: attemptsData } = await insforge.database
+          .from('attempts')
+          .select('student_id, score, submitted_at')
+          .eq('status', 'submitted')
+          .not('score', 'is', null)
+          .in('student_id', studentIds);
+        
+        const scoreMap = new Map<string, { total: number; count: number; latest: string }>();
+        if (attemptsData) {
+          for (const a of attemptsData as any[]) {
+            const existing = scoreMap.get(a.student_id);
+            if (existing) {
+              existing.total += Number(a.score) || 0;
+              existing.count += 1;
+              if (new Date(a.submitted_at) > new Date(existing.latest)) {
+                existing.latest = a.submitted_at;
+              }
+            } else {
+              scoreMap.set(a.student_id, {
+                total: Number(a.score) || 0,
+                count: 1,
+                latest: a.submitted_at,
+              });
+            }
           }
         }
-      }
 
-      let mapped = ((studentsData || []) as any[]).map((r) => {
-        const gp = gpMap.get(r.id);
-        return {
-          profile_id: r.id,
-          xp: gp?.xp ?? 0,
-          level: gp?.level ?? 1,
-          streak_current: gp?.streak_current ?? 0,
-          streak_best: gp?.streak_best ?? 0,
-          full_name: r.full_name ?? 'Pengguna',
-          role: r.role ?? 'siswa',
-          updated_at: gp?.updated_at,
-        };
-      });
+        mapped = ((studentsData || []) as any[]).map((r) => {
+          const s = scoreMap.get(r.id);
+          const avgScore = s ? Math.round((s.total / s.count) * 100) / 100 : 0;
+          return {
+            profile_id: r.id,
+            xp: avgScore, // Use xp field for score to reuse sorting
+            level: 1,
+            streak_current: s?.count ?? 0,
+            streak_best: s?.count ?? 0,
+            full_name: r.full_name ?? 'Pengguna',
+            role: r.role ?? 'siswa',
+            updated_at: s?.latest,
+          };
+        });
+      } else {
+        // XP-based ranking (existing logic)
+        const gpMap = new Map<string, { xp: number; level: number; streak_current: number; streak_best: number; updated_at?: string }>();
+        if (studentIds.length > 0) {
+          const { data: gpData } = await insforge.database
+            .from('gamification_profiles')
+            .select('profile_id, xp, level, streak_current, streak_best, updated_at')
+            .in('profile_id', studentIds);
+          if (gpData) {
+            for (const gp of gpData as any[]) {
+              gpMap.set(gp.profile_id, gp);
+            }
+          }
+        }
+
+        mapped = ((studentsData || []) as any[]).map((r) => {
+          const gp = gpMap.get(r.id);
+          return {
+            profile_id: r.id,
+            xp: gp?.xp ?? 0,
+            level: gp?.level ?? 1,
+            streak_current: gp?.streak_current ?? 0,
+            streak_best: gp?.streak_best ?? 0,
+            full_name: r.full_name ?? 'Pengguna',
+            role: r.role ?? 'siswa',
+            updated_at: gp?.updated_at,
+          };
+        });
+      }
 
       if (filterRange === 'month') {
         const since = new Date();
@@ -183,8 +235,8 @@ export function Leaderboard({ me }: { me: AppProfile }) {
           .select('profile_id')
           .eq('class_id', filterKelas);
         if (csData) {
-          const studentIds = new Set((csData as { profile_id: string }[]).map((s) => s.profile_id));
-          mapped = mapped.filter((r) => studentIds.has(r.profile_id));
+          const studentIdsSet = new Set((csData as { profile_id: string }[]).map((s) => s.profile_id));
+          mapped = mapped.filter((r) => studentIdsSet.has(r.profile_id));
         }
       }
 
@@ -194,8 +246,8 @@ export function Leaderboard({ me }: { me: AppProfile }) {
           .select('student_id, package_id, packages!inner(mapel)')
           .eq('packages.mapel', filterMapel);
         if (attemptsData) {
-          const studentIds = new Set((attemptsData as { student_id: string }[]).map((a) => a.student_id));
-          mapped = mapped.filter((r) => studentIds.has(r.profile_id));
+          const studentIdsSet = new Set((attemptsData as { student_id: string }[]).map((a) => a.student_id));
+          mapped = mapped.filter((r) => studentIdsSet.has(r.profile_id));
         }
       }
 
@@ -205,20 +257,22 @@ export function Leaderboard({ me }: { me: AppProfile }) {
           .select('student_id, package_id, packages!inner(kind)')
           .eq('packages.kind', filterKind);
         if (attemptsData) {
-          const studentIds = new Set((attemptsData as { student_id: string }[]).map((a) => a.student_id));
-          mapped = mapped.filter((r) => studentIds.has(r.profile_id));
+          const studentIdsSet = new Set((attemptsData as { student_id: string }[]).map((a) => a.student_id));
+          mapped = mapped.filter((r) => studentIdsSet.has(r.profile_id));
         }
       }
 
       mapped.sort((a, b) => b.xp - a.xp);
 
-      setRows(mapped);
+      // Limit to top 10
+      const top10 = mapped.slice(0, 10);
+      setRows(top10);
 
       const idx = mapped.findIndex((r) => r.profile_id === me.id);
       setMyRank(idx >= 0 ? idx + 1 : null);
       setLoading(false);
     })();
-  }, [me.id, me.school_id, filterRange, filterKelas, filterMapel, filterKind]);
+  }, [me.id, me.school_id, filterRange, filterKelas, filterMapel, filterKind, rankType]);
 
   if (loading) {
     return (
@@ -246,15 +300,30 @@ export function Leaderboard({ me }: { me: AppProfile }) {
         <p className="page-subtitle">Peringkat kelas / sekolah</p>
         <h1 className="page-title">Papan Peringkat SMART-TKA</h1>
         <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          {myGp && <span style={{ fontSize: 13, color: 'var(--muted)', marginLeft: 'auto' }}>💰 {myGp.xp} XP</span>}
+          {myGp && rankType === 'xp' && <span style={{ fontSize: 13, color: 'var(--muted)', marginLeft: 'auto' }}>💰 {myGp.xp} XP</span>}
         </div>
         <p className="page-subtitle" style={{ maxWidth: 500 }}>
-          Bergaullah dengan belajar rutin. XP dan level naik otomatis saat menyelesaikan latihan dan simulasi.
+          {rankType === 'xp' 
+            ? 'Bergaullah dengan belajar rutin. XP dan level naik otomatis saat menyelesaikan latihan dan simulasi.'
+            : 'Peringkat berdasarkan rata-rata skor simulasi dan latihan. Hanya 10 teratas ditampilkan.'
+          }
         </p>
       </header>
 
       <section className="section">
         <div className="leaderboard-filters">
+              <div className="filter-group">
+                <span className="filter-label">Jenis Peringkat:</span>
+                <FilterSelect
+                  value={rankType}
+                  onChange={(v) => setRankType(v as RankType)}
+                  placeholder="Jenis Peringkat"
+                  options={[
+                    { value: 'xp', label: 'XP & Level' },
+                    { value: 'skor', label: 'Rata-rata Skor' },
+                  ]}
+                />
+              </div>
               <div className="filter-group">
                 <span className="filter-label">Periode:</span>
                 <FilterSelect
@@ -314,10 +383,13 @@ export function Leaderboard({ me }: { me: AppProfile }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontWeight: 600, fontSize: 14 }}>{getInitials(me.full_name ?? '')}</span>
                     <span style={{ fontSize: 12, color: 'var(--muted)' }}>{me.full_name}</span>
-                    {myGp && <span className="level-badge">{romanize(myGp.level)}</span>}
+                    {rankType === 'xp' && myGp && <span className="level-badge">{romanize(myGp.level)}</span>}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
-                    {myGp?.xp ?? 0} XP · {myGp?.streak_current ?? 0} hari streak
+                    {rankType === 'xp' 
+                      ? `${myGp?.xp ?? 0} XP · {myGp?.streak_current ?? 0} hari streak`
+                      : `${myGp?.xp ?? 0} skor rata-rata`
+                    }
                   </div>
                 </div>
               </div>
@@ -351,11 +423,14 @@ export function Leaderboard({ me }: { me: AppProfile }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 600 }}>{r.full_name}</span>
-                      <span className="level-badge">{romanize(r.level)}</span>
+                      {rankType === 'xp' && <span className="level-badge">{romanize(r.level)}</span>}
                       {isTop3 && <MedalIcon rank={i} />}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                      {r.xp} XP · streak {r.streak_best}
+                      {rankType === 'xp' 
+                        ? `${r.xp} XP · streak {r.streak_best}`
+                        : `${r.xp} skor rata-rata · {r.streak_current} kali coba`
+                      }
                     </div>
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: isTop3 ? 'var(--gold, #f59e0b)' : 'var(--accent)', textAlign: 'right' }}>
