@@ -654,9 +654,9 @@ async function kumpulkan() {
     document.oncontextmenu = null;
     document.onkeydown = null;
 
-    // Classical scoring fallback
-    const benar = items.filter((it) => ans[it.id]?.correct).length;
-    const classicalScore = Math.round((benar / items.length) * 10000) / 100;
+    // Classical scoring fallback using partial scores (TKA standard)
+    const totalPartial = items.reduce((sum, it) => sum + (ans[it.id]?.partialScore ?? (ans[it.id]?.correct ? 1 : 0)), 0);
+    const classicalScore = items.length > 0 ? Math.round((totalPartial / items.length) * 10000) / 100 : 0;
 
     // IRT 2PL scoring if items have IRT parameters
     let irtScore = classicalScore;
@@ -835,7 +835,8 @@ async function kumpulkan() {
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {pkgs.map((p) => (
+              {/* Filter: only latihan and simulasi in Latihan tab */}
+              {pkgs.filter(p => p.kind === 'latihan' || p.kind === 'simulasi').map((p) => (
                 <div key={p.id} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 650 }}>{p.title}</h3>
@@ -852,7 +853,7 @@ async function kumpulkan() {
                       )}
                     </div>
                   </div>
-                  <button className="continue-btn" type="button" disabled={starting} onClick={() => mulai(p)}>{starting ? 'Memuat…' : 'Mulai Simulasi'}</button>
+                  <button className="continue-btn" type="button" disabled={starting} onClick={() => mulai(p)}>{starting ? 'Memuat…' : p.kind === 'latihan' ? 'Mulai Latihan' : 'Mulai Simulasi'}</button>
                 </div>
               ))}
             </div>

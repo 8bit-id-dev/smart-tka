@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { insforge, type AppProfile } from '../lib/insforge';
 import { FilterSelect } from '../components/FilterSelect';
 
-type ItemRow = { id: string; stem: string; mapel: string; materi?: string | null; item_type: string; difficulty?: number | null };
+type ItemRow = { id: string; stem: string; mapel: string; materi?: string | null; item_type: string; difficulty?: number | null; sub_materi?: string | null };
 type Pkg = {
   id: string;
   title: string;
@@ -44,6 +44,248 @@ const KINDS = [
 
 const JENJANG_OPTS = ['sd', 'smp', 'sma', 'smk'] as const;
 
+type SubMateriRule = { nama: string; jumlah_per_type: Record<string, number> };
+
+// AI Selection UI Component
+function AISelectionUI({
+  useAiSelection,
+  itemsByMateri,
+  filteredItems,
+  activeTypes,
+  jumlahPerTipe,
+  jumlahSoalTotal,
+  distribusiMode,
+  setDistribusiMode,
+  subMateriRules,
+  setSubMateriRules,
+  coverage,
+  setJumlahPerTipe,
+  setActiveTypes,
+}: {
+  useAiSelection: boolean;
+  itemsByMateri: ItemRow[];
+  filteredItems: ItemRow[];
+  activeTypes: string[];
+  jumlahPerTipe: Record<string, number>;
+  jumlahSoalTotal: number;
+  distribusiMode: 'materi' | 'sub_materi';
+  setDistribusiMode: (mode: 'materi' | 'sub_materi') => void;
+  subMateriRules: SubMateriRule[];
+  setSubMateriRules: (rules: SubMateriRule[]) => void;
+  coverage: {
+    allTypesCovered: boolean;
+    allMateriCovered: boolean;
+    allDiffsCovered: boolean;
+    typesCovered: number;
+    activeTypes: number;
+    materisCovered: number;
+    materisInBank: number;
+    diffsCovered: number;
+    diffsInBank: number;
+    showWarning: boolean;
+  } | null;
+  setJumlahPerTipe: (value: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => void;
+  setActiveTypes: (value: string[] | ((prev: string[]) => string[])) => void;
+}) {
+  if (!useAiSelection) return null;
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div className="form-section-title" style={{ fontSize: 12, marginBottom: 8 }}>Mode Distribusi Soal</div>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+          <input
+            type="radio"
+            value="materi"
+            checked={distribusiMode === 'materi'}
+            onChange={() => { setDistribusiMode('materi'); setSubMateriRules([]); }}
+          />
+          <span style={{ fontSize: 13 }}>Berdasarkan Materi (global per jenis)</span>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+          <input
+            type="radio"
+            value="sub_materi"
+            checked={distribusiMode === 'sub_materi'}
+            onChange={() => setDistribusiMode('sub_materi')}
+          />
+          <span style={{ fontSize: 13 }}>Berdasarkan Sub-Materi (per sub-materi)</span>
+        </label>
+      </div>
+
+      {distribusiMode === 'materi' && (
+        <div>
+          <div className="form-section-title" style={{ fontSize: 12 }}>Jumlah soal per jenis (AI distribusi acak per siswa)</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 6 }}>
+            {activeTypes.map((t) => {
+              const availT = itemsByMateri.filter((it) => it.item_type === t).length;
+              const label = t === 'pernyataan_bs' ? 'Pernyataan B/S' : (ITEM_TYPE_LABELS[t] ?? t);
+              return (
+                <div key={t} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 90 }}>
+                  <label style={{ fontSize: 11, color: 'var(--muted)' }}>{label}</label>
+                  <input
+                    type="number"
+                    className="input"
+                    style={{ width: 90 }}
+                    min={0}
+                    max={availT}
+                    value={(jumlahPerTipe as Record<string, number>)[t] || 0}
+                    onChange={(e) => {
+                      const v = Math.max(0, Math.min(Number(e.target.value) || 0, availT));
+                      setJumlahPerTipe((prev: Record<string, number>) => ({ ...prev, [t]: v }) as Record<string, number>);
+                    }}
+                  />
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{availT} tersedia</span>
+                </div>
+              );
+            })}
+          </div>
+          {ALL_ITEM_TYPES.some((t) => !activeTypes.includes(t)) && (
+            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>Tambah jenis soal:</span>
+              <FilterSelect
+                value=""
+                onChange={(v) => {
+                  if (v) {
+                    setJumlahPerTipe((prev: Record<string, number>) => ({ ...prev, [v]: 0 }) as Record<string, number>);
+                    setActiveTypes((a: string[]) => [...a, v]);
+                  }
+                }}
+                placeholder="+"
+                minWidth={140}
+                options={ALL_ITEM_TYPES.filter((t) => !activeTypes.includes(t)).map((t) => ({
+                  value: t,
+                  label: t === 'pernyataan_bs' ? 'Pernyataan B/S' : (ITEM_TYPE_LABELS[t] ?? t),
+                }))}
+              />
+            </div>
+          )}
+           <p className="input-hint" style={{ marginTop: 6 }}>
+             Total {jumlahSoalTotal} soal ({filteredItems.length} tersedia). {jumlahSoalTotal === 0 ? 'Isi minimal 1.' : ''}
+           </p>
+        </div>
+      )}
+
+      {distribusiMode === 'sub_materi' && (
+        <div>
+          <div className="form-section-title" style={{ fontSize: 12 }}>Sub-Materi & Jumlah per Jenis</div>
+          <p className="input-hint" style={{ marginBottom: 8 }}>
+            Setiap sub-materi akan mendapat soal sesuai aturan di bawah. Item di bank soal harus memiliki kolom sub_materi terisi.
+          </p>
+          {subMateriRules.length === 0 && (
+            <p className="input-hint" style={{ color: 'var(--muted)' }}>Belum ada sub-materi. Klik "Tambah Sub-Materi" untuk mulai.</p>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {subMateriRules.map((rule, idx) => (
+              <div key={idx} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, backgroundColor: 'var(--surface-2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <input
+                    type="text"
+                    className="input"
+                    style={{ flex: 1, maxWidth: 300 }}
+                    value={rule.nama}
+                    onChange={(e) => {
+                      const next = [...subMateriRules];
+                      next[idx] = { ...next[idx], nama: e.target.value };
+                      setSubMateriRules(next);
+                    }}
+                    placeholder="Nama sub-materi (mis. Persamaan Linier)"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ color: 'var(--danger)' }}
+                    onClick={() => setSubMateriRules(subMateriRules.filter((_, i) => i !== idx))}
+                  >
+                    Hapus
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  {activeTypes.map((t) => {
+                    const availT = itemsByMateri.filter((it) => it.item_type === t && it.sub_materi === rule.nama).length;
+                    const label = t === 'pernyataan_bs' ? 'Pernyataan B/S' : (ITEM_TYPE_LABELS[t] ?? t);
+                    return (
+                      <div key={t} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 90 }}>
+                        <label style={{ fontSize: 11, color: 'var(--muted)' }}>{label}</label>
+                        <input
+                          type="number"
+                          className="input"
+                          style={{ width: 90 }}
+                          min={0}
+                          max={availT}
+                          value={rule.jumlah_per_type[t] || 0}
+                          onChange={(e) => {
+                            const v = Math.max(0, Math.min(Number(e.target.value) || 0, availT));
+                            const next = [...subMateriRules];
+                            next[idx] = { ...next[idx], jumlah_per_type: { ...next[idx].jumlah_per_type, [t]: v } };
+                            setSubMateriRules(next);
+                          }}
+                        />
+                        <span style={{ fontSize: 11, color: 'var(--muted)' }}>{availT} tersedia</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {activeTypes.some((t) => {
+                  const availT = itemsByMateri.filter((it) => it.item_type === t && it.sub_materi === rule.nama).length;
+                  return (rule.jumlah_per_type[t] || 0) > availT;
+                }) && (
+                  <p className="input-hint" style={{ marginTop: 4, color: 'var(--danger)' }}>
+                    ⚠ Beberapa jenis soal melebihi ketersediaan untuk sub-materi ini.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                  const newRule = {
+                    nama: '',
+                    jumlah_per_type: activeTypes.reduce(
+                      (acc, t) => ({ ...acc, [t]: 0 }),
+                      {} as Record<string, number>
+                    ),
+                  };
+                  setSubMateriRules([...subMateriRules, newRule]);
+                }}
+            >
+              + Tambah Sub-Materi
+            </button>
+          </div>
+          <p className="input-hint" style={{ marginTop: 8 }}>
+            Total soal: <strong>{subMateriRules.reduce((sum, r) => sum + Object.values(r.jumlah_per_type).reduce((s, n) => s + (n || 0), 0), 0)}</strong>
+          </p>
+        </div>
+      )}
+
+      {coverage && (
+        <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, backgroundColor: 'var(--surface-2)', fontSize: 12 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Cakupan paket:</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span style={{ color: coverage.allTypesCovered ? 'var(--ok)' : 'var(--danger)' }}>
+              {coverage.allTypesCovered ? '✓' : '✗'} {coverage.typesCovered}/{coverage.activeTypes} jenis soal
+            </span>
+            <span style={{ color: coverage.allMateriCovered ? 'var(--ok)' : 'var(--danger)' }}>
+              {coverage.allMateriCovered ? '✓' : '✗'} {coverage.materisCovered}/{coverage.materisInBank} materi
+            </span>
+            <span style={{ color: coverage.allDiffsCovered ? 'var(--ok)' : 'var(--danger)' }}>
+              {coverage.allDiffsCovered ? '✓' : '✗'} {coverage.diffsCovered}/{coverage.diffsInBank} tingkat kesulitan
+            </span>
+          </div>
+          {coverage.showWarning && (
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--muted)' }}>
+              Pastikan setiap jenis soal minimal 1, dan filter mencakup semua materi & tingkat kesulitan.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [pkgs, setPkgs] = useState<Pkg[]>([]);
   const [items, setItems] = useState<ItemRow[]>([]);
@@ -75,29 +317,39 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [selectedDiffs, setSelectedDiffs] = useState<Set<number>>(new Set());
   const [mySubjects, setMySubjects] = useState<string[]>([]);
   const [mapelOptions, setMapelOptions] = useState<string[]>([]);
+  const [jadwalMulai, setJadwalMulai] = useState('');
+  const [jadwalSelesai, setJadwalSelesai] = useState('');
+  const [jadwalToken, setJadwalToken] = useState('');
+  const [distribusiMode, setDistribusiMode] = useState<'materi' | 'sub_materi'>('materi');
+  const [subMateriRules, setSubMateriRules] = useState<SubMateriRule[]>([]);
   const isGuru = profile.role === 'guru';
   const isAdmin = profile.role === 'admin' || profile.role === 'konten';
+
+  function generateToken(len = 6) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let t = '';
+    for (let i = 0; i < len; i++) t += chars[Math.floor(Math.random() * chars.length)];
+    return t;
+  }
 
   const discuss = kind === 'latihan';
   const durationSec = kind === 'latihan' ? (menit > 0 ? menit * 60 : null) : Math.max(5, menit) * 60;
 
   async function load() {
-       let q = insforge.database
-          .from('packages')
-          .select('id, title, kind, mapel, materi, info, jenjang, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal, ai_config');
-        if (!isAdmin) {
-          q = q.eq('created_by', profile.id);
-        }
-        const p = await q;
-        if (p.error) setErr(p.error.message);
-        else setPkgs((p.data || []) as Pkg[]);
+    let q = insforge.database
+      .from('packages')
+      .select('id, title, kind, mapel, materi, info, jenjang, item_count, duration_sec, discuss_after_each, shuffle, use_ai_selection, jumlah_soal_soal, ai_config');
+    if (!isAdmin) {
+      q = q.eq('created_by', profile.id);
     }
+    const p = await q;
+    if (p.error) setErr(p.error.message);
+    else setPkgs((p.data || []) as Pkg[]);
+  }
 
-  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     void load();
   }, [profile.id]);
-  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     if (!isGuru && !isAdmin) return;
@@ -137,7 +389,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     void (async () => {
       const { data, error } = await insforge.database
         .from('items')
-        .select('id, stem, mapel, materi, item_type, difficulty')
+        .select('id, stem, mapel, materi, item_type, difficulty, sub_materi')
         .eq('mapel', mapel)
         .neq('status', 'retired')
         .order('mapel')
@@ -166,6 +418,11 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     setSelectedTypes(new Set());
     setSelectedDiffs(new Set());
     setInfoText('');
+    setJadwalMulai('');
+    setJadwalSelesai('');
+    setJadwalToken('');
+    setDistribusiMode('materi');
+    setSubMateriRules([]);
   }
 
   async function muatPaket(p: Pkg) {
@@ -193,10 +450,39 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         setJumlahPerTipe(jt);
         setActiveTypes(Object.keys(jt));
       }
+      if (cfg.mode === 'sub_materi' && Array.isArray(cfg.sub_materi_rules)) {
+        setDistribusiMode('sub_materi');
+        setSubMateriRules(cfg.sub_materi_rules as SubMateriRule[]);
+      } else {
+        setDistribusiMode('materi');
+        setSubMateriRules([]);
+      }
     } else {
       setSelectedMateris(p.materi ? new Set(p.materi.split(',').map((s) => s.trim()).filter(Boolean)) : new Set());
+      setDistribusiMode('materi');
+      setSubMateriRules([]);
     }
     setInfoText(p.info || '');
+    if (p.kind === 'ujian_kelas') {
+      const { data: sch } = await insforge.database
+        .from('exam_schedules')
+        .select('start_at, end_at, token')
+        .eq('package_id', p.id)
+        .maybeSingle();
+      if (sch) {
+        setJadwalMulai(sch.start_at ? new Date(sch.start_at).toISOString().slice(0, 16) : '');
+        setJadwalSelesai(sch.end_at ? new Date(sch.end_at).toISOString().slice(0, 16) : '');
+        setJadwalToken(sch.token || '');
+      } else {
+        setJadwalMulai('');
+        setJadwalSelesai('');
+        setJadwalToken('');
+      }
+    } else {
+      setJadwalMulai('');
+      setJadwalSelesai('');
+      setJadwalToken('');
+    }
     const { data } = await insforge.database.from('package_items').select('item_id').eq('package_id', p.id);
     setPicked(((data || []) as { item_id: string }[]).map((r) => r.item_id));
   }
@@ -237,14 +523,12 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         setErr(`Jumlah soal (${jumlahSoalTotal}) melebihi bank soal yang tersedia (${filteredItems.length}).`);
         return;
       }
-      // Validasi: setiap jenis soal aktif harus minimal 1
       for (const t of activeTypes) {
         if ((jumlahPerTipe[t] || 0) < 1) {
           setErr(`Jumlah soal untuk jenis ${ITEM_TYPE_LABELS[t] || t} harus minimal 1.`);
           return;
         }
       }
-      // Validasi: setiap materi dalam bank soal harus memiliki minimal 1 soal tersedia
       const materisWithQuestions = [...new Set(filteredItems.map((it) => it.materi).filter(Boolean) as string[])];
       const materisInBank = [...new Set(itemsByMateri.map((it) => it.materi).filter(Boolean) as string[])];
       const materisWithoutQuestions = materisInBank.filter((m) => !materisWithQuestions.includes(m));
@@ -252,29 +536,28 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         setErr(`Materi berikut tidak memiliki soal dengan filter yang dipilih: ${materisWithoutQuestions.join(', ')}. Tambah jenis soal atau tingkat kesulitan agar semua materi tercakup.`);
         return;
       }
-      // Validasi: setiap tingkat kesulitan dalam bank soal harus memiliki minimal 1 soal tersedia
-      const diffsWithQuestions = [...new Set(filteredItems.map((it) => it.difficulty).filter(Boolean) as number[])];
-      const diffsInBank = [...new Set(itemsByMateri.map((it) => it.difficulty).filter(Boolean) as number[])];
-      const diffsWithoutQuestions = diffsInBank.filter((d) => !diffsWithQuestions.includes(d));
-      if (diffsWithoutQuestions.length > 0) {
-        const diffLabels = diffsWithoutQuestions.map((d) => DIFF_OPTS.find((o) => o.v === d)?.label || `Level ${d}`);
-        setErr(`Tingkat kesulitan berikut tidak memiliki soal dengan filter yang dipilih: ${diffLabels.join(', ')}. Tambah jenis soal atau materi agar semua tingkat kesulitan tercakup.`);
-        return;
+      if (distribusiMode === 'sub_materi') {
+        for (const rule of subMateriRules) {
+          if (!rule.nama.trim()) {
+            setErr('Semua sub-materi harus memiliki nama.');
+            return;
+          }
+          for (const [type, count] of Object.entries(rule.jumlah_per_type)) {
+            if ((count || 0) > 0) {
+              const avail = itemsByMateri.filter((it) => it.item_type === type && it.sub_materi === rule.nama).length;
+              if (avail < (count || 0)) {
+                setErr(`Sub-materi "${rule.nama}" jenis ${ITEM_TYPE_LABELS[type] || type}: butuh ${count}, tersedia ${avail}.`);
+                return;
+              }
+            }
+}
       }
-      // Validasi: total soal harus >= jumlah materi (agar setiap materi minimal 1)
-      if (materisInBank.length > 0 && jumlahSoalTotal < materisInBank.length) {
-        setErr(`Total soal (${jumlahSoalTotal}) harus minimal ${materisInBank.length} agar setiap materi mendapat minimal 1 soal.`);
-        return;
-      }
-      // Validasi: total soal harus >= jumlah tingkat kesulitan (agar setiap tingkat minimal 1)
-      if (diffsInBank.length > 0 && jumlahSoalTotal < diffsInBank.length) {
-        setErr(`Total soal (${jumlahSoalTotal}) harus minimal ${diffsInBank.length} agar setiap tingkat kesulitan mendapat minimal 1 soal.`);
-        return;
-      }
+    }
     }
 
     const aiConfig = useAiSelection
       ? {
+          mode: distribusiMode,
           mapel: mapel || null,
           materi: Array.from(selectedMateris),
           item_types: Array.from(selectedTypes),
@@ -284,6 +567,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
             (acc, t) => ({ ...acc, [t]: jumlahPerTipe[t] || 0 }),
             {} as Record<string, number>
           ),
+          sub_materi_rules: distribusiMode === 'sub_materi' ? subMateriRules : undefined,
           jenjang,
         }
       : null;
@@ -339,6 +623,32 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         return;
       }
     }
+
+    if (kind === 'ujian_kelas' && pkgId) {
+      const token = jadwalToken.trim() || generateToken(6);
+      const { error: schErr } = await insforge.database
+        .from('exam_schedules')
+        .upsert({
+          package_id: pkgId,
+          title: title.trim(),
+          subject: mapel,
+          materi: Array.from(selectedMateris).join(', ') || null,
+          duration_sec: durationSec,
+          info: infoText.trim() || null,
+          start_at: new Date(jadwalMulai).toISOString(),
+          end_at: new Date(jadwalSelesai).toISOString(),
+          token,
+          is_active: true,
+          created_by: profile.id,
+        }, { onConflict: 'package_id' });
+      if (schErr) {
+        setErr('Paket tersimpan tapi gagal simpan jadwal: ' + schErr.message);
+        setOk('');
+        setBusy(false);
+        return;
+      }
+    }
+
     setOk(editId ? 'Paket diperbarui.' : 'Paket dibuat.');
     kosongkanForm();
     setBusy(false);
@@ -381,6 +691,30 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     [itemsByMateri, selectedTypes, selectedDiffs]
   );
 
+  const coverage = useMemo(() => {
+    if (!useAiSelection || itemsByMateri.length === 0) return null;
+    const materisInBank = [...new Set(itemsByMateri.map((it) => it.materi).filter(Boolean) as string[])];
+    const materisCovered = materisInBank.filter((m) => filteredItems.some((it) => it.materi === m));
+    const diffsInBank = [...new Set(itemsByMateri.map((it) => it.difficulty).filter(Boolean) as number[])];
+    const diffsCovered = diffsInBank.filter((d) => filteredItems.some((it) => it.difficulty === d));
+    const typesCovered = activeTypes.filter((t) => (jumlahPerTipe[t] || 0) > 0);
+    const allMateriCovered = materisCovered.length === materisInBank.length && materisInBank.length > 0;
+    const allDiffsCovered = diffsCovered.length === diffsInBank.length && diffsInBank.length > 0;
+    const allTypesCovered = typesCovered.length === activeTypes.length && activeTypes.length > 0;
+    return {
+      allMateriCovered,
+      allDiffsCovered,
+      allTypesCovered,
+      typesCovered: typesCovered.length,
+      activeTypes: activeTypes.length,
+      materisCovered: materisCovered.length,
+      materisInBank: materisInBank.length,
+      diffsCovered: diffsCovered.length,
+      diffsInBank: diffsInBank.length,
+      showWarning: !allMateriCovered || !allDiffsCovered || !allTypesCovered,
+    };
+  }, [useAiSelection, itemsByMateri, filteredItems, activeTypes, jumlahPerTipe]);
+
   if (!['guru', 'admin', 'konten'].includes(profile.role)) {
     return (
       <div className="page">
@@ -389,14 +723,14 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
           <p className="card-subtitle">Hanya guru/admin.</p>
         </div>
       </div>
-    );
-  }
+);
+}
 
   return (
     <div className="page">
       <header className="page-header">
         <h1 className="page-title">{editId ? 'Ubah paket' : 'Buat paket soal'}</h1>
-          <p className="page-subtitle">Satu paket = satu mapel. Pilih soal dari semua bank soal sesuai mapel.</p>
+        <p className="page-subtitle">Satu paket = satu mapel. Pilih soal dari semua bank soal sesuai mapel.</p>
       </header>
 
       {err && (
@@ -417,248 +751,233 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               <header className="card-header">
                 <div>
                   <h2 className="card-title">{editId ? 'Sunting paket' : 'Identitas paket'}</h2>
-              <p className="card-subtitle">Judul, jenis uji, jenjang, dan mapel/materi.</p>
-            </div>
-            {editId && (
-              <button className="btn btn-ghost btn-sm" type="button" onClick={kosongkanForm}>
-                Batal
-              </button>
-            )}
-          </header>
-
-          <div className="form-section">
-            <div className="form-section-title">Judul <span className="req"></span></div>
-            <input
-              className="input"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              placeholder="Latihan penalaran 15 menit"
-            />
-          </div>
-
-          <div className="form-section">
-            <div className="form-group">
-              <div className="form-section-title">Jenis <span className="req"></span></div>
-              <FilterSelect
-                value={kind}
-                onChange={(v) => setKind(v as (typeof KINDS)[number]['id'])}
-                placeholder="Pilih jenis"
-                minWidth={160}
-                options={KINDS.filter((k) => k.id !== 'lab_25').map((k) => ({ value: k.id, label: k.label }))}
-              />
-            </div>
-            <div className="form-group" style={{ marginTop: 12 }}>
-              <div className="form-section-title">Jenjang <span className="req"></span></div>
-              <FilterSelect
-                value={jenjang}
-                onChange={setJenjang}
-                placeholder="Pilih jenjang"
-                minWidth={90}
-                options={JENJANG_OPTS.map((j) => ({ value: j, label: j.toUpperCase() }))}
-              />
-            </div>
-          </div>
-
-          <div className="form-section">
-            <div className="form-section-title">Mapel <span className="req"></span></div>
-            <FilterSelect
-              value={mapel}
-              onChange={(m) => {
-                setMapel(m);
-                setMateri('');
-                setSelectedMateris(new Set());
-              }}
-              placeholder="Pilih mapel"
-              minWidth={200}
-              options={((isGuru && !isAdmin) ? mySubjects : mapelOptions).map((m) => ({ value: m, label: m }))}
-            />
-            {mapel && (
-              <p className="input-hint">
-                {mapel}{selectedMateris.size ? ` · ${Array.from(selectedMateris).join(', ')}` : ''}
-              </p>
-            )}
-
-            <div className="hint-panel" style={{ marginTop: 8 }}>
-              <div className="form-section-title" style={{ fontSize: 12, marginBottom: 6 }}>Materi (pilih satu atau lebih)</div>
-              {uniqueMateris.length === 0 ? (
-                <p className="input-hint">Tidak ada materi tersedia untuk mapel ini.</p>
-              ) : (
-                <div className="field-row" style={{ flexWrap: 'wrap', gap: 10 }}>
-                  {uniqueMateris.map((m) => {
-                    const checked = selectedMateris.has(m);
-                    return (
-                      <label key={m} className={checked ? 'chip chip-terpilih' : 'chip'}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={!mapel}
-                          onChange={(e) => {
-                            const next = new Set(selectedMateris);
-                            if (e.target.checked) next.add(m);
-                            else next.delete(m);
-                            setSelectedMateris(next);
-                            setMateri(Array.from(next).join(','));
-                          }}
-                        />
-                        {m}
-                      </label>
-                    );
-                  })}
+                  <p className="card-subtitle">Judul, jenis uji, jenjang, dan mapel/materi.</p>
                 </div>
-              )}
-            </div>
-          </div>
+                {editId && (
+                  <button className="btn btn-ghost btn-sm" type="button" onClick={kosongkanForm}>
+                    Batal
+                  </button>
+                )}
+              </header>
 
-        <div className="form-section">
-          <div className="form-group">
-            <div className="form-section-title">
-              Durasi (menit) <span className="req"></span>
-            </div>
-            <input
-              className="input"
-              type="number"
-              min={kind === 'latihan' ? 0 : 5}
-              max={180}
-              value={menit}
-              onChange={(e) => setMenit(Number(e.target.value))}
-            />
-            <p className="input-hint" style={{ marginTop: 4 }}>
-              {kind === 'latihan' ? '0 = tanpa countdown ketat' : 'wajib untuk simulasi/ujian'}
-            </p>
-          </div>
-          <div className="form-group" style={{ marginTop: 16 }}>
-            <div className="form-section-title">Pengaturan</div>
-                <div className="field-row" style={{ marginTop: 8 }}>
-                  <input type="checkbox" id="pkg-shuffle" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} />
-                  <label className="form-label" htmlFor="pkg-shuffle">
-                    Acak urutan per murid
-                  </label>
-                </div>
-                <div className="field-row" style={{ marginTop: 6 }}>
-                  <input type="checkbox" id="pkg-discuss" checked={discuss} onChange={() => {}} disabled />
-                  <label className="form-label" htmlFor="pkg-discuss" style={{ color: 'var(--muted)' }}>
-                    Pembahasan langsung (otomatis untuk jenis Latihan)
-                  </label>
-                </div>
-                <div className="field-row" style={{ marginTop: 6, gap: 6 }}>
-                  <input
-                    type="checkbox"
-                    id="pkg-ai"
-                    checked={useAiSelection}
-                    onChange={(e) => {
-                      setUseAiSelection(e.target.checked);
-                    }}
+              <div className="form-section">
+                <div className="form-section-title">Judul <span className="req"></span></div>
+                <input
+                  className="input"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  placeholder="Latihan penalaran 15 menit"
+                />
+              </div>
+
+              <div className="form-section">
+                <div className="form-group">
+                  <div className="form-section-title">Jenis <span className="req"></span></div>
+                  <FilterSelect
+                    value={kind}
+                    onChange={(v) => setKind(v as (typeof KINDS)[number]['id'])}
+                    placeholder="Pilih jenis"
+                    minWidth={160}
+                    options={KINDS.filter((k) => k.id !== 'lab_25').map((k) => ({ value: k.id, label: k.label }))}
                   />
-                  <label className="form-label" htmlFor="pkg-ai">
-                    AI seleksi acak per siswa
-                  </label>
                 </div>
-                {useAiSelection && (
-                  <div style={{ marginTop: 8 }}>
-                    <div className="form-section-title" style={{ fontSize: 12 }}>Jumlah soal per jenis (AI distribusi acak per siswa)</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 6 }}>
-                      {activeTypes.map((t) => {
-                        const availT = itemsByMateri.filter((it) => it.item_type === t).length;
-                        const label = t === 'pernyataan_bs' ? 'Pernyataan B/S' : (ITEM_TYPE_LABELS[t] ?? t);
+                <div className="form-group" style={{ marginTop: 12 }}>
+                  <div className="form-section-title">Jenjang <span className="req"></span></div>
+                  <FilterSelect
+                    value={jenjang}
+                    onChange={setJenjang}
+                    placeholder="Pilih jenjang"
+                    minWidth={90}
+                    options={JENJANG_OPTS.map((j) => ({ value: j, label: j.toUpperCase() }))}
+                  />
+                </div>
+              </div>
+
+              <div className="form-section">
+                <div className="form-section-title">Mapel <span className="req"></span></div>
+                <FilterSelect
+                  value={mapel}
+                  onChange={(m) => {
+                    setMapel(m);
+                    setMateri('');
+                    setSelectedMateris(new Set());
+                  }}
+                  placeholder="Pilih mapel"
+                  minWidth={200}
+                  options={((isGuru && !isAdmin) ? mySubjects : mapelOptions).map((m) => ({ value: m, label: m }))}
+                />
+                {mapel && (
+                  <p className="input-hint">
+                    {mapel}{selectedMateris.size ? ` · ${Array.from(selectedMateris).join(', ')}` : ''}
+                  </p>
+                )}
+
+                <div className="hint-panel" style={{ marginTop: 8 }}>
+                  <div className="form-section-title" style={{ fontSize: 12, marginBottom: 6 }}>Materi (pilih satu atau lebih)</div>
+                  {uniqueMateris.length === 0 ? (
+                    <p className="input-hint">Tidak ada materi tersedia untuk mapel ini.</p>
+                  ) : (
+                    <div className="field-row" style={{ flexWrap: 'wrap', gap: 10 }}>
+                      {uniqueMateris.map((m) => {
+                        const checked = selectedMateris.has(m);
                         return (
-                          <div key={t} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 90 }}>
-                            <label style={{ fontSize: 11, color: 'var(--muted)' }}>{label}</label>
+                          <label key={m} className={checked ? 'chip chip-terpilih' : 'chip'}>
                             <input
-                              type="number"
-                              className="input"
-                              style={{ width: 90 }}
-                              min={0}
-                              max={availT}
-                              value={(jumlahPerTipe as Record<string, number>)[t] || 0}
+                              type="checkbox"
+                              checked={checked}
+                              disabled={!mapel}
                               onChange={(e) => {
-                                const v = Math.max(0, Math.min(Number(e.target.value) || 0, availT));
-                                setJumlahPerTipe((prev) => ({ ...prev, [t]: v }));
+                                const next = new Set(selectedMateris);
+                                if (e.target.checked) next.add(m);
+                                else next.delete(m);
+                                setSelectedMateris(next);
+                                setMateri(Array.from(next).join(','));
                               }}
                             />
-                            <span style={{ fontSize: 11, color: 'var(--muted)' }}>{availT} tersedia</span>
-                          </div>
+                            {m}
+                          </label>
                         );
                       })}
                     </div>
-                    {ALL_ITEM_TYPES.some((t) => !activeTypes.includes(t)) && (
-                      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>Tambah jenis soal:</span>
-                        <FilterSelect
-                          value=""
-                          onChange={(v) => {
-                            if (v) {
-                              setJumlahPerTipe((prev) => ({ ...prev, [v]: 0 }));
-                              setActiveTypes((a) => [...a, v]);
-                            }
-                          }}
-                          placeholder="+"
-                          minWidth={140}
-                          options={ALL_ITEM_TYPES.filter((t) => !activeTypes.includes(t)).map((t) => ({
-                            value: t,
-                            label: t === 'pernyataan_bs' ? 'Pernyataan B/S' : (ITEM_TYPE_LABELS[t] ?? t),
-                          }))}
-                        />
-                      </div>
-                    )}
-                     <p className="input-hint" style={{ marginTop: 6 }}>
-                       Total {jumlahSoalTotal} soal ({filteredItems.length} tersedia). {jumlahSoalTotal === 0 ? 'Isi minimal 1.' : ''}
-                     </p>
-                     {useAiSelection && itemsByMateri.length > 0 && (() => {
-                        const materisInBank = [...new Set(itemsByMateri.map((it) => it.materi).filter(Boolean) as string[])];
-                        const materisCovered = materisInBank.filter((m) => filteredItems.some((it) => it.materi === m));
-                        const diffsInBank = [...new Set(itemsByMateri.map((it) => it.difficulty).filter(Boolean) as number[])];
-                        const diffsCovered = diffsInBank.filter((d) => filteredItems.some((it) => it.difficulty === d));
-                        const typesCovered = activeTypes.filter((t) => (jumlahPerTipe[t] || 0) > 0);
-                        const allMateriCovered = materisCovered.length === materisInBank.length && materisInBank.length > 0;
-                        const allDiffsCovered = diffsCovered.length === diffsInBank.length && diffsInBank.length > 0;
-                        const allTypesCovered = typesCovered.length === activeTypes.length && activeTypes.length > 0;
-                        return (
-                          <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, backgroundColor: 'var(--surface-2)', fontSize: 12 }}>
-                            <div style={{ fontWeight: 600, marginBottom: 4 }}>Cakupan paket:</div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                              <span style={{ color: allTypesCovered ? 'var(--ok)' : 'var(--danger)' }}>
-                                {allTypesCovered ? '✓' : '✗'} {typesCovered.length}/{activeTypes.length} jenis soal
-                              </span>
-                              <span style={{ color: allMateriCovered ? 'var(--ok)' : 'var(--danger)' }}>
-                                {allMateriCovered ? '✓' : '✗'} {materisCovered.length}/{materisInBank.length} materi
-                              </span>
-                              <span style={{ color: allDiffsCovered ? 'var(--ok)' : 'var(--danger)' }}>
-                                {allDiffsCovered ? '✓' : '✗'} {diffsCovered.length}/{diffsInBank.length} tingkat kesulitan
-                              </span>
-                            </div>
-                            {(!allMateriCovered || !allDiffsCovered || !allTypesCovered) && (
-                              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--muted)' }}>
-                                Pastikan setiap jenis soal minimal 1, dan filter mencakup semua materi & tingkat kesulitan.
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })()}
-                   </div>
-                )}
+                  )}
+                </div>
+              </div>
+
+              <div className="form-section">
+                <div className="form-group">
+                  <div className="form-section-title">
+                    Durasi (menit) <span className="req"></span>
+                  </div>
+                  <input
+                    className="input"
+                    type="number"
+                    min={kind === 'latihan' ? 0 : 5}
+                    max={180}
+                    value={menit}
+                    onChange={(e) => setMenit(Number(e.target.value))}
+                  />
+                  <p className="input-hint" style={{ marginTop: 4 }}>
+                    {kind === 'latihan' ? '0 = tanpa countdown ketat' : 'wajib untuk simulasi/ujian'}
+                  </p>
+                </div>
+                <div className="form-group" style={{ marginTop: 16 }}>
+                  <div className="form-section-title">Pengaturan</div>
+                  <div className="field-row" style={{ marginTop: 8 }}>
+                    <input type="checkbox" id="pkg-shuffle" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} />
+                    <label className="form-label" htmlFor="pkg-shuffle">
+                      Acak urutan per murid
+                    </label>
+                  </div>
+                  <div className="field-row" style={{ marginTop: 6 }}>
+                    <input type="checkbox" id="pkg-discuss" checked={discuss} onChange={() => {}} disabled />
+                    <label className="form-label" htmlFor="pkg-discuss" style={{ color: 'var(--muted)' }}>
+                      Pembahasan langsung (otomatis untuk jenis Latihan)
+                    </label>
+                  </div>
+                  <div className="field-row" style={{ marginTop: 6, gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      id="pkg-ai"
+                      checked={useAiSelection}
+                      onChange={(e) => {
+                        setUseAiSelection(e.target.checked);
+                      }}
+                    />
+                    <label className="form-label" htmlFor="pkg-ai">
+                      AI seleksi acak per siswa
+                    </label>
+                  </div>
+                  <AISelectionUI
+                    useAiSelection={useAiSelection}
+                    itemsByMateri={itemsByMateri}
+                    filteredItems={filteredItems}
+                    activeTypes={activeTypes}
+                    jumlahPerTipe={jumlahPerTipe}
+                    jumlahSoalTotal={jumlahSoalTotal}
+                    distribusiMode={distribusiMode}
+                    setDistribusiMode={setDistribusiMode}
+                    subMateriRules={subMateriRules}
+                    setSubMateriRules={setSubMateriRules}
+                    coverage={coverage}
+                    setJumlahPerTipe={setJumlahPerTipe}
+                    setActiveTypes={setActiveTypes}
+                  />
+                </div>
+              </div>
+
+              {kind === 'ujian_kelas' && (
+                <div className="form-section" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                  <div className="form-section-title">Jadwal Ujian <span className="req"></span></div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <label className="form-label" htmlFor="jadwal-mulai">Waktu mulai</label>
+                      <input
+                        id="jadwal-mulai"
+                        type="datetime-local"
+                        className="input"
+                        value={jadwalMulai}
+                        onChange={(e) => setJadwalMulai(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <label className="form-label" htmlFor="jadwal-selesai">Waktu selesai</label>
+                      <input
+                        id="jadwal-selesai"
+                        type="datetime-local"
+                        className="input"
+                        value={jadwalSelesai}
+                        onChange={(e) => setJadwalSelesai(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <label className="form-label" htmlFor="jadwal-token">Token akses (opsional)</label>
+                    <div className="field-row" style={{ gap: 8, alignItems: 'center' }}>
+                      <input
+                        id="jadwal-token"
+                        type="text"
+                        className="input"
+                        style={{ flex: 1, textTransform: 'uppercase' }}
+                        value={jadwalToken}
+                        onChange={(e) => setJadwalToken(e.target.value.toUpperCase())}
+                        placeholder="Kosong = auto-generate"
+                        maxLength={12}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setJadwalToken(generateToken(6))}
+                      >
+                        Generate
+                      </button>
+                    </div>
+                    <p className="input-hint" style={{ marginTop: 4 }}>Kode 6-12 karakter untuk siswa masuk ujian. Biarkan kosong untuk otomatis.</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="form-section">
+                <div className="form-section-title">Info paket <small className="muted" style={{ display: 'block', fontSize: 11, fontWeight: 400 }}>(opsional — ditampilkan di halaman konfirmasi sebelum mengerjakan)</small></div>
+                <textarea
+                  className="input"
+                  value={infoText}
+                  onChange={(e) => setInfoText(e.target.value)}
+                  placeholder="mis. Paket ini mencakup PG + uraian. Durasi 90 menit. Bawa kalkulator."
+                  rows={3}
+                  style={{ width: '100%', resize: 'vertical' }}
+                />
               </div>
             </div>
 
-          <div className="form-section">
-            <div className="form-section-title">Info paket <small className="muted" style={{ display: 'block', fontSize: 11, fontWeight: 400 }}>(opsional — ditampilkan di halaman konfirmasi sebelum mengerjakan)</small></div>
-            <textarea
-              className="input"
-              value={infoText}
-              onChange={(e) => setInfoText(e.target.value)}
-              placeholder="mis. Paket ini mencakup PG + uraian. Durasi 90 menit. Bawa kalkulator."
-              rows={3}
-              style={{ width: '100%', resize: 'vertical' }}
-            />
-          </div>
-        </div>
-
-          <div className="actions">
-            <button className="btn btn-primary" type="submit" disabled={busy}>
-              {busy ? 'Menyimpan…' : editId ? 'Simpan perubahan' : 'Buat paket'}
-            </button>
-          </div>
-        </form>
+            <div className="actions">
+              <button className="btn btn-primary" type="submit" disabled={busy}>
+                {busy ? 'Menyimpan…' : editId ? 'Simpan perubahan' : 'Buat paket'}
+              </button>
+            </div>
+          </form>
         </div>
 
         <div className="right-col">
@@ -805,7 +1124,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
 
           {items.length === 0 && (
             <div className="banner banner-warn">
-              <p className="banner-text">Pilih mapel terlebih dahku untuk melihat bank soal tersedia.</p>
+              <p className="banner-text">Pilih mapel terlebih dahulu untuk melihat bank soal tersedia.</p>
             </div>
           )}
           {items.length > 0 && filteredItems.length === 0 && (

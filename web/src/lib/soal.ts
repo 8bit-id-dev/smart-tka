@@ -278,11 +278,11 @@ export function irtCategory(score: number): 'Istimewa' | 'Baik' | 'Memadai' | 'K
  * Returns fraction (0-1) for classical partial credit
  */
 
-/** PGK: correct options / total correct options (TKA rule: no penalty, min 0) */
+/** PGK: correct options / total selected options (precision) — penalize wrong selections */
 export function partialScorePGK(selected: string[], key: string[]): number {
-  if (key.length === 0) return 0;
+  if (selected.length === 0) return 0;
   const correctSelected = selected.filter(s => key.includes(s)).length;
-  return Math.min(1, correctSelected / key.length);
+  return correctSelected / selected.length;
 }
 
 /** PBS: correct statements / total statements (TKA rule: 1 point per statement) */

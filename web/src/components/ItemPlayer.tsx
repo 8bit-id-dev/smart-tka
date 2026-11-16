@@ -476,19 +476,23 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
         </button>
       )}
 
-      {reveal && (
-        <div className={`bahas ${correct() ? 'ok' : 'bad'}`}>
-          <strong>{correct() ? 'Benar' : item.item_type === 'uraian' ? 'Jawaban Terkumpul' : 'Belum tepat'}.</strong>
-          {typeof key === 'string' && key.trim() && item.item_type === 'uraian' && (
-            <p style={{ marginTop: 4 }}>
-              <strong>Kunci Acuan Guru:</strong> <MathText text={key} />
+      {reveal && (() => {
+        const c = correct();
+        const answered = item.item_type === 'pg' || item.item_type === 'single' ? pg != null : item.item_type === 'pg_kompleks' ? kom.length > 0 : item.item_type === 'pernyataan_bs' ? bs.some(v => v != null) : item.item_type === 'mencocokkan' ? Object.values(matchAns).some(v => v.trim()) : item.item_type === 'uraian' ? essayAns.trim() : false;
+        return (
+          <div className={`bahas ${c.ok ? 'ok' : answered ? 'bad' : 'unanswered'}`}>
+            <strong>{c.ok ? 'Benar' : answered ? 'Belum tepat' : 'Tidak dijawab'}.</strong>
+            {typeof key === 'string' && key.trim() && item.item_type === 'uraian' && (
+              <p style={{ marginTop: 4 }}>
+                <strong>Kunci Acuan Guru:</strong> <MathText text={key} />
+              </p>
+            )}
+            <p className="type-lab" style={{ marginTop: 4 }}>
+              Pembahasan: <MathText text={item.rationale || ''} />
             </p>
-          )}
-          <p className="type-lab" style={{ marginTop: 4 }}>
-            Pembahasan: <MathText text={item.rationale || ''} />
-          </p>
-        </div>
-      )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
