@@ -353,19 +353,37 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
     window.addEventListener('blur', onBlur);
     document.addEventListener('fullscreenchange', onFullscreenChange);
     window.addEventListener('beforeunload', onBeforeUnload);
+    // pagehide: detect device death / browser crash vs intentional navigation
+    // event.persisted = true -> page might be restored from bfcache (don't count as cheat)
+    const onPageHide = (e: PageTransitionEvent) => {
+      console.log('[Simulasi] pagehide', { persisted: e.persisted });
+      if (e.persisted) {
+        // Page might be restored from bfcache - mark as potential crash recovery
+        try {
+          sessionStorage.setItem(`sim-${pkg?.id}-crash-recovery`, 'true');
+        } catch {}
+      } else {
+        // Real unload - flush answers but don't auto-lock (user might just close tab normally)
+        if (attemptId && studentId) {
+          void flushAndLockAnswers();
+        }
+      }
+    };
+    window.addEventListener('pagehide', onPageHide);
 
     return () => {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('blur', onBlur);
       document.removeEventListener('fullscreenchange', onFullscreenChange);
       window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('pagehide', onPageHide);
       
       // Exit fullscreen on cleanup
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
       }
     };
-  }, [phase, attemptId, studentId, isFullscreen, tabLeaveCount]);
+  }, [phase, attemptId, studentId, isFullscreen, tabLeaveCount, pkg?.id]);
 
 async function doMulai(p: Pkg, exam?: ExamSchedule) {
     setAns({});
@@ -546,6 +564,16 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
     runStartedAtRef.current = Date.now();
     setPhase('run');
     const draft = sessionStorage.getItem(`sim-${p.id}-draft`);
+    // Check for crash recovery (device death / browser crash)
+    const isCrashRecovery = sessionStorage.getItem(`sim-${p.id}-crash-recovery`) === 'true';
+    if (isCrashRecovery) {
+      console.log('[Simulasi] Crash recovery detected - resuming without penalty');
+      sessionStorage.removeItem(`sim-${p.id}-crash-recovery`);
+      // Reset tab leave count for this session (don't count device death as cheat)
+      setTabLeaveCount(0);
+      cheatWarnedRef.current.clear();
+      setShowCheatWarning(false);
+    }
     if (draft) {
       try {
         const d = JSON.parse(draft) as { ans?: Record<string, Ans>; i?: number; endsAt?: number };
