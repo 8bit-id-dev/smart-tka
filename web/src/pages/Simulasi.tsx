@@ -33,7 +33,7 @@ type Pkg = {
   ai_config?: Record<string, unknown> | null;
 };
 
-type Ans = { answer: string; correct: boolean; partialScore?: number };
+type Ans = { answer: string; correct: boolean; partialScore?: number; locked?: boolean };
 
 type ExamSchedule = {
   id: string;
@@ -63,6 +63,8 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
   const [phase, setPhase] = useState<'list' | 'landing' | 'run' | 'hasil'>('list');
   const [err, setErr] = useState('');
   const [ans, setAns] = useState<Record<string, Ans>>({});
+  const ansRef = useRef(ans);
+  ansRef.current = ans;
   const [doubted, setDoubted] = useState<Set<string>>(new Set());
   const [skor, setSkor] = useState<number | null>(null);
   const [bookmarked, setBookmarked] = useState<Set<string>>(new Set());
@@ -261,6 +263,10 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
       setTabLeaveCount((prev) => {
         const next = prev + 1;
         persistTabLeaveCount(next);
+        // Flush & lock jawaban yang sudah dijawab ke DB saat tab ditinggal
+        if (attemptId && studentId) {
+          void flushAndLockAnswers();
+        }
         
         // Show warning at thresholds 1, 2
         if (CHEAT_WARNING_THRESHOLDS.includes(next) && !cheatWarnedRef.current.has(next)) {
@@ -294,6 +300,30 @@ export function Simulasi({ schoolId, studentId, onImmersiveChange, preSelectPack
           .eq('id', attemptId);
       } catch (e) {
         console.warn('[Simulasi] Failed to persist tab_leave_count:', e);
+      }
+    };
+
+    // Flush & lock jawaban yang sudah dijawab saat tab ditinggal (anti-cheat)
+    const flushAndLockAnswers = async () => {
+      if (!attemptId || !studentId) return;
+      const toLock = Object.entries(ansRef.current)
+        .filter(([, v]) => v.answer && v.answer.trim() !== '')
+        .map(([item_id, v]) => ({
+          attempt_id: attemptId,
+          item_id,
+          answer: v.answer,
+          is_correct: v.correct,
+          partial_score: v.partialScore ?? (v.correct ? 1 : 0),
+          locked_at: new Date().toISOString(),
+        }));
+      if (toLock.length === 0) return;
+      try {
+        await insforge.database
+          .from('attempt_answers')
+          .upsert(toLock, { onConflict: 'attempt_id,item_id' });
+        console.log('[Simulasi] Locked', toLock.length, 'answers on tab leave');
+      } catch (e) {
+        console.warn('[Simulasi] Failed to lock answers:', e);
       }
     };
 
@@ -621,7 +651,7 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
 
     const { data: savedAns } = await insforge.database
       .from('attempt_answers')
-      .select('item_id, answer, is_correct')
+      .select('item_id, answer, is_correct, locked_at')
       .eq('attempt_id', attempt.id);
     if (savedAns && savedAns.length > 0) {
       const restored: Record<string, Ans> = {};
@@ -629,7 +659,11 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
       shuffled.forEach((it) => {
         const match = (savedAns as any[]).find((a) => a.item_id === it.id);
         if (match) {
-          restored[it.id] = { answer: match.answer || '', correct: !!match.is_correct };
+          restored[it.id] = { 
+            answer: match.answer || '', 
+            correct: !!match.is_correct,
+            locked: !!match.locked_at
+          };
           answeredIds.push(it.id);
         }
       });
@@ -953,6 +987,7 @@ async function kumpulkan() {
                     hideKeys={false}
                     review
                     answer={myAns?.answer || ''}
+                    locked={true}
                   />
                 </div>
               );
@@ -1057,6 +1092,7 @@ async function kumpulkan() {
             showBahas={phase === 'hasil'}
             hideKeys={phase !== 'hasil'}
             answer={ans[item.id]?.answer || ''}
+            locked={!!ans[item.id]?.locked}
             onUpdate={(info) => {
               const value: Ans = { answer: info.answer ?? '', correct: !!info.correct, partialScore: info.partialScore };
               setAns((m) => ({ ...m, [item.id]: value }));

@@ -11,10 +11,12 @@ type Props = {
   onUpdate?: (info: { answer: string; correct: boolean; partialScore?: number }) => void;
   review?: boolean;
   answer?: string;
+  locked?: boolean;
 };
 
-export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, review = false, answer }: Props) {
+export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, review = false, answer, locked: lockedProp = false }: Props) {
   const [locked, setLocked] = useState(false);
+  const isLocked = locked || lockedProp;
   const [pg, setPg] = useState<string | null>(null);
   const [kom, setKom] = useState<string[]>([]);
   const isPernyataan = item.item_type === 'pernyataan_bs';
@@ -143,6 +145,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
     nextMatch: Record<number, string>,
     nextEssay: string,
   ) {
+    if (isLocked) return;
     let ok = false;
     let ans = '';
     let partialScore: number | undefined;
@@ -223,7 +226,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
               <button
                 key={L}
                 type="button"
-                disabled={locked && (showBahas || review)}
+                disabled={isLocked && (showBahas || review)}
                 className={`choice ${pg === L ? 'sel' : ''} ${reveal && L === key ? 'ok' : ''} ${reveal && pg === L && pg !== key ? 'bad' : ''}`}
                 onClick={() => {
                   setPg(L);
@@ -249,7 +252,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
               <button
                 key={L}
                 type="button"
-                disabled={locked && (showBahas || review)}
+                disabled={isLocked && (showBahas || review)}
                 className={`choice ${on ? 'sel' : ''} ${reveal && keys.includes(L) ? 'ok' : ''} ${reveal && on && !keys.includes(L) ? 'bad' : ''}`}
                 onClick={() => {
                   const next = kom.includes(L) ? kom.filter((x) => x !== L) : [...kom, L];
@@ -298,13 +301,13 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
                       aria-checked={chosen === 'B'}
                       tabIndex={0}
                       onClick={() => {
-                        if (locked && (showBahas || review)) return;
+                        if (isLocked && (showBahas || review)) return;
                         pickBs(origIdx, 'B');
                       }}
                       onKeyDown={(e) => {
                         if (e.key === ' ' || e.key === 'Enter') {
                           e.preventDefault();
-                          if (locked && (showBahas || review)) return;
+                          if (isLocked && (showBahas || review)) return;
                           pickBs(origIdx, 'B');
                         }
                       }}
@@ -315,7 +318,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
                           name={`bs-${origIdx}`}
                           value="B"
                           checked={chosen === 'B'}
-                          disabled={locked && (showBahas || review)}
+                          disabled={isLocked && (showBahas || review)}
                           onChange={() => pickBs(origIdx, 'B')}
                         />
                         <span className="bs-cell-label">Benar</span>
@@ -329,13 +332,13 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
                       aria-checked={chosen === 'S'}
                       tabIndex={0}
                       onClick={() => {
-                        if (locked && (showBahas || review)) return;
+                        if (isLocked && (showBahas || review)) return;
                         pickBs(origIdx, 'S');
                       }}
                       onKeyDown={(e) => {
                         if (e.key === ' ' || e.key === 'Enter') {
                           e.preventDefault();
-                          if (locked && (showBahas || review)) return;
+                          if (isLocked && (showBahas || review)) return;
                           pickBs(origIdx, 'S');
                         }
                       }}
@@ -346,7 +349,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
                           name={`bs-${origIdx}`}
                           value="S"
                           checked={chosen === 'S'}
-                          disabled={locked && (showBahas || review)}
+                          disabled={isLocked && (showBahas || review)}
                           onChange={() => pickBs(origIdx, 'S')}
                         />
                         <span className="bs-cell-label">Salah</span>
@@ -385,7 +388,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
                 </p>
                 <select
                   className="sel-input"
-                  disabled={locked && (showBahas || review)}
+                  disabled={isLocked && (showBahas || review)}
                   value={selectedVal}
                   style={{
                     borderColor: reveal ? (isPairCorrect ? '#2f9e6b' : '#dc2626') : undefined,
@@ -421,7 +424,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
           <textarea
             className="sel-input"
             rows={4}
-            disabled={locked && (showBahas || review)}
+            disabled={isLocked && (showBahas || review)}
             value={essayAns}
             placeholder="Tuliskan jawaban Anda di sini…"
             style={{ width: '100%', resize: 'vertical' }}
@@ -470,7 +473,7 @@ export function ItemPlayer({ item, showBahas, hideKeys, onLocked, onUpdate, revi
         </div>
       )}
 
-      {showBahas && !locked && (
+      {showBahas && !isLocked && (
         <button className="btn" type="button" disabled={!canLock()} onClick={lock} style={{ marginTop: 16 }}>
           Kunci jawaban
         </button>
