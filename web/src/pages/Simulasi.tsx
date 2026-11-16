@@ -468,6 +468,8 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
     if (p.use_ai_selection && p.jumlah_soal_soal && p.jumlah_soal_soal > 0 && p.jumlah_soal_soal < ordered.length) {
       const detail = p.ai_config?.detail as Record<string, Record<string, Record<number, number>>> | undefined;
       const difficultyRatio = p.ai_config?.difficulty_ratio as Record<number, number> | undefined;
+      const subMateriRules = p.ai_config?.sub_materi_rules as Array<{ nama: string; jumlah_per_type: Record<string, number>; difficulty_ratio?: Record<number, number> }> | undefined;
+      
       if (detail) {
         // AI picks a per-student deterministic subset honoring materi x jenis soal x tingkat kesulitan.
         let chosen: DbItem[] = [];
@@ -477,6 +479,24 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
               if (!Number(n)) continue;
               const pool = ordered.filter((it) => it.materi === m && it.item_type === t && Number(it.difficulty) === Number(d));
               chosen = chosen.concat(acakListSeeded(pool, `${seed}:${m}:${t}:${d}`).slice(0, Number(n)));
+            }
+          }
+        }
+        ordered = chosen.length ? chosen : acakListSeeded(ordered, `${seed}:sel`).slice(0, p.jumlah_soal_soal);
+      } else if (subMateriRules && subMateriRules.length > 0) {
+        // Sub-materi mode: each sub-materi has its own jumlah_per_type and difficulty_ratio
+        let chosen: DbItem[] = [];
+        for (const rule of subMateriRules) {
+          const subMateriName = rule.nama;
+          const ruleDifficultyRatio = rule.difficulty_ratio || difficultyRatio || { 1: 0.3, 2: 0.5, 3: 0.2 };
+          const diffs = Object.keys(ruleDifficultyRatio).map(Number).filter((d) => (ruleDifficultyRatio[d] ?? 0) > 0);
+          for (const [t, typeCount] of Object.entries(rule.jumlah_per_type)) {
+            if ((typeCount || 0) <= 0) continue;
+            for (const d of diffs) {
+              const n = Math.round((typeCount || 0) * (ruleDifficultyRatio[d] ?? 0));
+              if (n <= 0) continue;
+              const pool = ordered.filter((it) => it.sub_materi === subMateriName && it.item_type === t && Number(it.difficulty) === d);
+              chosen = chosen.concat(acakListSeeded(pool, `${seed}:${subMateriName}:${t}:${d}`).slice(0, n));
             }
           }
         }

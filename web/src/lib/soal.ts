@@ -7,6 +7,7 @@ export type DbItem = {
   item_type: ItemTipe;
   mapel: string;
   materi?: string | null;
+  sub_materi?: string | null;
   stem: string;
   stimulus: string | null;
   choices: unknown;

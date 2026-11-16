@@ -44,7 +44,7 @@ const KINDS = [
 
 const JENJANG_OPTS = ['sd', 'smp', 'sma', 'smk'] as const;
 
-type SubMateriRule = { nama: string; jumlah_per_type: Record<string, number> };
+type SubMateriRule = { nama: string; jumlah_per_type: Record<string, number>; difficulty_ratio?: Record<number, number> };
 
 // AI Selection UI Component
 function AISelectionUI({
@@ -234,6 +234,49 @@ function AISelectionUI({
                     ⚠ Beberapa jenis soal melebihi ketersediaan untuk sub-materi ini.
                   </p>
                 )}
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500 }}>
+                    <input
+                      type="checkbox"
+                      checked={!!rule.difficulty_ratio}
+                      onChange={(e) => {
+                        const next = [...subMateriRules];
+                        if (e.target.checked) {
+                          next[idx] = { ...next[idx], difficulty_ratio: { 1: 0.3, 2: 0.5, 3: 0.2 } };
+                        } else {
+                          const { difficulty_ratio: _, ...rest } = next[idx];
+                          next[idx] = rest;
+                        }
+                        setSubMateriRules(next);
+                      }}
+                    />
+                    Atur rasio tingkat kesulitan untuk sub-materi ini
+                  </label>
+                  {rule.difficulty_ratio && (
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                      {DIFF_OPTS.map((d) => (
+                        <div key={d.v} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 90 }}>
+                          <label style={{ fontSize: 11, color: 'var(--muted)' }}>{d.label}</label>
+                          <input
+                            type="number"
+                            className="input"
+                            style={{ width: 80 }}
+                            min={0}
+                            max={100}
+                            value={Math.round((rule.difficulty_ratio?.[d.v] || 0) * 100)}
+                            onChange={(e) => {
+                              const val = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                              const next = [...subMateriRules];
+                              next[idx] = { ...next[idx], difficulty_ratio: { ...next[idx].difficulty_ratio, [d.v]: val / 100 } };
+                              setSubMateriRules(next);
+                            }}
+                          />
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -248,6 +291,7 @@ function AISelectionUI({
                       (acc, t) => ({ ...acc, [t]: 0 }),
                       {} as Record<string, number>
                     ),
+                    difficulty_ratio: { 1: 0.3, 2: 0.5, 3: 0.2 },
                   };
                   setSubMateriRules([...subMateriRules, newRule]);
                 }}
@@ -547,7 +591,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
         setErr(`Materi berikut tidak memiliki soal dengan filter yang dipilih: ${materisWithoutQuestions.join(', ')}. Tambah jenis soal atau tingkat kesulitan agar semua materi tercakup.`);
         return;
       }
-      if (distribusiMode === 'sub_materi') {
+if (distribusiMode === 'sub_materi') {
         for (const rule of subMateriRules) {
           if (!rule.nama.trim()) {
             setErr('Semua sub-materi harus memiliki nama.');
@@ -561,9 +605,16 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
                 return;
               }
             }
-}
+          }
+          if (rule.difficulty_ratio) {
+            const totalRatio = Object.values(rule.difficulty_ratio).reduce((a, b) => a + b, 0);
+            if (Math.abs(totalRatio - 1) > 0.01) {
+              setErr(`Sub-materi "${rule.nama}": rasio tingkat kesulitan harus total 100% (sekarang ${Math.round(totalRatio * 100)}%).`);
+              return;
+            }
+          }
+        }
       }
-    }
     }
 
     const aiConfig = useAiSelection
