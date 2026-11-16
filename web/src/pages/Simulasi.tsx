@@ -467,6 +467,7 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
     const seed = `${studentId ?? 'anon'}_${p.id}`;
     if (p.use_ai_selection && p.jumlah_soal_soal && p.jumlah_soal_soal > 0 && p.jumlah_soal_soal < ordered.length) {
       const detail = p.ai_config?.detail as Record<string, Record<string, Record<number, number>>> | undefined;
+      const difficultyRatio = p.ai_config?.difficulty_ratio as Record<number, number> | undefined;
       if (detail) {
         // AI picks a per-student deterministic subset honoring materi x jenis soal x tingkat kesulitan.
         let chosen: DbItem[] = [];
@@ -476,6 +477,24 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
               if (!Number(n)) continue;
               const pool = ordered.filter((it) => it.materi === m && it.item_type === t && Number(it.difficulty) === Number(d));
               chosen = chosen.concat(acakListSeeded(pool, `${seed}:${m}:${t}:${d}`).slice(0, Number(n)));
+            }
+          }
+        }
+        ordered = chosen.length ? chosen : acakListSeeded(ordered, `${seed}:sel`).slice(0, p.jumlah_soal_soal);
+      } else if (difficultyRatio) {
+        // Auto-generate detail from global difficulty ratio
+        const materis = [...new Set(ordered.map((it) => it.materi).filter(Boolean))];
+        const types = [...new Set(ordered.map((it) => it.item_type))];
+        const diffs = Object.keys(difficultyRatio).map(Number).filter((d) => (difficultyRatio[d] ?? 0) > 0);
+        let chosen: DbItem[] = [];
+        for (const m of materis) {
+          for (const t of types) {
+            const typeTotal = (p.ai_config?.jumlah_per_type as Record<string, number> | undefined)?.[t] || Math.round(p.jumlah_soal_soal / types.length);
+            for (const d of diffs) {
+              const n = Math.round(typeTotal * (difficultyRatio[d] ?? 0));
+              if (n <= 0) continue;
+              const pool = ordered.filter((it) => it.materi === m && it.item_type === t && Number(it.difficulty) === d);
+              chosen = chosen.concat(acakListSeeded(pool, `${seed}:${m}:${t}:${d}`).slice(0, n));
             }
           }
         }

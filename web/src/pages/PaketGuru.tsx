@@ -315,6 +315,8 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [infoText, setInfoText] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [selectedDiffs, setSelectedDiffs] = useState<Set<number>>(new Set());
+  const [difficultyRatio, setDifficultyRatio] = useState<Record<number, number>>({ 1: 0.3, 2: 0.5, 3: 0.2 });
+  const [useDifficultyRatio, setUseDifficultyRatio] = useState(true);
   const [mySubjects, setMySubjects] = useState<string[]>([]);
   const [mapelOptions, setMapelOptions] = useState<string[]>([]);
   const [jadwalMulai, setJadwalMulai] = useState('');
@@ -417,6 +419,8 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
     setSelectedMateris(new Set());
     setSelectedTypes(new Set());
     setSelectedDiffs(new Set());
+    setDifficultyRatio({ 1: 0.3, 2: 0.5, 3: 0.2 });
+    setUseDifficultyRatio(true);
     setInfoText('');
     setJadwalMulai('');
     setJadwalSelesai('');
@@ -456,6 +460,13 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       } else {
         setDistribusiMode('materi');
         setSubMateriRules([]);
+      }
+      if (cfg.difficulty_ratio && typeof cfg.difficulty_ratio === 'object') {
+        setDifficultyRatio(cfg.difficulty_ratio as Record<number, number>);
+        setUseDifficultyRatio(true);
+      } else {
+        setDifficultyRatio({ 1: 0.3, 2: 0.5, 3: 0.2 });
+        setUseDifficultyRatio(false);
       }
     } else {
       setSelectedMateris(p.materi ? new Set(p.materi.split(',').map((s) => s.trim()).filter(Boolean)) : new Set());
@@ -562,6 +573,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
           materi: Array.from(selectedMateris),
           item_types: Array.from(selectedTypes),
           difficulties: Array.from(selectedDiffs),
+          difficulty_ratio: useDifficultyRatio ? difficultyRatio : undefined,
           jumlah_soal: jumlahSoalTotal,
           jumlah_per_type: activeTypes.reduce(
             (acc, t) => ({ ...acc, [t]: jumlahPerTipe[t] || 0 }),
@@ -1111,6 +1123,46 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
               <p className="input-hint" style={{ marginTop: 6 }}>Hanya soal dengan tingkat kesulitan terpilih yang dimasukkan ke paket.</p>
             )}
           </div>
+
+          {useAiSelection && (
+            <div style={{ marginTop: 12 }}>
+              <label className="field-row" style={{ alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={useDifficultyRatio}
+                  onChange={(e) => setUseDifficultyRatio(e.target.checked)}
+                />
+                <span style={{ fontWeight: 500 }}>Gunakan rasio tingkat kesulitan global (default: Mudah 30%, Sedang 50%, Sulit 20%)</span>
+              </label>
+              {useDifficultyRatio && (
+                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                  {DIFF_OPTS.map((d) => (
+                    <div key={d.v} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 100 }}>
+                      <label style={{ fontSize: 11, color: 'var(--muted)' }}>{d.label}</label>
+                      <input
+                        type="number"
+                        className="input"
+                        style={{ width: 80 }}
+                        min={0}
+                        max={100}
+                        value={Math.round((difficultyRatio[d.v] || 0) * 100)}
+                        onChange={(e) => {
+                          const val = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                          setDifficultyRatio((prev) => ({ ...prev, [d.v]: val / 100 }));
+                        }}
+                      />
+                      <span style={{ fontSize: 11, color: 'var(--muted)' }}>% dari total soal</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {useDifficultyRatio && (
+                <p className="input-hint" style={{ marginTop: 4 }}>
+                  Total: {Math.round((difficultyRatio[1] + difficultyRatio[2] + difficultyRatio[3]) * 100)}% {Math.round((difficultyRatio[1] + difficultyRatio[2] + difficultyRatio[3]) * 100) !== 100 && '⚠ Harus 100%'}
+                </p>
+              )}
+            </div>
+          )}
 
           {useAiSelection && (
             <div className="rec-card" style={{ marginBottom: 12 }}>
