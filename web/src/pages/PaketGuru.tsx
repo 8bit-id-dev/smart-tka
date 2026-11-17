@@ -179,18 +179,17 @@ function AISelectionUI({
             {subMateriRules.map((rule, idx) => (
               <div key={idx} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, backgroundColor: 'var(--surface-2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <input
-                    type="text"
-                    className="input"
-                    style={{ flex: 1, maxWidth: 300 }}
-                    value={rule.nama}
-                    onChange={(e) => {
-                      const next = [...subMateriRules];
-                      next[idx] = { ...next[idx], nama: e.target.value };
-                      setSubMateriRules(next);
-                    }}
-                    placeholder="Nama sub-materi (mis. Persamaan Linier)"
-                  />
+                  <FilterSelect
+                  value={rule.nama}
+                  onChange={(v) => {
+                    const next = [...subMateriRules];
+                    next[idx] = { ...next[idx], nama: v };
+                    setSubMateriRules(next);
+                  }}
+                  placeholder="Pilih sub-materi"
+                  minWidth={300}
+                  options={Array.from(new Set(itemsByMateri.map((it) => it.sub_materi).filter(Boolean))).map((s) => ({ value: s as string, label: s as string }))}
+                />
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
