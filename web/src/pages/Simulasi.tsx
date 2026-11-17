@@ -457,7 +457,7 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
       try {
         const { data: its } = await insforge.database
           .from('items')
-          .select('id, item_type, mapel, materi, stem, stimulus, choices, correct_key, rationale, jenjang, difficulty')
+          .select('id, item_type, mapel, materi, sub_materi, stem, stimulus, choices, correct_key, rationale, jenjang, difficulty')
           .in('id', ids);
         const map = new Map(((its || []) as DbItem[]).map((x) => [x.id, x]));
         ordered = ids.map((id) => map.get(id)).filter(Boolean) as DbItem[];
@@ -468,7 +468,7 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
     } else {
       const { data: its, error: e2 } = await insforge.database
         .from('items')
-        .select('id, item_type, mapel, materi, stem, stimulus, choices, correct_key, rationale, jenjang, difficulty')
+        .select('id, item_type, mapel, materi, sub_materi, stem, stimulus, choices, correct_key, rationale, jenjang, difficulty')
         .in('id', ids);
       if (e2) {
         setErr(e2.message);
@@ -861,18 +861,22 @@ async function kumpulkan() {
         </header>
         <div className="card" style={{ maxWidth: 520, margin: '0 auto' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>Nama</label>
-              <input type="text" value={identity.name} onChange={(e) => setIdentity({ ...identity, name: e.target.value })} placeholder="Nama lengkap" style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--outline)', background: 'var(--card)', color: 'var(--ink)' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>Kelas</label>
-              <input type="text" value={identity.kelas} onChange={(e) => setIdentity({ ...identity, kelas: e.target.value })} placeholder="Mis. 12 IPA 1" style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--outline)', background: 'var(--card)', color: 'var(--ink)' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>NISN</label>
-              <input type="text" value={identity.nisn} onChange={(e) => setIdentity({ ...identity, nisn: e.target.value })} placeholder="Nomor Induk Siswa Nasional" style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--outline)', background: 'var(--card)', color: 'var(--ink)' }} />
-            </div>
+            {!isUjian && (
+              <>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>Nama</label>
+                  <input type="text" value={identity.name} onChange={(e) => setIdentity({ ...identity, name: e.target.value })} placeholder="Nama lengkap" style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--outline)', background: 'var(--card)', color: 'var(--ink)' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>Kelas</label>
+                  <input type="text" value={identity.kelas} onChange={(e) => setIdentity({ ...identity, kelas: e.target.value })} placeholder="Mis. 12 IPA 1" style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--outline)', background: 'var(--card)', color: 'var(--ink)' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>NISN</label>
+                  <input type="text" value={identity.nisn} onChange={(e) => setIdentity({ ...identity, nisn: e.target.value })} placeholder="Nomor Induk Siswa Nasional" style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--outline)', background: 'var(--card)', color: 'var(--ink)' }} />
+                </div>
+              </>
+            )}
             {isUjian && selectedExam?.token && (
               <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>Token Ujian</label>
@@ -893,10 +897,10 @@ async function kumpulkan() {
             <button
               type="button"
               className="continue-btn"
-              disabled={starting || Boolean(!identity.name || !identity.kelas || !identity.nisn || (isUjian && selectedExam?.token && !identity.token))}
+              disabled={starting || Boolean((!isUjian && (!identity.name || !identity.kelas || !identity.nisn)) || (isUjian && selectedExam?.token && !identity.token))}
               onClick={async () => {
                 setErr('');
-                if (!identity.name || !identity.kelas || !identity.nisn) { setErr('Nama, Kelas, dan NISN wajib diisi.'); return; }
+                if (!isUjian && (!identity.name || !identity.kelas || !identity.nisn)) { setErr('Nama, Kelas, dan NISN wajib diisi.'); return; }
                 if (isUjian && selectedExam?.token && !identity.token) { setErr('Token ujian wajib.'); return; }
                 if (invalidToken) { setErr('Token ujian salah.'); return; }
                 await mulai(pkg, selectedExam || undefined);
