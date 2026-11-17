@@ -380,6 +380,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
       });
     }
   }, [selectedTypes, useAiSelection]);
+  const isGuru = profile.role === 'guru';
   const isAdmin = profile.role === 'admin' || profile.role === 'konten';
 
 
