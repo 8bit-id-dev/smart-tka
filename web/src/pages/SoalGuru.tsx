@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KurikulumCrud } from '../components/KurikulumCrud';
 import { MathField } from '../components/MathField';
 import { MathText } from '../components/MathText';
@@ -15,6 +15,7 @@ type ItemRow = {
   item_type: string;
   mapel: string;
   materi?: string | null;
+  sub_materi?: string | null;
   jenjang: string;
   difficulty?: number;
   stem: string;
@@ -33,7 +34,6 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   const [list, setList] = useState<ItemRow[]>([]);
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
-  const [importBusy, setImportBusy] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -42,10 +42,14 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   const [difficulty, setDifficulty] = useState<number>(2);
   const [mapel, setMapel] = useState('');
   const [materi, setMateri] = useState('');
+  const [subMateri, setSubMateri] = useState('');
   const [mapelId, setMapelId] = useState('');
   const [materiId, setMateriId] = useState('');
   const [jenjang, setJenjang] = useState(profile.jenjang || 'sma');
   const [stem, setStem] = useState('');
+  const [stimulus, setStimulus] = useState('');
+  const [uploadingStimulus, setUploadingStimulus] = useState(false);
+  const stimulusFileRef = useRef<HTMLInputElement | null>(null);
   const [rationale, setRationale] = useState('');
   const [opsi, setOpsi] = useState(['', '', '', '', '']);
   const [kunciPg, setKunciPg] = useState('C');
@@ -82,7 +86,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   async function load() {
     let q = insforge.database
       .from('items')
-      .select('id, item_type, mapel, materi, jenjang, difficulty, stem, stimulus, choices, correct_key, rationale, status, created_at')
+      .select('id, item_type, mapel, materi, sub_materi, jenjang, difficulty, stem, stimulus, choices, correct_key, rationale, status, created_at')
       .neq('status', 'retired')
       .order('created_at', { ascending: false });
     if (isGuru) {
@@ -115,6 +119,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     setEditingId(null);
     setDifficulty(2);
     setStem('');
+    setStimulus('');
     setRationale('');
     setOpsi(['', '', '', '', '']);
     setKunciPg('C');
@@ -128,6 +133,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     setOk('');
     setMapel('');
     setMateri('');
+    setSubMateri('');
     setMapelId('');
     setMateriId('');
   }
@@ -142,9 +148,11 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     setDifficulty(item.difficulty || 2);
     setMapel(item.mapel || '');
     setMateri(item.materi || '');
+    setSubMateri(item.sub_materi || '');
     const t = (item.item_type as Tipe) || 'pg';
     setTipe(t);
     setStem(item.stem || '');
+    setStimulus(item.stimulus || '');
     setRationale(item.rationale || '');
 
     if (t === 'pernyataan_bs') {
@@ -237,6 +245,36 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     await load();
   }
 
+  async function uploadStimulusImage(file: File) {
+    setErr('');
+    setUploadingStimulus(true);
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${profile.school_id || 'school'}/${Date.now()}_${safeName}`;
+      const { error, data } = await insforge.storage
+        .from('item-media')
+        .upload(path, file, { contentType: file.type || 'image/png' });
+      if (error) {
+        setErr(`Gagal unggah gambar: ${error.message}. Pastikan bucket "item-media" tersedia.`);
+        return;
+      }
+      const pubPath = (data as { path?: string } | null)?.path || path;
+      const { data: pub } = insforge.storage.from('item-media').getPublicUrl(pubPath);
+      const url = (pub as { publicUrl?: string } | null)?.publicUrl || '';
+      if (!url) {
+        setErr('Gambar terunggah tetapi URL publik tidak ditemukan.');
+        return;
+      }
+      const md = `![stimulus](${url})`;
+      setStimulus((s) => (s.trim() ? `${s.trim()}\n\n${md}` : md));
+      setOk('Gambar stimulus berhasil diunggah dan disisipkan.');
+    } catch (e) {
+      setErr(`Gagal unggah gambar: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setUploadingStimulus(false);
+    }
+  }
+
   async function simpan(e: React.FormEvent) {
     e.preventDefault();
     setErr('');
@@ -296,6 +334,9 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
       correct_key = kunciUraian.trim();
     }
 
+    const stimulusVal = stimulus.trim() || null;
+    const subMateriVal = subMateri.trim() || null;
+
     setBusy(true);
     let errorObj = null;
 
@@ -318,9 +359,11 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
           jenjang,
           mapel,
           materi: materi || null,
+          sub_materi: subMateriVal,
           difficulty,
           item_type,
           stem: stem.trim(),
+          stimulus: stimulusVal,
           choices,
           correct_key,
           rationale: rationale.trim(),
@@ -335,9 +378,11 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
         jenjang,
         mapel,
         materi: materi || null,
+        sub_materi: subMateriVal,
         difficulty,
         item_type,
         stem: stem.trim(),
+        stimulus: stimulusVal,
         choices,
         correct_key,
         rationale: rationale.trim(),
@@ -355,68 +400,6 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     resetForm();
     await load();
   }
-
-const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.name.match(/\.(xlsx|xls)$/i)) { setErr('File harus berformat .xlsx atau .xls'); return; }
-    if (!isAdmin) { setErr('Hanya admin/konten yang bisa import bank soal'); return; }
-    setImportBusy(true); setErr(''); setOk('');
-    try {
-      const XLSX = await import('xlsx');
-      const arrayBuffer = await file.arrayBuffer();
-      const wb = XLSX.read(arrayBuffer, { type: 'array' });
-      type NaskahRow = { ID: string; Subbab: string; Tingkat: string; Bentuk: string; 'Stimulus / Data': string; 'Pertanyaan / Perintah': string; 'Pilihan atau Pernyataan': string; Waktu: string; };
-      type KunciRow = { ID: string; 'Kunci (berdasarkan isi)': string; 'Pembahasan lengkap': string; };
-      const naskah = XLSX.utils.sheet_to_json<NaskahRow>(wb.Sheets['Naskah Siswa'], { defval: '' });
-      const kunci = XLSX.utils.sheet_to_json<KunciRow>(wb.Sheets['Kunci & Pembahasan'], { defval: '' });
-      if (!naskah.length || !kunci.length) throw new Error('Sheet "Naskah Siswa" atau "Kunci & Pembahasan" tidak ditemukan/kosong');
-      const kunciMap = new Map(kunci.map(r => [r.ID, r]));
-      const parseOptions = (tipe: string, raw: string) => {
-        if (!raw || typeof raw !== 'string') return [];
-        if (tipe === 'PG') return ['A','B','C','D','E'];
-        return raw.split('\n').map(s=>s.trim()).filter(Boolean).map(s=>s.replace(/^\d+[\.\)]\s*/, '')).map(s=>s.replace(/\s*\[\s*\]\s*[BS]\s*\[\s*\]\s*[BS]\s*$/,'')).map(s=>s.trim());
-      };
-      const parseKey = (tipe: string, raw: string, options: string[]) => {
-        if (!raw || typeof raw !== 'string') return tipe === 'PG' ? 0 : [];
-        const s = raw.trim();
-        if (tipe === 'PG') { const idx = 'ABCDE'.indexOf(s.toUpperCase()); return idx >= 0 ? idx : 0; }
-        if (tipe === 'PGK') { const correctTexts = s.split('||').map(p=>p.trim()); return options.map(opt => correctTexts.some(ct => opt.toLowerCase().includes(ct.toLowerCase()) || ct.toLowerCase().includes(opt.toLowerCase()))); }
-        if (tipe === 'PBS') { return s.split(/[\s\-–—]+/).map(c => c.trim().toUpperCase()==='S'?true:c.trim().toUpperCase()==='B'?false:null).filter(v=>v!==null); }
-        return [];
-      };
-      const parseDifficulty = (t: string) => ({ 'Mudah':1,'Sedang':2,'Sulit':3 }[t] ?? 1);
-      const mapItemType = (tipe: string) => ({ 'PG':'pg','PGK':'pg_kompleks','PBS':'pernyataan_bs' }[tipe] ?? 'pg');
-      const parseRationale = (raw: string) => raw ? raw.replace(/\\n/g,'\n').trim() : '';
-      const itemsToInsert: any[] = [];
-      let skipped = 0;
-      for (const row of naskah) {
-        const id = (row as any).ID;
-        if (!id) { skipped++; continue; }
-        const k = kunciMap.get(id) as any;
-        if (!k) { skipped++; continue; }
-        const tipe = (row as any).Bentuk;
-        const options = parseOptions(tipe, (row as any)['Pilihan atau Pernyataan']);
-        const key = parseKey(tipe, k['Kunci (berdasarkan isi)'], options);
-        const rationale = parseRationale(k['Pembahasan lengkap']);
-        itemsToInsert.push({
-          external_id: id, scope: 'school', jenjang: 'sma', mapel: 'Matematika', item_type: mapItemType(tipe),
-          stem: (row as any)['Pertanyaan / Perintah'] || '', stimulus: (row as any)['Stimulus / Data'] || null,
-          choices: options.length > 0 ? options : null, correct_key: JSON.stringify(key), rationale,
-          difficulty: parseDifficulty((row as any).Tingkat), status: 'published', sub_materi: (row as any).Subbab || null,
-          irt_a: null, irt_b: null, irt_c: null,
-        });
-      }
-      if (itemsToInsert.length === 0) throw new Error('Tidak ada soal valid untuk diimport');
-      const { error } = await insforge.database.from('items').upsert(itemsToInsert, { onConflict: 'external_id', ignoreDuplicates: false });
-      if (error) throw error;
-      setOk(`Import selesai: ${itemsToInsert.length} soal ditambahkan/diperbarui`);
-      e.target.value = '';
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Import gagal';
-      setErr(msg);
-    } finally { setImportBusy(false); }
-  };
 
   const bisaTulis = ['guru', 'admin', 'konten'].includes(profile.role);
 
@@ -436,12 +419,6 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
       <header className="page-header">
         <h1 className="page-title">Soal</h1>
          <p className="page-subtitle">Kelola soal di bank sekolah Anda.</p>
-        {isAdmin && (
-          <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer', marginLeft: 8 }}>
-            Import Excel
-            <input type="file" accept=".xlsx,.xls" onChange={handleImportExcel} disabled={importBusy} style={{ display: 'none' }} />
-          </label>
-        )}
       </header>
 
       <nav className="subtabs" style={{ marginBottom: 20 }}>
@@ -549,6 +526,20 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
                )}
              </div>
 
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="form-label">Sub-bab / Sub-materi (opsional)</label>
+              <input
+                className="input"
+                type="text"
+                value={subMateri}
+                onChange={(e) => setSubMateri(e.target.value)}
+                placeholder="Contoh: Persamaan Linier, Ukuran Pemusatan Data, dsb."
+              />
+              <p className="type-lab" style={{ marginTop: 4 }}>
+                Identitas sub-bab untuk pengelompokan dan distribusi soal yang lebih spesifik.
+              </p>
+            </div>
+
             <div className="form-group">
               <label className="form-label">Tipe Soal</label>
               <FilterSelect
@@ -566,7 +557,55 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
               />
             </div>
 
-            <MathField label="Pertanyaan / stimulus" value={stem} onChange={setStem} rows={3} required />
+            <MathField label="Pertanyaan (stem)" value={stem} onChange={setStem} rows={3} required />
+
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <MathField
+                label="Stimulus / Bacaan / Konteks (opsional)"
+                value={stimulus}
+                onChange={setStimulus}
+                rows={4}
+              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+                <input
+                  ref={stimulusFileRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = '';
+                    if (f) void uploadStimulusImage(f);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={uploadingStimulus}
+                  onClick={() => stimulusFileRef.current?.click()}
+                >
+                  {uploadingStimulus ? 'Mengunggah gambar…' : 'Unggah gambar stimulus'}
+                </button>
+                {stimulus.trim() && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setStimulus('')}
+                  >
+                    Hapus stimulus
+                  </button>
+                )}
+                <span className="type-lab">Gambar akan disisipkan ke stimulus sebagai markdown.</span>
+              </div>
+              {stimulus.trim() && (
+                <div style={{ marginTop: 8 }}>
+                  <span className="type-lab">Pratinjau stimulus</span>
+                  <div className="card" style={{ boxShadow: 'none', padding: 12, marginTop: 4 }}>
+                    <MathText text={stimulus} />
+                  </div>
+                </div>
+              )}
+            </div>
 
             {(tipe === 'pg' || tipe === 'pg_kompleks') &&
               LETTERS.map((L, idx) => (
@@ -856,6 +895,13 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
                                                         <p style={{ margin: '8px 0 4px', fontWeight: 500 }}>
                                                           <MathText text={r.stem} />
                                                         </p>
+                                                        {(r.sub_materi || r.stimulus) && (
+                                                          <p className="type-lab" style={{ margin: '2px 0' }}>
+                                                            {r.sub_materi ? <>Sub-bab: {r.sub_materi}</> : null}
+                                                            {r.sub_materi && r.stimulus ? ' · ' : null}
+                                                            {r.stimulus ? 'Memiliki stimulus/gambar' : null}
+                                                          </p>
+                                                        )}
                                                         {r.rationale && (
                                                           <p className="type-lab">
                                                             Pembahasan: <MathText text={r.rationale} />
