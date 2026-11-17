@@ -982,18 +982,6 @@ if (distribusiMode === 'sub_materi') {
                   <p className="card-subtitle">Judul, jenis uji, jenjang, dan mapel/materi.</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {isAdmin && (
-                    <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
-                      Import Excel
-                      <input
-                        type="file"
-                        accept=".xlsx,.xls"
-                        onChange={handleImportExcel}
-                        disabled={importBusy}
-                        style={{ display: 'none' }}
-                      />
-                    </label>
-                  )}
                   {editId && (
                     <button className="btn btn-ghost btn-sm" type="button" onClick={kosongkanForm}>
                       Batal

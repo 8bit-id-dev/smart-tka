@@ -33,7 +33,8 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   const [list, setList] = useState<ItemRow[]>([]);
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importResult, setImportResult] = useState<string>('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -355,6 +356,69 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
     await load();
   }
 
+const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.match(/\.(xlsx|xls)$/i)) { setErr('File harus berformat .xlsx atau .xls'); return; }
+    if (!isAdmin) { setErr('Hanya admin/konten yang bisa import bank soal'); return; }
+    setImportBusy(true); setErr(''); setOk(''); setImportResult('');
+    try {
+      const XLSX = await import('xlsx');
+      const arrayBuffer = await file.arrayBuffer();
+      const wb = XLSX.read(arrayBuffer, { type: 'array' });
+      type NaskahRow = { ID: string; Subbab: string; Tingkat: string; Bentuk: string; 'Stimulus / Data': string; 'Pertanyaan / Perintah': string; 'Pilihan atau Pernyataan': string; Waktu: string; };
+      type KunciRow = { ID: string; 'Kunci (berdasarkan isi)': string; 'Pembahasan lengkap': string; };
+      const naskah = XLSX.utils.sheet_to_json<NaskahRow>(wb.Sheets['Naskah Siswa'], { defval: '' });
+      const kunci = XLSX.utils.sheet_to_json<KunciRow>(wb.Sheets['Kunci & Pembahasan'], { defval: '' });
+      if (!naskah.length || !kunci.length) throw new Error('Sheet "Naskah Siswa" atau "Kunci & Pembahasan" tidak ditemukan/kosong');
+      const kunciMap = new Map(kunci.map(r => [r.ID, r]));
+      const parseOptions = (tipe: string, raw: string) => {
+        if (!raw || typeof raw !== 'string') return [];
+        if (tipe === 'PG') return ['A','B','C','D','E'];
+        return raw.split('\n').map(s=>s.trim()).filter(Boolean).map(s=>s.replace(/^\d+[\.\)]\s*/, '')).map(s=>s.replace(/\s*\[\s*\]\s*[BS]\s*\[\s*\]\s*[BS]\s*$/,'')).map(s=>s.trim());
+      };
+      const parseKey = (tipe: string, raw: string, options: string[]) => {
+        if (!raw || typeof raw !== 'string') return tipe === 'PG' ? 0 : [];
+        const s = raw.trim();
+        if (tipe === 'PG') { const idx = 'ABCDE'.indexOf(s.toUpperCase()); return idx >= 0 ? idx : 0; }
+        if (tipe === 'PGK') { const correctTexts = s.split('||').map(p=>p.trim()); return options.map(opt => correctTexts.some(ct => opt.toLowerCase().includes(ct.toLowerCase()) || ct.toLowerCase().includes(opt.toLowerCase()))); }
+        if (tipe === 'PBS') { return s.split(/[\s\-–—]+/).map(c => c.trim().toUpperCase()==='S'?true:c.trim().toUpperCase()==='B'?false:null).filter(v=>v!==null); }
+        return [];
+      };
+      const parseDifficulty = (t: string) => ({ 'Mudah':1,'Sedang':2,'Sulit':3 }[t] ?? 1);
+      const mapItemType = (tipe: string) => ({ 'PG':'pg','PGK':'pg_kompleks','PBS':'pernyataan_bs' }[tipe] ?? 'pg');
+      const parseRationale = (raw: string) => raw ? raw.replace(/\\n/g,'\n').trim() : '';
+      const itemsToInsert: any[] = [];
+      let skipped = 0;
+      for (const row of naskah) {
+        const id = (row as any).ID;
+        if (!id) { skipped++; continue; }
+        const k = kunciMap.get(id) as any;
+        if (!k) { skipped++; continue; }
+        const tipe = (row as any).Bentuk;
+        const options = parseOptions(tipe, (row as any)['Pilihan atau Pernyataan']);
+        const key = parseKey(tipe, k['Kunci (berdasarkan isi)'], options);
+        const rationale = parseRationale(k['Pembahasan lengkap']);
+        itemsToInsert.push({
+          external_id: id, scope: 'school', jenjang: 'sma', mapel: 'Matematika', item_type: mapItemType(tipe),
+          stem: (row as any)['Pertanyaan / Perintah'] || '', stimulus: (row as any)['Stimulus / Data'] || null,
+          choices: options.length > 0 ? options : null, correct_key: JSON.stringify(key), rationale,
+          difficulty: parseDifficulty((row as any).Tingkat), status: 'published', sub_materi: (row as any).Subbab || null,
+          irt_a: null, irt_b: null, irt_c: null,
+        });
+      }
+      if (itemsToInsert.length === 0) throw new Error('Tidak ada soal valid untuk diimport');
+      const { error } = await insforge.database.from('items').upsert(itemsToInsert, { onConflict: 'external_id', ignoreDuplicates: false });
+      if (error) throw error;
+      setImportResult(`Berhasil import ${itemsToInsert.length} soal (skip ${skipped})`);
+      setOk(`Import selesai: ${itemsToInsert.length} soal ditambahkan/diperbarui`);
+      e.target.value = '';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Import gagal';
+      setErr(msg); setImportResult('Gagal: ' + msg);
+    } finally { setImportBusy(false); }
+  };
+
   const bisaTulis = ['guru', 'admin', 'konten'].includes(profile.role);
 
   if (!bisaTulis) {
@@ -373,6 +437,12 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
       <header className="page-header">
         <h1 className="page-title">Soal</h1>
          <p className="page-subtitle">Kelola soal di bank sekolah Anda.</p>
+        {isAdmin && (
+          <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer', marginLeft: 8 }}>
+            Import Excel
+            <input type="file" accept=".xlsx,.xls" onChange={handleImportExcel} disabled={importBusy} style={{ display: 'none' }} />
+          </label>
+        )}
       </header>
 
       <nav className="subtabs" style={{ marginBottom: 20 }}>
