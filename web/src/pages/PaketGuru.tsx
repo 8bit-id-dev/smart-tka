@@ -347,7 +347,7 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [shuffle, setShuffle] = useState(true);
   const [useAiSelection, setUseAiSelection] = useState(true);
   const [jumlahPerTipe, setJumlahPerTipe] = useState<Record<string, number>>(
-    ALL_ITEM_TYPES.reduce((acc, t) => ({ ...acc, [t]: 0 }), {})
+    ALL_ITEM_TYPES.reduce((acc, t) => ({ ...acc, [t]: ['pg', 'pg_kompleks', 'pernyataan_bs'].includes(t) ? 1 : 0 }), {})
   );
   const [activeTypes, setActiveTypes] = useState<string[]>(['pg', 'pg_kompleks', 'pernyataan_bs']);
   const jumlahSoalTotal = useMemo(
@@ -367,7 +367,19 @@ export function PaketGuru({ profile }: { profile: AppProfile }) {
   const [jadwalToken, setJadwalToken] = useState('');
   const [distribusiMode, setDistribusiMode] = useState<'materi' | 'sub_materi'>('materi');
   const [subMateriRules, setSubMateriRules] = useState<SubMateriRule[]>([]);
-  const isGuru = profile.role === 'guru';
+  useEffect(() => {
+    if (!useAiSelection) return;
+    if (selectedTypes.size > 0) {
+      const nextTypes = Array.from(selectedTypes);
+      setActiveTypes(nextTypes);
+      setJumlahPerTipe((prev) => {
+        const next = { ...prev };
+        for (const t of nextTypes) if (!next[t]) next[t] = 1;
+        for (const t of Object.keys(next)) if (!selectedTypes.has(t)) delete next[t];
+        return next;
+      });
+    }
+  }, [selectedTypes, useAiSelection]);
   const isAdmin = profile.role === 'admin' || profile.role === 'konten';
 
 
