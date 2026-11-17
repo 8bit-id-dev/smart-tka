@@ -34,7 +34,6 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
   const [importBusy, setImportBusy] = useState(false);
-  const [importResult, setImportResult] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -362,7 +361,7 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!file) return;
     if (!file.name.match(/\.(xlsx|xls)$/i)) { setErr('File harus berformat .xlsx atau .xls'); return; }
     if (!isAdmin) { setErr('Hanya admin/konten yang bisa import bank soal'); return; }
-    setImportBusy(true); setErr(''); setOk(''); setImportResult('');
+    setImportBusy(true); setErr(''); setOk('');
     try {
       const XLSX = await import('xlsx');
       const arrayBuffer = await file.arrayBuffer();
@@ -416,7 +415,7 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
       e.target.value = '';
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Import gagal';
-      setErr(msg); setImportResult('Gagal: ' + msg);
+      setErr(msg);
     } finally { setImportBusy(false); }
   };
 
