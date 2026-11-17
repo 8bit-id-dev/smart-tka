@@ -638,7 +638,7 @@ if (distribusiMode === 'sub_materi') {
           item_types: Array.from(selectedTypes),
           difficulties: Array.from(selectedDiffs),
           difficulty_ratio: useDifficultyRatio ? difficultyRatio : undefined,
-          jumlah_soal: jumlahSoalTotal,
+          jumlah_soal: totalSoal,
           jumlah_per_type: activeTypes.reduce(
             (acc, t) => ({ ...acc, [t]: jumlahPerTipe[t] || 0 }),
             {} as Record<string, number>
@@ -657,12 +657,12 @@ if (distribusiMode === 'sub_materi') {
       info: infoText.trim() || null,
       jenjang,
       title: title.trim(),
-      item_count: useAiSelection ? jumlahSoalTotal : picked.length,
+      item_count: totalSoal,
       duration_sec: durationSec,
       shuffle,
       discuss_after_each: discuss,
       use_ai_selection: useAiSelection,
-      jumlah_soal_soal: useAiSelection ? jumlahSoalTotal : null,
+      jumlah_soal_soal: useAiSelection ? totalSoal : null,
       ai_config: aiConfig,
     };
 
