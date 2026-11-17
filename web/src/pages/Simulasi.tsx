@@ -1212,9 +1212,15 @@ async function kumpulkan() {
               ›
             </button>
           ) : (
-            <button className="btn btn-primary" type="button" onClick={() => void kumpulkan()}>
+            <button className="btn btn-primary" type="button" onClick={() => {
+              const answered = items.filter((it) => (ans[it.id]?.answer || '').trim() !== '').length;
+              const unanswered = items.length - answered;
+              const remaining = sisa > 0 ? `${Math.floor(sisa / 60)} menit ${sisa % 60} detik` : '0 detik';
+              const ok = window.confirm(`Kumpulkan ${pkg?.title || 'paket'}?\n\nIdentitas: ${identity.name || '-'}\nWaktu tersisa: ${remaining}\nSoal dijawab: ${answered}\nSoal belum dijawab: ${unanswered}`);
+              if (ok) void kumpulkan();
+            }}>
               Kumpulkan
-</button>
+            </button>
             )}
           </div>
         </section>
