@@ -253,7 +253,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
       const path = `${profile.school_id || 'school'}/${Date.now()}_${safeName}`;
       const { error, data } = await insforge.storage
         .from('item-media')
-        .upload(path, file, { contentType: file.type || 'image/png' });
+        .upload(path, file);
       if (error) {
         setErr(`Gagal unggah gambar: ${error.message}. Pastikan bucket "item-media" tersedia.`);
         return;
