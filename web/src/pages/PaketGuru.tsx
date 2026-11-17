@@ -807,11 +807,6 @@ if (distribusiMode === 'sub_materi') {
           <p className="banner-text">{ok}</p>
         </div>
       )}
-      {importResult && (
-        <div className={`banner ${importResult.startsWith('Gagal') ? 'banner-danger' : 'banner-ok'}`} style={{ marginBottom: 20 }}>
-          <p className="banner-text">{importResult}</p>
-        </div>
-      )}
 
       <div className="page-split">
         <div className="form-sticky">
