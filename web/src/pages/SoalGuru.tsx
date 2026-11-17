@@ -410,7 +410,6 @@ const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (itemsToInsert.length === 0) throw new Error('Tidak ada soal valid untuk diimport');
       const { error } = await insforge.database.from('items').upsert(itemsToInsert, { onConflict: 'external_id', ignoreDuplicates: false });
       if (error) throw error;
-      setImportResult(`Berhasil import ${itemsToInsert.length} soal (skip ${skipped})`);
       setOk(`Import selesai: ${itemsToInsert.length} soal ditambahkan/diperbarui`);
       e.target.value = '';
     } catch (err: unknown) {
