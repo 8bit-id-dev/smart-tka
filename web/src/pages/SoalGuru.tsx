@@ -66,6 +66,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   const [openMateri, setOpenMateri] = useState<Record<string, boolean>>({});
   const [openTipe, setOpenTipe] = useState<Record<string, boolean>>({});
   const [openDiff, setOpenDiff] = useState<Record<string, boolean>>({});
+  const [filterSubMateri, setFilterSubMateri] = useState('');
 
   const [mySubjects, setMySubjects] = useState<string[]>([]);
   const isGuru = profile.role === 'guru';
@@ -770,6 +771,18 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
 
       {subTab === 'bank' && (
         <section>
+          <div className="form-row" style={{ marginBottom: 16 }}>
+            <div className="form-group">
+              <label className="form-label">Sub-materi</label>
+              <FilterSelect
+                value={filterSubMateri}
+                onChange={setFilterSubMateri}
+                placeholder="Semua sub-materi"
+                minWidth={260}
+                options={Array.from(new Set(list.map((i) => i.sub_materi).filter(Boolean))).map((s) => ({ value: s as string, label: s as string }))}
+              />
+            </div>
+          </div>
           {list.length === 0 && (
             <div className="empty-state">
               <div className="empty-state-icon">📝</div>
@@ -778,9 +791,10 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
             </div>
           )}
 
-          {(() => {
-            const grouped: Record<string, Record<string, Record<string, Record<number, ItemRow[]>>>> = {};
-            for (const item of list) {
+            {(() => {
+              const filteredList = filterSubMateri ? list.filter((i) => i.sub_materi === filterSubMateri) : list;
+              const grouped: Record<string, Record<string, Record<string, Record<number, ItemRow[]>>>> = {};
+              for (const item of filteredList) {
               const mp = item.mapel || 'Tanpa Mapel';
               const mt = item.materi || 'Tanpa Materi';
               const tp = item.item_type || 'pg';
