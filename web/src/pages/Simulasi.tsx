@@ -1043,7 +1043,7 @@ async function kumpulkan() {
           </div>
         </section>
 
-        {items.length > 0 && (!(selectedExam !== null) || sisa <= 0) && (
+        {items.length > 0 && (pkg?.kind === 'latihan' || sisa <= 0) && (!(selectedExam !== null) || sisa <= 0) && (
           <section style={{ maxWidth: 960, margin: '0 auto', padding: '0 12px 24px' }}>
             <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700 }}>Pembahasan Soal</h3>
             {items.map((it, idx) => {
