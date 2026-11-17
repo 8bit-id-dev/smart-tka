@@ -58,7 +58,7 @@ function parseRationale(raw) {
 
 async function main() {
   console.log('Reading Excel file...');
-  const wb = XLSX.readFile('Bank_Soal_Statistika_Data_Berkelompok_Kelas_XII_459_Soal.xlsx');
+  const wb = XLSX.readFile('Statistika XII.xlsx');
   
   const naskah = XLSX.utils.sheet_to_json(wb.Sheets['Naskah Siswa'], { defval: '' });
   const kunci = XLSX.utils.sheet_to_json(wb.Sheets['Kunci & Pembahasan'], { defval: '' });
@@ -67,14 +67,14 @@ async function main() {
   
   const kunciMap = new Map();
   for (const row of kunci) {
-    kunciMap.set(row.ID, row);
+    kunciMap.set(row['ID Soal'], row);
   }
   
   const items = [];
   let skipped = 0;
   
   for (const row of naskah) {
-    const id = row.ID;
+    const id = row['ID Soal'];
     if (!id) { skipped++; continue; }
     
     const k = kunciMap.get(id);
@@ -102,7 +102,9 @@ async function main() {
       rationale: rationale,
       difficulty: parseDifficulty(row.Tingkat),
       status: 'published',
-      sub_materi: row.Subbab || null,
+      sub_materi: row['Subbab Utama'] || null,
+      author_id: '5542bcf6-9d99-43e2-8397-d155286a65a0',
+      school_id: '11111111-1111-1111-1111-111111111111',
       irt_a: null,
       irt_b: null,
       irt_c: null,
