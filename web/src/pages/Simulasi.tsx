@@ -396,10 +396,7 @@ async function doMulai(p: Pkg, exam?: ExamSchedule) {
 
     if (p.id) sessionStorage.removeItem(`sim-${p.id}-draft`);
 
-    if (!studentId) {
-      setErr('Profil siswa tidak ditemukan. Silakan login ulang.');
-      return;
-    }
+    if (p.use_ai_selection) {
       const token = identity.token || `${studentId || 'anon'}_${p.id}`;
       const { data, error } = await insforge.database.rpc('smart_attempt_start', {
         p_package_id: p.id,
