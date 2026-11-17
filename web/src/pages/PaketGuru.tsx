@@ -630,6 +630,12 @@ if (distribusiMode === 'sub_materi') {
       }
     }
 
+    const totalSoal = useAiSelection
+      ? (distribusiMode === 'sub_materi'
+          ? subMateriRules.reduce((sum, r) => sum + Object.values(r.jumlah_per_type).reduce((s, n) => s + (n || 0), 0), 0)
+          : jumlahSoalTotal)
+      : picked.length;
+
     const aiConfig = useAiSelection
       ? {
           mode: distribusiMode,
