@@ -690,21 +690,27 @@ if (distribusiMode === 'sub_materi') {
 
     if (kind === 'ujian_kelas' && pkgId) {
       const token = jadwalToken.trim() || generateToken(6);
-      const { error: schErr } = await insforge.database
+      const { data: existing } = await insforge.database
         .from('exam_schedules')
-        .upsert({
-          package_id: pkgId,
-          title: title.trim(),
-          subject: mapel,
-          materi: Array.from(selectedMateris).join(', ') || null,
-          duration_sec: durationSec,
-          info: infoText.trim() || null,
-          start_at: new Date(jadwalMulai).toISOString(),
-          end_at: new Date(jadwalSelesai).toISOString(),
-          token,
-          is_active: true,
-          created_by: profile.id,
-        }, { onConflict: 'package_id' });
+        .select('id')
+        .eq('package_id', pkgId)
+        .maybeSingle();
+      const schedule = {
+        package_id: pkgId,
+        title: title.trim(),
+        subject: mapel,
+        materi: Array.from(selectedMateris).join(', ') || null,
+        duration_sec: durationSec,
+        info: infoText.trim() || null,
+        start_at: new Date(jadwalMulai).toISOString(),
+        end_at: new Date(jadwalSelesai).toISOString(),
+        token,
+        is_active: true,
+        created_by: profile.id,
+      };
+      const { error: schErr } = existing?.id
+        ? await insforge.database.from('exam_schedules').update(schedule).eq('id', existing.id)
+        : await insforge.database.from('exam_schedules').insert(schedule);
       if (schErr) {
         setErr('Paket tersimpan tapi gagal simpan jadwal: ' + schErr.message);
         setOk('');
