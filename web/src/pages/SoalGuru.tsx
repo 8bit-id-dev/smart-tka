@@ -34,7 +34,7 @@ export function SoalGuru({ profile }: { profile: AppProfile }) {
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
   const [importBusy, setImportBusy] = useState(false);
-  const [importResult, setImportResult] = useState<string>('');
+  const [busy, setBusy] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
 
